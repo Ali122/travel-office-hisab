@@ -144,7 +144,7 @@ var TXT = {
     bijcard:"Bijli ka bill (K-Electric)", bijweb:"Bill check karne ki website (KE ka page)",
     bijmeter:"Meter / account numbers (ek har line par)",
     fixkh:"Mahana fix kharche (har mahine khud judte hain)", nfix:"Naya fix kharcha add karein",
-    synch:"Doosre PC se data sync (Google Sheet)", gascard:"Google Sheet setup (sirf ek dafa)",
+    synch:"Doosre PC se data sync (Google Sheet)", copyshare:"Mobile ke liye link bana kar copy karein (bhai ko bhejne ke liye)", gascard:"Google Sheet setup (sirf ek dafa)",
     backuph:"Backup / Backup wapas", exbtn:"Data download karein (backup)",
     imlbl:"Purana backup file se wapas layein",
     reseth:"Sab data mita dein", resetbtn:"Poora data delete karein",
@@ -211,7 +211,7 @@ var TXT = {
     bijcard:"Electricity bill (K-Electric)", bijweb:"Website for checking bills (KE page)",
     bijmeter:"Meter / account numbers (one per line)",
     fixkh:"Fixed monthly expenses (added automatically each month)", nfix:"Add new fixed expense",
-    synch:"Sync with other PC (Google Sheet)", gascard:"Google Sheet setup (one time only)",
+    synch:"Sync with other PC (Google Sheet)", copyshare:"Build & copy share link (to send to mobile)", gascard:"Google Sheet setup (one time only)",
     backuph:"Backup / Restore", exbtn:"Download data (backup)",
     imlbl:"Restore old backup from file",
     reseth:"Delete all data", resetbtn:"Delete all data",
@@ -261,6 +261,16 @@ function ensureSettings(s){
   for(var k in b){ if(s.settings[k] === undefined) s.settings[k] = b[k]; }
 }
 var S = load();
+// ?sync=<url> ke saath link khola jaye to sync setup khud ho jaye
+(function(){
+  try{
+    var m = location.search.match(/[?&]sync=([^&]+)/);
+    if(m && m[1]){
+      var u = decodeURIComponent(m[1]);
+      if(u && u !== S.settings.syncUrl){ S.settings.syncUrl = u; save(); }
+    }
+  }catch(e){}
+}());
 function save(){ localStorage.setItem(KEY, JSON.stringify(S)); syncPush(); }
 
 /* ================= SYNC (GOOGLE SHEET) ================= */
@@ -1058,6 +1068,7 @@ function viewSettings(){
         + '<span class="hint hint-status" id="syncStatus" style="flex:2; margin-top:0;"></span>'
         + '</div>';
   html += '<button class="btn small green" id="importSheet" style="margin-top:10px; width:100%;">Google Sheet ka purana data import karein (tickets + kharche + qarza)</button>';
+  html += '<button class="btn small primary" id="copyShare" style="margin-top:8px; width:100%;">'+esc(T("copyshare"))+'</button>';
   html += '<div id="syncReport" class="hint" style="margin-top:10px; line-height:1.7; word-break:break-word; background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px;"></div>';
   html += '<div class="hint">Sync fail ho to: (1) deployment mein <b>Who has access: Anyone</b> hona chahiye, (2) URL ka aakhir <b>/exec</b> par khatam hona chahiye (…/dev nahi), (3) URL dobara copy kar ke daalein. "Test karein" button se pata chal jayega kya masla hai.</div>';
   html += '</div>';
@@ -1350,6 +1361,19 @@ function bind(){
     ta.select();
     try{ document.execCommand("copy"); alert("Code copy ho gaya — Apps Script editor mein paste karein."); }
     catch(e){ alert("Text select kar ke manually copy karein."); }
+  };
+  var cs = document.getElementById("copyShare");
+  if(cs) cs.onclick = function(){
+    var site = location.origin + location.pathname;
+    var link = site + "?sync=" + encodeURIComponent(S.settings.syncUrl || "");
+    if(!S.settings.syncUrl) alert("Sync URL abhi khali hai — link mein sirf app hoga, sync setup nahi.");
+    var ta = document.createElement("textarea");
+    ta.value = link;
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand("copy"); alert("Link copy ho gaya! Ye WhatsApp par bhej dein — kholte hi us ke mobile par sync setup ho jayega."); }
+    catch(e){ window.prompt("Ye link copy karein:", link); }
+    document.body.removeChild(ta);
   };
   var im = document.getElementById("importData");
   if(im) im.onchange = function(){
