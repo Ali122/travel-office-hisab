@@ -1,0 +1,2057 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Office Hisab</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280;
+    --green:#059669; --green-bg:#ecfdf5; --red:#dc2626; --red-bg:#fef2f2;
+    --blue:#2563eb; --blue-bg:#eff6ff; --gold:#d97706; --gold-bg:#fffbeb;
+    --line:#e5e7eb; --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:16px;}
+  header{background:#0f172a; color:#fff; padding:14px 16px; position:sticky; top:0; z-index:10;}
+  header h1{margin:0; font-size:19px; font-weight:700;}
+  header .tag{font-size:12px; color:#94a3b8; margin-top:2px;}
+  .lang-btn{position:absolute; top:14px; right:95px; border:1px solid #475569; background:#1e293b; color:#fff; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
+  .hints-btn{position:absolute; top:14px; right:14px; border:1px solid #475569; background:#1e293b; color:#94a3b8; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
+  .ver{font-size:11px; color:#94a3b8; font-weight:400; margin-left:6px;}
+  body.no-hints .hint:not(.hint-status){display:none;}
+  .ver{font-size:11px; color:#94a3b8; font-weight:600; margin-left:6px;}
+  nav{display:flex; overflow-x:auto; gap:6px; padding:10px 12px; background:#0f172a;}
+  nav::-webkit-scrollbar{display:none;}
+  nav button{flex:0 0 auto; border:none; background:#1e293b; color:#cbd5e1; padding:8px 14px; border-radius:999px; font-size:14px; font-weight:600;}
+  nav button.active{background:#fff; color:#0f172a;}
+  main{padding:14px 14px 90px; max-width:640px; margin:0 auto;}
+  .card{background:var(--card); border-radius:var(--radius); padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .card h2{margin:0 0 10px; font-size:16px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .row > *{flex:1; min-width:120px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px; font-weight:600;}
+  input,select{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:#fff;}
+  input:focus,select:focus{outline:2px solid var(--blue); border-color:var(--blue);}
+  .btn{display:inline-block; border:none; border-radius:10px; padding:11px 16px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:10px;}
+  .btn.primary{background:var(--blue); color:#fff;}
+  .btn.green{background:var(--green); color:#fff;}
+  .btn.small{width:auto; padding:7px 12px; font-size:13px; margin-top:0;}
+  .btn:disabled{opacity:.5;}
+  .stat{border-radius:12px; padding:12px; background:var(--bg);}
+  .stat .v{font-size:20px; font-weight:800; margin-top:2px;}
+  .stat .t{font-size:12px; color:var(--muted); font-weight:600;}
+  .pos{color:var(--green);} .neg{color:var(--red);} .blu{color:var(--blue);} .gld{color:var(--gold);}
+  table{width:100%; border-collapse:collapse; font-size:14px;}
+  th{text-align:left; color:var(--muted); font-size:12px; padding:6px 4px; border-bottom:1px solid var(--line);}
+  td{padding:8px 4px; border-bottom:1px solid var(--line); vertical-align:top;}
+  td:last-child, th:last-child{text-align:right; white-space:nowrap;}
+  .del{background:var(--red-bg); color:var(--red); border:none; border-radius:8px; padding:5px 9px; font-weight:700; cursor:pointer;}
+  .pill{display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;}
+  .pill.done{background:var(--green-bg); color:var(--green);}
+  .pill.pending{background:var(--gold-bg); color:var(--gold);}
+  .empty{color:var(--muted); text-align:center; padding:14px; font-size:14px;}
+  .hint{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.5;}
+  #tkProfitHint{min-height:38px;}
+  .monthbar{display:flex; gap:8px; align-items:center; margin-bottom:12px;}
+  .monthbar select{flex:1;}
+  .ok-msg{background:var(--green-bg); color:var(--green); border-radius:10px; padding:10px; font-size:14px; font-weight:600; margin-top:10px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Travel Office Hisab <span class="ver">v1.2</span></h1>
+  <button id="hintsBtn" class="hints-btn">Hints: ON</button>
+</header>
+<nav id="tabs">
+  <button data-tab="dash" class="active">Khulasa</button>
+  <button data-tab="month">Mahana Hisab</button>
+  <button data-tab="tickets">Tickets</button>
+  <button data-tab="pA" id="tabPA">Umair</button>
+  <button data-tab="pB" id="tabPB">Sarmad</button>
+  <button data-tab="abbu">Abbu</button>
+  <button data-tab="waseem">Waseem</button>
+  <button data-tab="qarza">Qarza</button>
+  <button data-tab="bakaya">Bakaya Payments</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+<main id="app"></main>
+
+<script>
+/* ================= DATA ================= */
+var KEY = "travelOfficeHisab";
+var APP_VER = "1.8";
+var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Spreadsheet nahi khuli (File ID check karein): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail (File ID check karein): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
+
+var TXT = {
+  ur: {
+    dash:"Khulasa", month:"Mahana Hisab", tickets:"Tickets", bakaya:"Bakaya Payments", settings:"Settings",
+    abbu:"Abbu", waseem:"Waseem",
+    todaysum:"Aaj ka khulasa", loanbaqi:"Qarza baqi (loan)", kaq:" ka baqaya", clbak:"Bakaya payments (clients)",
+    kulsadqa:"Kul sadqa diya gaya: ", kulqarza:" • Kul qarza utara: ", appm:" • Apply kiye gaye mahine: ",
+    abbuliya:" • Abbu ne liya: ", wsbaqi:" • Waseem ko commission baqi: ", chbaqi:" • Sadqa baqi: ", chbani:" • Sadqa bani: ", chdi:" • Sadqa di: ", chled:"Sadqa (charity) — di hui", chempty:"Abhi koi sadqa di nahi gayi.",
+    qarzah:"Qarza Tracker", qzbaqi:"Baqi qarza", qzpaid:"Kul qarza paid", qzadd:"Qarza payment record karein (balance kam hogi)", qznote:"Note (mas: September ki qarza)", qzhist:"Qarza payment history", qarza:"Qarza",
+    pmah:"Pichhli mahine", thm:"Mahina", thk:"Kamai", thkh:"Kharcha", ths:"Status",
+    apdone:"Apply ho gaya", append:"Pending",
+    nomonth:"Abhi koi mahina add nahi hua. 'Mahana Hisab' se pehla mahina shuru karein.",
+    newmonth:"Naya mahina", kulkam:"Kul kamai", kulkh:"Kul kharcha",
+    tkpl:"Ticket profit (is mahine, kamai mein shamil)",
+    kamai:"Kamai (Income)",
+    incomehint:"Tickets / Umrah ka profit is mahine ki kamai mein khud judta hai — ye option sirf doosri kamai (commission waghera) ke liye hai.",
+    indesc:"Doosri kamai (mas: agency commission)", jamak:"Jama karein",
+    kharcha:"Kharcha (Expenses)",
+    fixbtn:"Mahana fix kharche jama karein / settings ke mutabiq teek karein (rent, tanker, bijli...)",
+    bijbtn:"Bijli ka bill record karein (KE website khulegi) — raqam + last date",
+    exdesc:"Kharcha (mas: rent, bijli)", hisaab:"Hisaab (Automatically)",
+    sadgi:"Saadgi (saaf munafa = kamai − kharcha)",
+    tkpl2:"Is mahine ka ticket profit (kamai mein shamil)",
+    abbl:"Abbu ka liya (profit se minus)", wsml:"Waseem commission (profit se minus)",
+    pahissa:" ka hissa (baqi ka aadha)",
+    applybtn:"Qarza utaro aur partners ko hissa dein",
+    tkhul:"Ticket khulasa", kulcost:"Kul cost", kulsale:"Kul sale",
+    kulprofit:"Kul profit (mahana kamai mein shamil)",
+    cleartk:"Saari tickets delete karein (dobara import ke liye)",
+    newtk:"Naya ticket add karein", tareekh:"Tareekh",
+    clientph:"Client ka naam", detailph:"Mas: Umrah ticket, airline",
+    costph:"Cost price (Rs)", saleph:"Sale price (Rs)",
+    profit:"Profit: ", payment:"Payment",
+    paidopt:"Paid (paisa mil gaya)", unpaidopt:"Unpaid (bakaya mein jayega)",
+    commph:"Waseem commission (Rs)", savetk:"Ticket save karein",
+    tkhint:"Ticket ka profit automatically usi mahine ki kamai mein jud jata hai — Mahana Hisab mein nazar aayega.",
+    tkhist:"Ticket history", thdate:"Tareekh", thcl:"Client / tafseel",
+    wscomm:"Waseem commission: ", unpaid:"Unpaid", paidp:"Paid",
+    emptytk:"Abhi koi ticket add nahi hua.",
+    markpaid:"✓ Paid mark karein", ublbl:"Unpaid ticket",
+    bana:"Bana (share)", liya:"Liya", bakayalbl:"Bakaya (bana − liya)",
+    nikrec:"Nikasi record karein (paise le gaye)", raqamph:"Raqam (Rs)",
+    noteph:"Wajah / note (mas: mobile ki qist)", savek:"Save karein",
+    nikhist:"Nikasi history", thw:"Wajah", raqamh:"Raqam",
+    emptynik:"Abhi koi nikasi nahi hui.",
+    kulliya:"Kul liya", abbu:"Abbu",
+    abbuyhint:"Abbu ke liye huye paise us mahine ke profit se minus hote hain — sadqa/qarza/partners ka hisaab is ke baad banta hai.",
+    abbunik:"Abbu ka nikasi record karein", abbuhist:"Abbu ki nikasi history",
+    wsh2:"Waseem (staff)", wsbana:"Commission bana (tickets)", wsdiya:"Commission diya",
+    wsbaq2:"Commission bakaya", saldi:"Salary di (kul)", payrec:"Payment record karein",
+    kcomm:"Commission di", ksal:"Salary di",
+    wsnote:"Note (mas: ticket NOMAN ki commission)", payhist:"Payment history", thkism:"Kism",
+    emptyws:"Abhi koi payment record nahi hui.",
+    newcl:"Naya client entry (payment lena hai)", cliname:"Client ka naam",
+    tafseel:"Tafseel / kaam", kulraqam:"Kul raqam (Rs)", addk:"Add karein",
+    baklist:"Bakaya list", emptybak:"Abhi koi bakaya payment nahi hai.", kulb:"Kul bakaya: ",
+    bijh:"Bijli ka bill — last date yaad rakhein", lastdatelbl:"Last date: ",
+    dinbaqi:" din baqi", dinover:" din OVER ho gaye!", jama:"Jama ho gaya",
+    unpaidtkh:"Tickets / Umrah — unpaid", emptyub:"Koi unpaid ticket nahi.", ublbl2:"Unpaid ticket", apnahissa:"apna hissa", ubnote:"Ye unpaid tickets kul bakaya mein gini jaati hain. Paid mark karte hi yahan se hat jati hain. (Unpaid ticket ka profit phir bhi usi mahine ki kamai mein gina jata hai.)",
+    seth:"Partners aur rates", sadqa:"Sadqa (%)", qarzap:"Qarza payment (%)",
+    loanbal:"Qarza ka mojooda baqaya (Rs)", saveset:"Settings save karein",
+    bijcard:"Bijli ka bill (K-Electric)", bijweb:"Bill check karne ki website (KE ka page)",
+    bijmeter:"Meter / account numbers (ek har line par)",
+    fixkh:"Mahana fix kharche (har mahine khud judte hain)", nfix:"Naya fix kharcha add karein",
+    synch:"Doosre PC se data sync (Google Sheet)", copyshare:"Mobile ke liye link bana kar copy karein (bhai ko bhejne ke liye)", gascard:"Google Sheet setup (sirf ek dafa)",
+    backuph:"Backup / Backup wapas", exbtn:"Data download karein (backup)", repbtn:"Report download karein (Excel file — poora hisaab dekhne ke liye)",
+    imlbl:"Purana backup file se wapas layein",
+    reseth:"Sab data mita dein", resetbtn:"Poora data delete karein",
+    bkremind:"Backup yaad-dihani", bknow:"Abhi backup download karein"
+  },
+  en: {
+    dash:"Summary", month:"Monthly Accounts", tickets:"Tickets", bakaya:"Pending Payments", settings:"Settings",
+    abbu:"Father", waseem:"Waseem",
+    todaysum:"Today's Summary", loanbaqi:"Loan remaining", kaq:"'s balance", clbak:"Client payments pending",
+    kulsadqa:"Total charity given: ", kulqarza:" • Total loan paid: ", appm:" • Months applied: ",
+    abbuliya:" • Father took: ", wsbaqi:" • Waseem commission due: ", chbaqi:" • Charity remaining: ", chbani:" • Charity accrued: ", chdi:" • Charity paid: ", chled:"Charity — paid", chempty:"No charity payments yet.",
+    qarzah:"Loan Tracker", qzbaqi:"Loan remaining", qzpaid:"Total loan paid", qzadd:"Record loan payment (balance reduces)", qznote:"Note (e.g. September loan)", qzhist:"Loan Payment History", qarza:"Loan",
+    pmah:"Recent months", thm:"Month", thk:"Income", thkh:"Expenses", ths:"Status",
+    apdone:"Applied", append:"Pending",
+    nomonth:"No month added yet. Start the first month from 'Monthly Accounts'.",
+    newmonth:"New Month", kulkam:"Total Income", kulkh:"Total Expenses",
+    tkpl:"Ticket profit (this month, included in income)",
+    kamai:"Income",
+    incomehint:"Ticket / Umrah profits are added to this month's income automatically — this option is only for other income (commission etc.).",
+    indesc:"Other income (e.g. agency commission)", jamak:"Add",
+    kharcha:"Expenses",
+    fixbtn:"Add / fix fixed monthly expenses (rent, tanker, electricity...)",
+    bijbtn:"Record electricity bill (opens KE website) — amount + due date",
+    exdesc:"Expense (e.g. rent, electricity)", hisaab:"Breakdown (Automatic)",
+    sadgi:"Net profit (income − expenses)",
+    tkpl2:"This month's ticket profit (included in income)",
+    abbl:"Father's withdrawal (deducted from profit)", wsml:"Waseem commission (deducted from profit)",
+    pahissa:"'s share (half of remainder)",
+    applybtn:"Pay loan and credit partners' shares",
+    tkhul:"Ticket Summary", kulcost:"Total cost", kulsale:"Total sale",
+    kulprofit:"Total profit (added to monthly income)",
+    cleartk:"Delete all tickets (for re-import)",
+    newtk:"Add New Ticket", tareekh:"Date",
+    clientph:"Client name", detailph:"e.g. Umrah ticket, airline",
+    costph:"Cost price (Rs)", saleph:"Sale price (Rs)",
+    profit:"Profit: ", payment:"Payment",
+    paidopt:"Paid (money received)", unpaidopt:"Unpaid (goes to pending)",
+    commph:"Waseem commission (Rs)", savetk:"Save Ticket",
+    tkhint:"Ticket profit is added to that month's income automatically — visible in Monthly Accounts.",
+    tkhist:"Ticket History", thdate:"Date", thcl:"Client / Details",
+    wscomm:"Waseem commission: ", unpaid:"Unpaid", paidp:"Paid",
+    emptytk:"No tickets yet.",
+    markpaid:"✓ Mark as Paid", ublbl:"Unpaid ticket", ublbl2:"Unpaid ticket", apnahissa:"own share", ubnote:"These unpaid tickets count toward total pending. Marking them paid removes them from here. (Unpaid ticket profit still counts in that month's income.)",
+    bana:"Earned (share)", liya:"Taken", bakayalbl:"Balance (earned − taken)",
+    nikrec:"Record withdrawal (cash taken)", raqamph:"Amount (Rs)",
+    noteph:"Reason / note (e.g. mobile installment)", savek:"Save",
+    nikhist:"Withdrawal History", thw:"Reason", raqamh:"Amount",
+    emptynik:"No withdrawals yet.",
+    kulliya:"Total Taken", abbu:"Father",
+    abbuyhint:"Money taken by Father is deducted from that month's profit — charity/loan/partners are calculated after that.",
+    abbunik:"Record Father's withdrawal", abbuhist:"Father's Withdrawal History",
+    wsh2:"Waseem (staff)", wsbana:"Commission earned (tickets)", wsdiya:"Commission paid",
+    wsbaq2:"Commission due", saldi:"Salary paid (total)", payrec:"Record Payment",
+    kcomm:"Commission paid", ksal:"Salary paid",
+    wsnote:"Note (e.g. commission for NOMAN ticket)", payhist:"Payment History", thkism:"Type",
+    emptyws:"No payments recorded yet.",
+    newcl:"New client entry (payment due)", cliname:"Client name",
+    tafseel:"Details / job", kulraqam:"Total amount (Rs)", addk:"Add",
+    baklist:"Pending list", emptybak:"No pending payments yet.", kulb:"Total pending: ",
+    bijh:"Electricity bill — remember the due date", lastdatelbl:"Due date: ",
+    dinbaqi:" days left", dinover:" days OVERDUE!", jama:"Paid",
+    unpaidtkh:"Tickets / Umrah — unpaid", emptyub:"No unpaid tickets.", ublbl2:"Unpaid ticket",
+    seth:"Partners & rates", sadqa:"Charity (%)", qarzap:"Loan payment (%)",
+    loanbal:"Current loan balance (Rs)", saveset:"Save settings",
+    bijcard:"Electricity bill (K-Electric)", bijweb:"Website for checking bills (KE page)",
+    bijmeter:"Meter / account numbers (one per line)",
+    fixkh:"Fixed monthly expenses (added automatically each month)", nfix:"Add new fixed expense",
+    synch:"Sync with other PC (Google Sheet)", copyshare:"Build & copy share link (to send to mobile)", gascard:"Google Sheet setup (one time only)",
+    backuph:"Backup / Restore", exbtn:"Download data (backup)",
+    repbtn:"Download report (Excel file — readable summary)",
+    imlbl:"Restore old backup from file",
+    reseth:"Delete all data", resetbtn:"Delete all data",
+    bkremind:"Backup reminder", bknow:"Download backup now"
+  }
+};
+function T(k){
+  return (TXT.en[k] !== undefined) ? TXT.en[k] : k;
+}
+function blankState(){
+  return {
+    settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"en", hints:true, lastBackup:"",
+                keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
+    fixes: [
+      { id:"fix-rent", label:"Office rent", amount:70000, on:true },
+      { id:"fix-bijli", label:"Bijli ka bill", amount:0, on:true },
+      { id:"fix-tanker", label:"Tanker", amount:2000, on:true },
+      { id:"fix-water", label:"Drinking water", amount:0, on:true }
+    ] },
+    months: {},        // "2024-06" -> {incomes:[], expenses:[], applied:false, appliedInfo:{}}
+    draws: [],         // partner nikasi: {id, date, partner:"A"|"B"|"ABBU", amount, note}
+    receivables: [],   // {id, client, note, total, payments:[{date, amount}]}
+    tickets: [],       // {id, date, client, detail, cost, sale, paid, commission}
+    waseem: [],        // {id, date, kind:"commission"|"salary", note, amount}
+    charityPaid: [],   // {id, date, amount, note} — di hui sadqa
+    qarzaPaid: [],     // {id, date, amount, note} — qarza ki payments
+    bills: []          // {id, label, amount, due:"2025-09-15", paid:false}
+  };
+}
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(!raw) return blankState();
+    var s = JSON.parse(raw);
+    if(!s.settings) s.settings = blankState().settings;
+    if(!s.months) s.months = {};
+    if(!s.draws) s.draws = [];
+    if(!s.receivables) s.receivables = [];
+    if(!s.tickets) s.tickets = [];
+    if(!s.bills) s.bills = [];
+    if(!s.waseem) s.waseem = [];
+    if(!s.charityPaid) s.charityPaid = [];
+    if(!s.qarzaPayments) s.qarzaPayments = [];
+    if(!s.qarzaPaid) s.qarzaPaid = [];
+    ensureSettings(s);
+    return s;
+  }catch(e){ return blankState(); }
+}
+function ensureSettings(s){
+  var b = blankState().settings;
+  for(var k in b){ if(s.settings[k] === undefined) s.settings[k] = b[k]; }
+}
+var S = load();
+// ?sync=<url>&ssid=<fileId> ke saath link khola jaye to sync setup khud ho jaye
+(function(){
+  try{
+    var m = location.search.match(/[?&]sync=([^&]+)/);
+    if(m && m[1]){
+      var u = decodeURIComponent(m[1]);
+      if(u && u !== S.settings.syncUrl){ S.settings.syncUrl = u; S.__urlFromLink = true; }
+    }
+    var mi = location.search.match(/[?&]ssid=([^&]+)/);
+    if(mi && mi[1]){
+      var fid = decodeURIComponent(mi[1]);
+      if(fid && fid !== S.settings.importId){ S.settings.importId = fid; S.__idFromLink = true; }
+    }
+    if(S.__urlFromLink || S.__idFromLink){ delete S.__urlFromLink; delete S.__idFromLink; saveLocal(); }
+  }catch(e){}
+}());
+function saveLocal(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+function save(){ S.__ts = Date.now(); saveLocal(); syncPush(); }
+function saveNow(cb){ S.__ts = Date.now(); saveLocal(); if(syncTimer) clearTimeout(syncTimer); doPush(cb); }
+
+/* ================= SYNC (GOOGLE SHEET) ================= */
+var syncTimer = null;
+function setSyncStatus(msg, bad){
+  var el = document.getElementById("syncStatus");
+  if(el){ el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)"; }
+}
+/* Shaamil file ID helpers — read + write dono isi file par */
+function selectedSheetId(){
+  try{ return extractFileId(S.settings.importId || ""); }catch(e){ return ""; }
+}
+function withQuery(base, id, bust){
+  if(!base) return "";
+  var url = String(base).trim();
+  if(id){ url += (url.indexOf("?") >= 0 ? "&" : "?") + "ssid=" + encodeURIComponent(id); }
+  if(bust){ url += (url.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now(); }
+  return url;
+}
+function sheetUrl(base, bust){
+  return withQuery(base || S.settings.syncUrl, selectedSheetId(), bust);
+}
+/* Agar deployment purana ho (ssid support na ho) to saaf batayein */
+function ssidWarning(j, wantId){
+  if(!wantId) return "";
+  var got = (j && j.debug && j.debug.ssid) ? String(j.debug.ssid) : "";
+  if(!got) return "Purana deployment chal raha hai — file ID bhejne par bhi ignore ho raha hai. Apps Script mein naya code paste kar ke Deploy → New deployment banayein (Manage deployments → Edit → New version bhi kaafi hai).";
+  if(got !== wantId) return "Ghalat file khuli: "+((j.debug && j.debug.spreadsheet) || got)+" — File ID dobara check karein.";
+  return "";
+}
+
+function doPush(after){
+  var url = S.settings.syncUrl; if(!url){ if(after) after(false); return; }
+  setSyncStatus("Sync ho raha hai…");
+  var target = sheetUrl(url, false);
+  fetch(target, { method:"POST", headers:{ "Content-Type":"text/plain" }, body: JSON.stringify({ action:"save", ssid: selectedSheetId(), data: JSON.stringify(S) }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j && j.ok === false){ setSyncStatus("Sync fail — "+(j.err || "sheet ne mana kar diya"), true); if(after) after(false); return; }
+      setSyncStatus("✓ Sheet mein save ho gaya ("+new Date().toLocaleTimeString()+")");
+      if(after) after(true);
+    })
+    .catch(function(){ setSyncStatus("Sync fail — 'Test karein' se URL check karein", true); if(after) after(false); });
+}
+function syncPush(){
+  var url = S.settings.syncUrl; if(!url) return;
+  if(syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(function(){ doPush(); }, 2000);
+}
+function syncPull(cb){
+  var url = S.settings.syncUrl;
+  if(!url){ if(cb) cb(false); return; }
+  setSyncStatus("Sheet se data aa raha hai…");
+  var wantId = selectedSheetId();
+  fetch(sheetUrl(url, true))
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j || j.ok === false){
+        setSyncStatus("✗ "+((j && j.err) || "Sheet ne sahi jawab nahi diya"), true);
+        if(cb) cb(false); return;
+      }
+      var warn = ssidWarning(j, wantId);
+      if(warn){ setSyncStatus("✗ "+warn, true); if(cb) cb(false); return; }
+      try{
+        var data = JSON.parse(j.data);
+        if(data && data.settings){
+          var remoteHas = !!(data.months && Object.keys(data.months).length) || !!(data.tickets && data.tickets.length)
+                       || !!(data.draws && data.draws.length) || !!(data.receivables && data.receivables.length);
+          var localHas = Object.keys(S.months || {}).length > 0 || (S.tickets && S.tickets.length > 0)
+                      || (S.draws && S.draws.length > 0) || (S.receivables && S.receivables.length > 0);
+          var remoteTs = Number(data.__ts) || 0;
+          var localTs = Number(S.__ts) || 0;
+
+          // Sheet par purana data hai — local naya hai to sheet ko local se update kar dein
+          if(localTs > remoteTs){
+            setSyncStatus("Sheet par purana data tha — aap ka naya data sheet mein bhej diya");
+            doPush();
+            if(cb) cb(false);
+            return;
+          }
+          if(!remoteHas){
+            if(localHas){
+              setSyncStatus("Sheet khali hai — local data rakha gaya, usi ko sheet mein bheja ja raha hai");
+              doPush();
+            } else {
+              setSyncStatus("Sheet bhi khali hai");
+            }
+            if(cb) cb(false);
+            return;
+          }
+          // Remote purana ya barabar — local data ko chhedna nahi
+          if(localHas && remoteTs <= localTs){
+            setSyncStatus("✓ Local data naya hai — sheet se purana data nahi uthaya");
+            if(cb) cb(false);
+            return;
+          }
+          data.settings.syncUrl = S.settings.syncUrl;
+          data.settings.importId = S.settings.importId || "";
+          if(!data.months) data.months = {};
+          if(!data.draws) data.draws = [];
+          if(!data.receivables) data.receivables = [];
+          if(!data.tickets) data.tickets = [];
+          if(!data.bills) data.bills = [];
+          if(!data.waseem) data.waseem = [];
+          if(!data.charityPaid) data.charityPaid = [];
+          if(!data.qarzaPayments) data.qarzaPayments = [];
+          if(!data.qarzaPaid) data.qarzaPaid = [];
+          S = data;
+          ensureSettings(S);
+          localStorage.setItem(KEY, JSON.stringify(S));
+          selectedMonth = null;
+          setSyncStatus("✓ Sheet ka data load ho gaya");
+          if(cb) cb(true);
+          return;
+        }
+      }catch(err){}
+      setSyncStatus("Sheet mein app-data nahi mila — us file se pehle import karein", true);
+      if(cb) cb(false);
+    })
+    .catch(function(){ setSyncStatus("Sheet se data nahi mila — 'Test karein' se URL check karein", true); if(cb) cb(false); });
+}
+
+function testSync(){
+  var el = document.getElementById("setSyncUrl");
+  var url = el ? el.value.trim() : S.settings.syncUrl;
+  if(!url){ setSyncStatus("Pehle sync URL daalein", true); return; }
+  var wantId = (function(){
+    var iid = document.getElementById("setImportId");
+    return extractFileId(iid ? iid.value.trim() : (S.settings.importId || ""));
+  })();
+  setSyncStatus("Test ho raha hai…");
+  fetch(withQuery(url, wantId, true))
+    .then(function(r){
+      return r.text().then(function(txt){ return { status:r.status, txt:txt }; });
+    })
+    .then(function(res){
+      var ok = false, jj = null;
+      try{ jj = JSON.parse(res.txt); ok = jj && jj.ok === true; }catch(e){}
+      if(ok){
+        var w = ssidWarning(jj, wantId);
+        setSyncStatus(w ? "✗ "+w : "✓ URL sahi hai — sync kaam karega", !!w);
+        try{
+          if(jj.debug){
+            var dbg = jj.debug;
+            alert("Test kamyab!\n\nScript ne ye file kholi:\n"+(dbg.spreadsheet||"?")
+              +"\n\nFile ID: "+((dbg.ssid) || "(jawab mein ID nahi aayi — deployment purana hai)")
+              +(wantId ? "\nAap ne maangi thi: "+wantId : "\n(Aap ne koi File ID nahi daali — script wali file use hui)")
+              +(w ? "\n\n⚠ "+w : "")
+              +"\n\nTabs: "+((dbg.sheets||[]).join(", "))+"\n\nBookings rows: "+((jj.bookings||[]).length)+" — Kharche rows: "+((jj.expenses||[]).length)
+              +"\n\nPehli booking ke headings: ["+Object.keys((jj.bookings||[])[0]||{}).join(" | ")+"]"
+              +"\nPehli booking ki values: ["+Object.values((jj.bookings||[])[0]||{}).join(" | ")+"]"
+              +"\n\nPehla kharcha ke headings: ["+Object.keys((jj.expenses||[])[0]||{}).join(" | ")+"]"
+              +"\nPehle kharche ki values: ["+Object.values((jj.expenses||[])[0]||{}).join(" | ")+"]"
+              +"\n\nIs window ka screenshot bhej dein agar data import na ho raha ho.");
+          }
+        }catch(e){}
+      } else if(jj && jj.ok === false){
+        setSyncStatus("✗ "+(jj.err || "Script ne error diya"), true);
+      } else if(res.txt.toLowerCase().indexOf("<!doctype html") !== -1 || res.txt.indexOf("Sign in") !== -1){
+        setSyncStatus("✗ URL khula magar Google ne login page diya — deployment mein 'Who has access: Anyone' karein, phir naya URL lein", true);
+      } else {
+        setSyncStatus("✗ URL se sahi jawab nahi mila — URL ka aakhir /exec par khatam hona chahiye. Pura URL dobara copy karein", true);
+      }
+    })
+    .catch(function(){
+      setSyncStatus("✗ URL tak pahunch hi nahi bani — (1) deployment 'Who has access: Anyone' karein, (2) URL ka aakhir /exec ho, (3) internet check karein", true);
+    });
+}
+
+function kvHtml(o){
+  return Object.keys(o||{}).map(function(k){
+    return "<b>"+esc(String(k))+":</b> "+esc(o[k]==null?"":String(o[k]));
+  }).join("<br>") || "(khali)";
+}
+function syncReportHtml(jj){
+  var b = (jj.bookings||[]), e = (jj.expenses||[]);
+  return "<b>File:</b> "+esc(jj.debug.spreadsheet)
+    +"<br><b>Tabs:</b> "+esc((jj.debug.sheets||[]).join(", "))
+    +"<br><b>Bookings rows:</b> "+b.length+" — <b>Kharche rows:</b> "+e.length
+    +"<br><b>Pehli booking:</b><br>"+kvHtml(b[0])
+    +"<br><b>Pehla kharcha:</b><br>"+kvHtml(e[0]);
+}
+
+function findKey(o, sub){
+  var keys = Object.keys(o||{});
+  for(var i=0;i<keys.length;i++){ if(String(keys[i]).toLowerCase().indexOf(sub) !== -1) return o[keys[i]]; }
+  return "";
+}
+function kvHtml(o){
+  var keys = Object.keys(o||{});
+  var parts = [];
+  for(var i=0;i<keys.length;i++){ parts.push("<b>"+esc(keys[i])+"</b>: "+esc(o[keys[i]])); }
+  return parts.length ? parts.join("; ") : "—";
+}
+function sheetNum(v){ var n = Number(String(v==null?"":v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n; }
+function sheetDate(v, expectMid){
+  v = String(v==null?"":v).trim();
+  if(!v) return "";
+  var expMo = (expectMid && /^\d{4}-\d{2}$/.test(expectMid)) ? Number(expectMid.slice(5,7)) : 0;
+  var m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return m[0];
+  m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(m){
+    var a = Number(m[1]), b = Number(m[2]), y = Number(m[3]);
+    if(y < 100) y += (y < 50 ? 2000 : 1900);
+    var dd = a, mm = b;
+    if(a > 12 && b <= 12){ dd = a; mm = b; }
+    else if(b > 12 && a <= 12){ dd = b; mm = a; }
+    else if(expMo && a <= 12 && b <= 12 && a !== b){
+      // Dono 12 se chhote (mas: 1/3/2026) — file ke mahine se milne wala tarika chunein
+      if(b === expMo){ dd = a; mm = b; }
+      else if(a === expMo){ dd = b; mm = a; }
+    }
+    if(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return y+"-"+String(mm).padStart(2,"0")+"-"+String(dd).padStart(2,"0");
+  }
+  var mn = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+  m = v.match(/^(\d{1,2}|[a-zA-Z]+)[\s,\-.]+(\d{1,2}|[a-zA-Z]+)[\s,\-.]+(\d{2,4})/);
+  if(m){
+    var n1 = /^[a-zA-Z]+$/.test(m[1]) ? mn[m[1].toLowerCase()] : null;
+    var n2 = /^[a-zA-Z]+$/.test(m[2]) ? mn[m[2].toLowerCase()] : null;
+    var day = (n1 != null) ? Number(m[2]) : Number(m[1]);
+    var mon = (n1 != null) ? n1 : n2;
+    var yr = Number(m[3]);
+    if(yr < 100) yr += (yr < 50 ? 2000 : 1900);
+    if(mon && mon >= 1 && mon <= 12 && day >= 1 && day <= 31) return yr+"-"+String(mon).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+  }
+  var num = Number(v);
+  if(num > 20000 && num < 60000 && num === Math.floor(num)){
+    var dt = new Date(Date.UTC(1899, 11, 30) + num*86400000);
+    return dt.getUTCFullYear()+"-"+String(dt.getUTCMonth()+1).padStart(2,"0")+"-"+String(dt.getUTCDate()).padStart(2,"0");
+  }
+  // Sirf poori date (saal ke saath) ke liye fallback — warna "1/9" jaisi kati date ghalat samajh li jati hai
+  if(!/\d{4}/.test(v)) return "";
+  var d = new Date(v);
+  if(!isNaN(d.getTime())) return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  return "";
+}
+function extractFileId(v){
+  v = String(v||"").trim();
+  var m = v.match(/\/d\/([a-zA-Z0-9\-_]+)/);
+  if(m) return m[1];
+  return v;
+}
+function importUrl(){
+  return sheetUrl(S.settings.syncUrl, true);
+}
+function importFromSheet(){
+  var url = importUrl();
+  if(!url){ alert("Pehle sync setup karein aur sync URL daalein."); return; }
+  setSyncStatus("Sheet se purana data aa raha hai…");
+  var wantId = selectedSheetId();
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j || j.ok === false){
+        setSyncStatus("✗ "+((j && j.err) || "Sheet ne sahi jawab nahi diya"), true);
+        alert("Sheet se data nahi mila.\n\n"+((j && j.err) || "Apps Script ne sahi jawab nahi diya."));
+        return;
+      }
+      var warn = ssidWarning(j, wantId);
+      if(warn){
+        setSyncStatus("✗ "+warn, true);
+        alert("⚠ "+warn+"\n\nAbhi jo file khuli: "+((j.debug && j.debug.spreadsheet) || "?" )+"\nAap ne File ID di: "+(wantId || "(khali)"));
+        return;
+      }
+      var nT = 0, nE = 0, nSkip = 0, nSkipE = 0, nP = 0, nC = 0, nDup = 0;
+      var monthTally = {}, offMonth = [];
+      function tallyAdd(mid, kind, amt, sample){
+        if(!mid) return;
+        var t = monthTally[mid] || (monthTally[mid] = { n:0, total:0, sample:"" });
+        t.n++; t.total += Number(amt)||0;
+        if(!t.sample) t.sample = kind + ": " + String(sample||"").slice(0,40);
+        if(midDefault && mid !== midDefault) offMonth.push(mid);
+      }
+      var midDefault = "", midSrc = "";
+      (function(){
+        var nm = (j.debug && j.debug.spreadsheet) || "";
+        var mnames = {jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
+        var mm = nm.toLowerCase().match(/january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec/);
+        var my = nm.match(/\b(\d{4})\b/) || nm.match(/\b(\d{2})\b/);
+        if(mm && my){
+          var mo = mnames[mm[0].toLowerCase()];
+          var yr = Number(my[1]);
+          if(yr < 100) yr += (yr < 50 ? 2000 : 1900);
+          if(mo >= 1 && mo <= 12 && yr >= 2000 && yr <= 2100) midDefault = yr+"-"+String(mo).padStart(2,"0");
+        }
+      })();
+      if(midDefault){
+        var existE = (S.months[midDefault] && (S.months[midDefault].expenses||[]).length) || 0;
+        var cmsg = "File ke naam se mahina pehchana gaya: "+monthLabel(midDefault)+"\n\n"
+          + "Is file ke saare kharche (Daily Expenses) BHI isi mahine ("+monthLabel(midDefault)+") mein jayenge — sheet ki date ignore hogi."
+          + (existE ? "\n\nNote: is mahine mein pehle se "+existE+" kharcha maujood hai." : "")
+          + "\n\nTheek hai? (Cancel karne par aap khud mahina likh sakte hain)";
+        if(confirm(cmsg)){
+          midSrc = " (file ke naam se)";
+        } else {
+          midDefault = "";
+        }
+      }
+      if(!midDefault){
+        var ans = prompt("Ye data kis mahine ka hai? Format: 2026-09\n\nKharche bhi isi mahine mein jayenge (sheet ki date ignore hogi).", "");
+        if(!ans) return;
+        var m2 = String(ans).trim().match(/^(\d{4})-(\d{1,2})$/);
+        if(!m2 || Number(m2[2]) < 1 || Number(m2[2]) > 12){ alert("Format theek nahi tha (mas: 2026-09). Import nahi hua."); return; }
+        midDefault = m2[1]+"-"+String(Number(m2[2])).padStart(2,"0");
+      }
+      (j.bookings||[]).forEach(function(b){
+        // Tickets: mahina hamesha FILE ka — sheet ki date ka mahina ignore, sirf din rakhte hain
+        var rawDate = findKey(b, "date");
+        var sRaw = String(rawDate==null?"":rawDate).trim();
+        var parsed = sheetDate(rawDate, midDefault);
+        var dayNum = 0;
+        if(parsed){
+          var dpn = Number(parsed.slice(8,10));
+          if(dpn >= 1 && dpn <= 31) dayNum = dpn;
+        } else {
+          var nOnly = Number(sRaw);
+          if(nOnly >= 1 && nOnly <= 31 && nOnly === Math.floor(nOnly) && sRaw.indexOf("/") === -1) dayNum = nOnly;
+        }
+        var midT = midDefault || (parsed ? parsed.slice(0,7) : "");
+        if(!midT){ nSkip++; return; }
+        var maxDay = new Date(Number(midT.slice(0,4)), Number(midT.slice(5,7)), 0).getDate();
+        if(dayNum < 1 || dayNum > maxDay) dayNum = 1;
+        var d = midT + "-" + String(dayNum).padStart(2,"0");
+        var name = String(findKey(b, "name")||findKey(b, "customer")||"").trim();
+        // Sheet mein cost/sale pehle se total hain — quantity se multiply NAHI hota
+        var cost = sheetNum(findKey(b, "cost"));
+        var sale = sheetNum(findKey(b, "sale"));
+        var sp = sheetNum(findKey(b, "profit"));
+        if(sp !== 0) sale = cost + sp; // sheet ka apna Profit column haqeeqat hai
+        // TOTAL / grand total / bilkul khali rows skip karein
+        if(/^(total|grand|sum)/i.test(name) || (!name && !String(findKey(b, "service")||"").trim())){ nSkip++; return; }
+        if(!(cost>0 || sale>0)){ nSkip++; return; }
+        // Duplicate check: client + cost + sale kisi bhi mahine mein pehle se ho to dobara na aaye
+        var dup = S.tickets.some(function(t){
+          return String(t.client||"").trim().toLowerCase() === String(name||"Client").trim().toLowerCase()
+              && Number(t.cost) === cost && Number(t.sale) === sale;
+        });
+        if(dup){ nDup++; return; }
+        S.tickets.push({ id:uid(), date:d, client:name || "Client",
+          detail:String(findKey(b, "service")||findKey(b, "remarks")||"").trim(), cost:cost, sale:sale });
+        nT++;
+      });
+      (j.expenses||[]).forEach(function(e){
+        // Daily Expenses: date ko ignore karte hain — kharcha usi mahine mein jata hai jis file se aaya hai
+        var amt = sheetNum(findKey(e, "amount"));
+        if(!(amt>0)){ nSkipE++; return; }
+        var mid = midDefault || String(sheetDate(findKey(e, "date"), midDefault)||"").slice(0,7);
+        if(!mid){ nSkipE++; return; }
+        if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
+        var det = String(findKey(e, "detail")||"").trim();
+        var desc = (String(findKey(e, "expense")||"").trim() + (det ? " — "+det : "")) || "Kharcha";
+        var dup = S.months[mid].expenses.some(function(x){ return x.desc===desc && Number(x.amount)===amt; });
+        if(dup) return;
+        S.months[mid].expenses.push({ id:uid(), desc:desc, amount:amt });
+        nE++;
+        tallyAdd(mid, "Kharcha", amt, String(findKey(e, "date")) + " — " + desc);
+      });
+      // Monthly Summary ke kharche (B2:B6 — aap ka formula)
+      (j.summary||[]).forEach(function(s){
+        if(s.row < 2 || s.row > 6) return;
+        if(/total/i.test(String(s.label||""))) return;
+        var amt = Number(s.value) || 0;
+        if(!(amt > 0)) return;
+        var mid = midDefault;
+        if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
+        var desc = (String(s.label||"").trim() || "Monthly item") + " (Summary)";
+        var dup = S.months[mid].expenses.some(function(x){ return x.desc===desc && Number(x.amount)===amt; });
+        if(dup) return;
+        S.months[mid].expenses.push({ id:uid(), desc:desc, amount:amt });
+        nE++;
+        tallyAdd(mid, "Summary", amt, desc);
+      });
+      // PARTNERS tab — kis partner ne kitna liya (Umair/Sarmad/Abbu ke column)
+      (j.partnersRows||[]).forEach(function(p){
+        if(!midDefault) return;
+        function addPDraw(partner, amt){
+          if(!(amt > 0)) return;
+          var dd = midDefault + "-01"; // PARTNERS tab mein date nahi hoti — mahine ka pehla din
+          var dup = S.draws.some(function(x){ return x.partner === partner && Number(x.amount) === amt && (x.date||"").slice(0,7) === midDefault; });
+          if(dup) return;
+          S.draws.push({ id:uid(), partner:partner, amount:amt, date:dd, note:"Sheet import (" + midDefault + ")" });
+          nP++;
+        }
+        addPDraw("A", sheetNum(findKey(p, "umair")));
+        addPDraw("B", sheetNum(findKey(p, "sarmad")));
+        addPDraw("ABBU", sheetNum(findKey(p, "abbu")));
+        // THE PARTNER column — sadqa/charity di hui
+        var chA = sheetNum(findKey(p, "partner"));
+        if(chA > 0 && midDefault){
+          var cdup = (S.charityPaid||[]).some(function(x){ return Number(x.amount) === chA && (x.date||"").slice(0,7) === midDefault; });
+          if(!cdup){
+            S.charityPaid.push({ id:uid(), date:midDefault + "-01", amount:chA, note:"Sheet import (" + midDefault + ")" });
+            nC++;
+          }
+        }
+      });
+      var p = j.partners||{};
+      if(p.A && p.B && S.settings.partnerA==="Partner 1" && S.settings.partnerB==="Partner 2"){
+        S.settings.partnerA = p.A; S.settings.partnerB = p.B;
+      }
+      var qz = 0;
+      (j.qarza||[]).forEach(function(r){ var c = sheetNum(findKey(r, "closing")); if(c) qz = c; });
+      var qMsg = "";
+      if(qz>0){
+        if(S.settings.loanBalance !== qz){
+          if(confirm("Qarza Tracker ka closing qarza Rs "+qz.toLocaleString()+" mila.\nMojooda qarza balance isi se badal dein?")){
+            S.settings.loanBalance = qz;
+            qMsg = "\nQarza balance set: Rs "+qz.toLocaleString();
+          }
+        }
+      }
+      var tallyKeys = Object.keys(monthTally).sort();
+      var offUniq = offMonth.filter(function(v,i,a){ return a.indexOf(v)===i; });
+      var tallyHtml = tallyKeys.map(function(k){
+        var t = monthTally[k];
+        return "<b>"+esc(monthLabel(k))+"</b>: "+t.n+" kharcha, "+esc(money(t.total))+" <span style='opacity:.75;'>(mas: "+esc(t.sample)+")</span>";
+      }).join("<br>") || "—";
+      var tallyTxt = tallyKeys.map(function(k){ var t=monthTally[k]; return monthLabel(k)+": "+t.n+" kharcha, "+money(t.total); }).join("\n");
+      var offTxt = offUniq.length ? "\n\n⚠ Doosre mahine ki rows bhi mili: " + offUniq.map(monthLabel).join(", ") : "";
+      ticketFilter = midDefault || "all"; // import ke baad tickets bhi usi mahine ke dikhein
+      selectedMonth = midDefault || null;
+      saveNow(); autoDistribute(); render();
+      var rep2 = document.getElementById("syncReport");
+      if(rep2){
+        var nBs2 = (j.bookings||[]).length, nEs2 = (j.expenses||[]).length;
+        var h2 = "<b>Import natija:</b> sheet se rows mile: bookings "+nBs2+", kharche "+nEs2
+          +"<br><b>Tickets add hue:</b> "+nT+" — <b>Kharche add hue:</b> "+nE+" — <b>Chhore gaye:</b> "+(nSkip+nSkipE)
+          +(nDup ? "<br><b>Duplicate tickets chhore gaye (pehle se maujood):</b> "+nDup : "")
+          +"<br><br><b>Kharche kis mahine mein gaye:</b><br>"+tallyHtml
+          + (offUniq.length ? "<br><b style='color:#b00;'>⚠ Doosre mahine ki rows bhi mili: "+esc(offUniq.map(monthLabel).join(", "))+"</b>" : "");
+        if(nT===0 && nBs2>0) h2 += "<br><b>Pehli booking (jo add nahi hui):</b><br>"+kvHtml(j.bookings[0]);
+        if(nE===0 && nEs2>0) h2 += "<br><b>Pehla kharcha (jo add nahi hua):</b><br>"+kvHtml(j.expenses[0]);
+        rep2.innerHTML = h2;
+      }
+      alert("Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+(nDup ? " (duplicate chhore gaye: "+nDup+")" : "")+"\nKharche add hue: "+nE+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+(tallyTxt ? "\n\nKharche kis mahine mein gaye:\n"+tallyTxt : "")+offTxt+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : "")));
+    })
+    .catch(function(){ setSyncStatus("Sheet se data nahi mila (URL/internet check karein)", true); alert("Sheet se data nahi mila. Sync URL aur internet check karein."); });
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function money(n){
+  n = Math.round((Number(n)||0) * 100) / 100;
+  return "Rs " + n.toLocaleString("en-PK");
+}
+function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function monthLabel(m){ var p=m.split("-"); return MONTH_NAMES[Number(p[1])-1] + " " + p[0]; }
+function esc(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+/* ================= MONTH CALCULATION ================= */
+function monthCalc(mid){
+  var m = S.months[mid] || {incomes:[], expenses:[], applied:false};
+  var income = 0; (m.incomes||[]).forEach(function(x){ income += Number(x.amount)||0; });
+  var ticketProfit = 0;
+  S.tickets.forEach(function(t){ if((t.date||"").slice(0,7) === mid) ticketProfit += (Number(t.sale)||0) - (Number(t.cost)||0); });
+  income += ticketProfit;
+  var expenses = 0; (m.expenses||[]).forEach(function(x){ expenses += Number(x.amount)||0; });
+  var abbu = 0;
+  S.draws.forEach(function(d){ if(d.partner==="ABBU" && (d.date||"").slice(0,7) === mid) abbu += Number(d.amount)||0; });
+  var commission = 0;
+  S.tickets.forEach(function(t){ if((t.date||"").slice(0,7) === mid) commission += Number(t.commission)||0; });
+  var net = income - expenses - abbu - commission;
+  var charity = 0, rest = net;
+  if(net > 0){
+    charity = net * (Number(S.settings.charityRate)||0) / 100;
+    rest = net - charity;
+  }
+  var loanPay = 0, split = 0;
+  if(rest > 0){
+    loanPay = rest * (Number(S.settings.loanRate)||0) / 100;
+    split = rest - loanPay;
+  }
+  return { income:income, expenses:expenses, net:net, charity:charity, loanPay:loanPay, split:split, ticketProfit:ticketProfit, abbu:abbu, commission:commission,
+           each:split/2, applied:!!m.applied, appliedInfo:m.appliedInfo||null };
+}
+function applyMonthNow(mid){
+  if(!S.months[mid]) return false;
+  var c = monthCalc(mid);
+  if(c.applied) return false;
+  if(c.net <= 0) return false; // munafa nahi — mahina bina taqseem rehta hai
+  S.months[mid].applied = true;
+  S.months[mid].appliedInfo = { date: today(), charity: c.charity, loan: c.loanPay, each: c.each };
+  S.settings.loanBalance = Math.max(0, (Number(S.settings.loanBalance)||0) - c.loanPay);
+  if(c.loanPay>0) S.qarzaPaid.push({ id:uid(), date:today(), amount:c.loanPay, note:monthLabel(mid) });
+  save();
+  return true;
+}
+function autoDistribute(){ // mahina khatam hote hi profit ka hisaab khud baantta hai
+  var todayMid = today().slice(0,7);
+  var done = [];
+  Object.keys(S.months).sort().forEach(function(mid){
+    if(mid < todayMid){
+      if(applyMonthNow(mid)) done.push(mid);
+    }
+  });
+  if(done.length){
+    render();
+    alert("Profit ka hisaab khud taqseem ho gaya: " + done.map(monthLabel).join(", ") + "\nSadqa, qarza aur partners ke tabs update ho gaye.");
+  }
+  return done;
+}
+function addFixesToMonth(mid){
+  if(!S.months[mid]) return;
+  (S.settings.fixes||[]).forEach(function(f){
+    if(!f.on || !(Number(f.amount) > 0)) return;
+    S.months[mid].expenses.push({ id:uid(), desc:f.label, amount:Number(f.amount), fixId:f.id });
+  });
+}
+function refreshFixes(mid){
+  var m = S.months[mid]; if(!m) return;
+  m.expenses = m.expenses.filter(function(x){ return !x.fixId; });
+  addFixesToMonth(mid);
+  save(); render();
+}
+function downloadBackup(){
+  var blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "hisab-backup-" + today() + ".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  S.settings.lastBackup = today();
+  save();
+}
+function csvVal(v){
+  return '"' + String(v==null?"":v).replace(/"/g,'""') + '"';
+}
+function downloadReport(){
+  var rows = [];
+  rows.push(["Mahina","Tareekh","Kism","Client/Tafseel","Cost","Sale","Profit","Raqam","Status","Note"].map(csvVal).join(","));
+  var mids = Object.keys(S.months).sort();
+  mids.forEach(function(mid){
+    var m = S.months[mid];
+    (m.incomes||[]).forEach(function(x){ rows.push([mid,"","Kamai",x.desc,"","","",x.amount,"",""].map(csvVal).join(",")); });
+    (m.expenses||[]).forEach(function(x){ rows.push([mid,"","Kharcha",x.desc,"","","",x.amount,"",(x.fixId?"mahana fix":"")].map(csvVal).join(",")); });
+  });
+  S.tickets.slice().sort(function(a,b){ return (a.date||"").localeCompare(b.date||""); }).forEach(function(t){
+    rows.push([(t.date||"").slice(0,7),t.date,"Ticket",(t.client||"")+(t.detail?" - "+t.detail:""),t.cost,t.sale,(Number(t.sale)||0)-(Number(t.cost)||0),"",(t.paid===false?"Unpaid":"Paid"),(t.commission?"Waseem comm: "+t.commission:"")].map(csvVal).join(","));
+  });
+  S.draws.slice().sort(function(a,b){ return (a.date||"").localeCompare(b.date||""); }).forEach(function(d){
+    var k = (d.partner==="ABBU" ? "Abbu ka liya" : ("Nikasi (" + (d.partner==="A"?S.settings.partnerA:S.settings.partnerB) + ")"));
+    rows.push([(d.date||"").slice(0,7),d.date,k,(d.note||""),"","","",d.amount,"",""].map(csvVal).join(","));
+  });
+  (S.waseem||[]).forEach(function(w){
+    rows.push([(w.date||"").slice(0,7),w.date,(w.kind==="commission"?"Waseem commission di":"Waseem salary di"),(w.note||""),"","","",w.amount,"",""].map(csvVal).join(","));
+  });
+  (S.charityPaid||[]).forEach(function(x){
+    rows.push([(x.date||"").slice(0,7),x.date,"Sadqa di",(x.note||""),"","","",x.amount,"",""].map(csvVal).join(","));
+  });
+  rows.push(["","","","","","","","","",""].map(csvVal).join(","));
+  rows.push(["=== MAHINA KA KHULASA ===","","","","","","","","",""].map(csvVal).join(","));
+  rows.push(["Mahina","","Kul kamai","Kul kharcha","Saadgi","Sadqa","Qarza (40%)","Partners ka hissa","Abbu ka liya","Waseem comm"].map(csvVal).join(","));
+  mids.forEach(function(mid){
+    var c = monthCalc(mid);
+    rows.push([mid,"",c.income,c.expenses,c.net,c.charity,c.loanPay,c.split,c.abbu,c.commission].map(csvVal).join(","));
+  });
+  var blob = new Blob(["\uFEFF" + rows.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "hisab-report-" + today() + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/* ================= TABS ================= */
+var currentTab = "dash";
+document.getElementById("tabs").addEventListener("click", function(e){
+  var b = e.target.closest("button"); if(!b) return;
+  currentTab = b.getAttribute("data-tab");
+  document.querySelectorAll("#tabs button").forEach(function(x){ x.classList.toggle("active", x===b); });
+  render();
+});
+
+function render(){
+  var app = document.getElementById("app");
+  if(currentTab==="dash") app.innerHTML = viewDash();
+  else if(currentTab==="month") app.innerHTML = viewMonth();
+  else if(currentTab==="tickets") app.innerHTML = viewTickets();
+  else if(currentTab==="pA" || currentTab==="pB") app.innerHTML = viewPartner(currentTab);
+  else if(currentTab==="abbu") app.innerHTML = viewAbbu();
+  else if(currentTab==="waseem") app.innerHTML = viewWaseem();
+  else if(currentTab==="qarza") app.innerHTML = viewQarza();
+  else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
+  else app.innerHTML = viewSettings();
+  bind();
+  var t1 = document.getElementById("tabPA"), t2 = document.getElementById("tabPB");
+  if(t1) t1.textContent = S.settings.partnerA;
+  if(t2) t2.textContent = S.settings.partnerB;
+  ["dash","month","tickets","bakaya","settings","abbu","waseem","qarza"].forEach(function(k){
+    var el = document.querySelector('#tabs [data-tab="'+k+'"]');
+    if(el) el.textContent = T(k);
+  });
+  document.body.classList.toggle("no-hints", S.settings.hints === false);
+  var hb = document.getElementById("hintsBtn");
+  if(hb){
+    hb.textContent = (S.settings.hints === false) ? "Hints: OFF" : "Hints: ON";
+    hb.style.color = (S.settings.hints === false) ? "#64748b" : "#94a3b8";
+  }
+}
+
+/* ================= DASHBOARD ================= */
+function partnerBalances(){
+  var earned = {A:0, B:0}, drawn = {A:0, B:0};
+  Object.keys(S.months).forEach(function(mid){
+    var c = monthCalc(mid);
+    if(c.applied){ earned.A += c.each; earned.B += c.each; }
+  });
+  S.draws.forEach(function(d){ drawn[d.partner] += Number(d.amount)||0; });
+  return { earned:earned, drawn:drawn,
+           balA: earned.A - drawn.A, balB: earned.B - drawn.B };
+}
+function totals(){
+  var charity=0, loanPaid=0, monthsApplied=0;
+  Object.keys(S.months).forEach(function(mid){
+    var c = monthCalc(mid);
+    if(c.applied){ charity += c.charity; loanPaid += c.loanPay; monthsApplied++; }
+  });
+  var bakaya = 0;
+  S.tickets.forEach(function(t){ if(t.paid === false) bakaya += Number(t.sale)||0; });
+  S.receivables.forEach(function(r){
+    var paid=0; (r.payments||[]).forEach(function(p){ paid+=Number(p.amount)||0; });
+    bakaya += Math.max(0, (Number(r.total)||0) - paid);
+  });
+  var chP = 0;
+  (S.charityPaid||[]).forEach(function(x){ chP += Number(x.amount)||0; });
+  var qzP = 0;
+  (S.qarzaPaid||[]).forEach(function(x){ qzP += Number(x.amount)||0; });
+  return { charity:charity, loanPaid:loanPaid, monthsApplied:monthsApplied, bakaya:bakaya,
+           charityPaid:chP, charityBaqi:Math.max(0, charity - chP), qzPaid:qzP,
+           abbuTotal:(function(){ var a=0; S.draws.forEach(function(d){ if(d.partner==="ABBU") a += Number(d.amount)||0; }); return a; })(),
+           waseemDena:(function(){
+             var k = 0;
+             S.tickets.forEach(function(t){ k += Number(t.commission)||0; });
+             (S.waseem||[]).forEach(function(w){ if(w.kind === "commission") k -= Number(w.amount)||0; });
+             return Math.max(0, k);
+           })() };
+}
+function viewDash(){
+  var pb = partnerBalances(), t = totals(), st = S.settings;
+  var mf = monthFilterCard("DASH", "Poora overall summary dekhein ya kisi ek mahine ka. <b>All months</b> par sab kuch.");
+  var html = mf.html;
+  var lb = st.lastBackup, daysSince = lb ? Math.floor((new Date() - new Date(lb)) / 86400000) : null;
+  if(!lb || daysSince > 35){
+    html += '<div class="card" style="border:2px solid var(--gold);"><h2>'+esc(T("bkremind"))+'</h2>';
+    html += '<div class="hint">'+(!lb ? "Abhi tak kabhi backup nahi liya gaya." : "Aakhri backup "+lb+" ko hua tha — "+daysSince+" din ho gaye.")+' Har mahine backup zaroori hai!</div>';
+    html += '<button class="btn primary" id="backupNow">'+esc(T("bknow"))+'</button></div>';
+  }
+
+  if(mf.cur === "all"){
+    html += '<div class="card"><h2>'+esc(T("todaysum"))+' — All months</h2><div class="grid2">';
+    html += '<div class="stat"><div class="t">'+esc(T("loanbaqi"))+'</div><div class="v neg">'+money(st.loanBalance)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerA)+esc(T("kaq"))+'</div><div class="v '+(pb.balA>=0?"pos":"neg")+'">'+money(pb.balA)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerB)+esc(T("kaq"))+'</div><div class="v '+(pb.balB>=0?"pos":"neg")+'">'+money(pb.balB)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(T("clbak"))+'</div><div class="v gld">'+money(t.bakaya)+'</div></div>';
+    html += '</div>';
+    html += '<div class="hint">'+esc(T("kulsadqa"))+'<b>'+money(t.charity)+'</b>'+esc(T("kulqarza"))+'<b>'+money(t.loanPaid)+'</b>'+esc(T("appm"))+'<b>'+t.monthsApplied+'</b>'+(t.abbuTotal ? esc(T("abbuliya"))+'<b>'+money(t.abbuTotal)+'</b>' : '')+(t.waseemDena ? esc(T("wsbaqi"))+'<b>'+money(t.waseemDena)+'</b>' : '')+((t.charity>0||t.charityPaid>0)? esc(T("chbani"))+money(t.charity)+esc(T("chdi"))+money(t.charityPaid):'')+(t.charityBaqi > 0 ? esc(T("chbaqi"))+'<b>'+money(t.charityBaqi)+'</b>' : '')+'</div>';
+    html += '</div>';
+  } else {
+    var c = monthCalc(mf.cur);
+    var drawA = 0, drawB = 0, drawAbbu = 0;
+    S.draws.forEach(function(d){
+      if(String(d.date||"").slice(0,7) !== mf.cur) return;
+      if(d.partner==="A") drawA += Number(d.amount)||0;
+      else if(d.partner==="B") drawB += Number(d.amount)||0;
+      else if(d.partner==="ABBU") drawAbbu += Number(d.amount)||0;
+    });
+
+    html += '<div class="card"><h2>'+esc(monthLabel(mf.cur))+' — Khulasa</h2><div class="grid2">';
+    html += '<div class="stat"><div class="t">'+esc(T("kulkam"))+'</div><div class="v pos">'+money(c.income)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(T("kulkh"))+'</div><div class="v neg">'+money(c.expenses)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(T("tkpl"))+'</div><div class="v '+(c.ticketProfit>=0?"pos":"neg")+'">'+money(c.ticketProfit)+'</div></div>';
+    html += '<div class="stat"><div class="t">Saadgi (munafa)</div><div class="v '+(c.net>=0?"pos":"neg")+'">'+money(c.net)+'</div></div>';
+    html += '</div>';
+    html += '<table style="margin-top:10px;">';
+    html += '<tr><td>Sadqa ('+esc(st.charityRate)+'%)</td><td class="gld">'+money(c.charity)+'</td></tr>';
+    html += '<tr><td>Qarza ki payment ('+esc(st.loanRate)+'%)</td><td class="blu">'+money(c.loanPay)+'</td></tr>';
+    html += '<tr><td>'+esc(st.partnerA)+' ka hissa</td><td class="pos">'+money(c.each)+'</td></tr>';
+    html += '<tr><td>'+esc(st.partnerB)+' ka hissa</td><td class="pos">'+money(c.each)+'</td></tr>';
+    if(c.abbu) html += '<tr><td>Abbu ka liya</td><td class="neg">'+money(c.abbu)+'</td></tr>';
+    if(c.commission) html += '<tr><td>Waseem commission</td><td class="neg">'+money(c.commission)+'</td></tr>';
+    html += '</table>';
+    html += (c.applied
+      ? '<div class="ok-msg">✓ Ye mahina apply ho chuka hai — hissa partners ko mil gaya, qarza aur sadqa bhi update ho gaye.</div>'
+      : '<div class="hint">Ye mahina abhi apply nahi hua (pending). Mahina khatam hone par khud apply ho jayega.</div>');
+    html += '<div class="hint" style="margin-top:6px;">Overall (ab tak): Qarza baqi <b>'+money(st.loanBalance)+'</b> • '+esc(st.partnerA)+' <b>'+money(pb.balA)+'</b> • '+esc(st.partnerB)+' <b>'+money(pb.balB)+'</b> • Bakaya <b>'+money(t.bakaya)+'</b></div>';
+    html += '</div>';
+
+    html += '<div class="card"><h2>'+esc(monthLabel(mf.cur))+' ki nikasi</h2><div class="grid2">';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerA)+' liya</div><div class="v">'+money(drawA)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerB)+' liya</div><div class="v">'+money(drawB)+'</div></div>';
+    html += '<div class="stat"><div class="t">Abbu liya</div><div class="v">'+money(drawAbbu)+'</div></div>';
+    html += '<div class="stat"><div class="t">Kul nikasi</div><div class="v">'+money(drawA+drawB+drawAbbu)+'</div></div>';
+    html += '</div></div>';
+  }
+
+  var mids = Object.keys(S.months).sort();
+  var showMids = (mf.cur === "all") ? mids : mids.filter(function(m){ return m === mf.cur; });
+  if(showMids.length){
+    html += '<div class="card"><h2>'+esc(T("pmah"))+'</h2><table><tr><th>'+esc(T("thm"))+'</th><th>'+esc(T("thk"))+'</th><th>'+esc(T("thkh"))+'</th><th>'+esc(T("ths"))+'</th></tr>';
+    showMids.forEach(function(mid){
+      var c = monthCalc(mid);
+      html += '<tr><td><b>'+monthLabel(mid)+'</b></td><td class="pos">'+money(c.income)+'</td><td class="neg">'+money(c.expenses)+'</td>'
+            + '<td>'+(c.applied?'<span class="pill done">'+esc(T("apdone"))+'</span>':'<span class="pill pending">'+esc(T("append"))+'</span>')+'</td></tr>';
+    });
+    html += '</table></div>';
+  } else {
+    html += '<div class="card"><div class="empty">'+esc(T("nomonth"))+'</div></div>';
+  }
+
+  // Sadqa (charity) — di hui payments
+  var chL = (S.charityPaid||[]).slice();
+  if(mf.cur !== "all") chL = chL.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
+  chL.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  html += '<div class="card"><h2>'+esc(T("chled"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
+  html += '<div class="row"><input id="chAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="chDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<input id="chNote" placeholder="'+esc(T("thw"))+'" style="margin-top:8px;">';
+  html += '<button class="btn small primary" id="addCh" style="width:100%;">'+esc(T("savek"))+'</button>';
+  if(chL.length){
+    html += '<table style="margin-top:8px;"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    chL.forEach(function(x){
+      html += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.note||"—")+'</td><td class="neg">'+money(x.amount)+'</td><td><button class="del" data-type="charity" data-id="'+x.id+'">✕</button></td></tr>';
+    });
+    html += '</table>';
+  } else {
+    html += '<div class="empty">'+esc(T("chempty"))+'</div>';
+  }
+  html += '</div>';
+  html += '<div class="hint" style="text-align:center;">App version: '+esc(APP_VER)+'</div>';
+  return html;
+}
+
+/* ================= MONTHLY ================= */
+var selectedMonth = null;
+function monthOptions(){
+  var mids = Object.keys(S.months).sort();
+  var now = new Date();
+  var current = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  if(mids.indexOf(current) === -1) mids.push(current);
+  mids.sort();
+  if(!selectedMonth) selectedMonth = mids[mids.length-1];
+  if(mids.indexOf(selectedMonth) === -1) selectedMonth = mids[mids.length-1];
+  return mids.map(function(m){ return '<option value="'+m+'"'+(m===selectedMonth?" selected":"")+'>'+monthLabel(m)+'</option>'; }).join("");
+}
+function viewMonth(){
+  var opts = monthOptions();            // pehle selected month tay karein
+  var mid = selectedMonth, m = S.months[mid] || {incomes:[], expenses:[]}, c = monthCalc(mid), st = S.settings;
+  var html = "";
+  html += '<div class="card"><div class="monthbar"><select id="monthSel">'+opts+'</select>'
+        + '<button class="btn small primary" id="addMonth">'+esc(T("newmonth"))+'</button>'
+        + '<button class="btn small" id="delMonth" style="background:var(--red); color:#fff;">Mahina delete</button></div>';
+  html += '<div class="grid2">'
+        + '<div class="stat"><div class="t">'+esc(T("kulkam"))+'</div><div class="v pos">'+money(c.income)+'</div></div>'
+        + '<div class="stat"><div class="t">'+esc(T("kulkh"))+'</div><div class="v neg">'+money(c.expenses)+'</div></div>'
+        + '<div class="stat" style="grid-column:1/-1;"><div class="t">'+esc(T("tkpl"))+'</div><div class="v '+(c.ticketProfit>=0?"pos":"neg")+'">'+money(c.ticketProfit)+'</div></div>'
+        + '</div></div>';
+
+  html += '<div class="card"><h2>'+esc(T("kamai"))+'</h2>';
+  html += '<div class="hint" style="margin-top:0;">'+esc(T("incomehint"))+'</div>';
+  html += '<div class="row"><input id="inDesc" placeholder="'+esc(T("indesc"))+'"><input id="inAmt" type="number" min="0" inputmode="decimal" placeholder="Raqam"><button class="btn small green" id="addIncome" style="flex:0 0 auto; margin-top:0;">'+esc(T("jamak"))+'</button></div>';
+  if((m.incomes||[]).length){
+    html += '<table><tr><th>Tafseel</th><th>Raqam</th><th></th></tr>';
+    m.incomes.forEach(function(x,i){
+      html += '<tr><td>'+esc(x.desc)+'</td><td class="pos">'+money(x.amount)+'</td><td><button class="del" data-type="income" data-i="'+i+'">✕</button></td></tr>';
+    });
+    html += '</table>';
+  } else html += '<div class="empty">Is mahine koi kamai add nahi ki.</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("kharcha"))+'</h2><button class="btn small primary" id="fixBtn" style="width:100%; margin-top:2px;">'+esc(T("fixbtn"))+'</button>';
+  html += '<div class="row"><input id="exDesc" placeholder="'+esc(T("exdesc"))+'"><input id="exAmt" type="number" min="0" inputmode="decimal" placeholder="Raqam"><button class="btn small" id="addExpense" style="flex:0 0 auto; margin-top:0; background:var(--red); color:#fff;">'+esc(T("jamak"))+'</button></div>';
+  if((m.expenses||[]).length){
+    html += '<table><tr><th>Tafseel</th><th>Raqam</th><th></th></tr>';
+    m.expenses.forEach(function(x,i){
+      html += '<tr><td>'+esc(x.desc)+'</td><td class="neg">'+money(x.amount)+'</td><td><button class="del" data-type="expense" data-i="'+i+'">✕</button></td></tr>';
+    });
+    html += '</table>';
+  } else html += '<div class="empty">Is mahine koi kharcha add nahi kiya.</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>Hisaab (Automatically)</h2>';
+  html += '<table>';
+  html += '<tr><td>Saadgi (saaf munafa = kamai − kharcha)</td><td class="'+(c.net>=0?"pos":"neg")+'"><b>'+money(c.net)+'</b></td></tr>';
+  html += '<tr><td>Is mahine ka ticket profit (kamai mein shamil)</td><td class="'+(c.ticketProfit>=0?"pos":"neg")+'">'+money(c.ticketProfit)+'</td></tr>';
+  html += (c.abbu ? '<tr><td>Abbu ka liya (profit se minus)</td><td class="neg">'+money(c.abbu)+'</td></tr>' : '');
+  html += (c.commission ? '<tr><td>Waseem commission (profit se minus)</td><td class="neg">'+money(c.commission)+'</td></tr>' : '');
+  html += '<tr><td>Sadqa ('+S.settings.charityRate+'%)</td><td class="gld">'+money(c.charity)+'</td></tr>';
+  html += '<tr><td>Qarza ki payment ('+S.settings.loanRate+'% sadqa ke baad)</td><td class="blu">'+money(c.loanPay)+'</td></tr>';
+  html += '<tr><td>'+esc(st.partnerA)+' ka hissa (baqi ka aadha)</td><td class="pos">'+money(c.each)+'</td></tr>';
+  html += '<tr><td>'+esc(st.partnerB)+' ka hissa (baqi ka aadha)</td><td class="pos">'+money(c.each)+'</td></tr>';
+  html += '</table>';
+  if(c.applied){
+    var ai = c.appliedInfo||{};
+    html += '<div class="ok-msg">✓ Ye mahina apply ho chuka hai ('+(ai.date||"")+'). Qarza '+money(ai.loan||0)+' kam hui, har partner ko '+money(ai.each||0)+' mil gaya, sadqa '+money(ai.charity||0)+' hua.</div>';
+    html += '<div class="hint">Ghalti ho to pehle is mahine ki kamai/kharcha theek karein, phir Settings mein "reset" karein ya mujhe (AI) batayein.</div>';
+  } else {
+    html += '<div class="hint">Mahina khatam hone par (naya mahina shuru hote hi) profit ka hisaab khud baant diya jayega — sadqa, qarza aur partners ka hissa.</div>';
+  }
+  html += '</div>';
+
+  // Kharche ka mahina — check aur shift
+  var allMids = Object.keys(S.months).sort();
+  html += '<div class="card"><h2>Kharche ka mahina check / shift</h2>';
+  html += '<div class="hint" style="margin-top:0;">Naya import kharche hamesha usi mahine mein daalta hai jis file se pull hota hai (sheet ki date ignore). Agar purane import se kharche kisi ghalat mahine mein chale gaye hon to yahan se shift kar dein.</div>';
+  html += '<table>';
+  allMids.forEach(function(x){
+    var ex = (S.months[x].expenses||[]);
+    var tot = ex.reduce(function(a,b){ return a + (Number(b.amount)||0); }, 0);
+    html += '<tr><td>'+monthLabel(x)+'</td><td class="neg">'+ex.length+' kharcha</td><td class="neg">'+money(tot)+'</td></tr>';
+  });
+  html += '</table>';
+  html += '<div class="row" style="margin-top:8px;">'
+        + '<select id="expFrom">'+allMids.map(function(x){ return '<option value="'+x+'"'+(x===mid?" selected":"")+'>'+monthLabel(x)+' se</option>'; }).join("")+'</select>'
+        + '<select id="expTo">'+allMids.map(function(x){ return '<option value="'+x+'">'+monthLabel(x)+' mein</option>'; }).join("")+'</select>'
+        + '</div>';
+  html += '<button class="btn small" id="expShift" style="width:100%;">Saare kharche shift karein</button>';
+  html += '</div>';
+  return html;
+}
+
+/* ================= TICKETS ================= */
+var ticketFilter = "all";
+function viewTickets(){
+  var all = S.tickets || [];
+  var ms = {};
+  all.forEach(function(t){ var m = String(t.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) ms[m] = true; });
+  var months = Object.keys(ms).sort();
+  if(ticketFilter !== "all" && months.indexOf(ticketFilter) === -1) ticketFilter = "all";
+  var list = (ticketFilter === "all") ? all : all.filter(function(t){ return String(t.date||"").slice(0,7) === ticketFilter; });
+
+  var html = "";
+
+  // Sab se oper: mahina chunne wala filter
+  if(all.length){
+    var opts = '<option value="all"'+(ticketFilter==="all"?" selected":"")+'>All months — '+all.length+' tickets</option>';
+    months.forEach(function(m){
+      var n = all.filter(function(t){ return String(t.date||"").slice(0,7) === m; }).length;
+      opts += '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+esc(monthLabel(m))+' — '+n+' tickets</option>';
+    });
+    html += '<div class="card" style="padding-bottom:10px;"><label>Month filter</label>'
+          + '<select id="tkMonthFilter">'+opts+'</select>'
+          + '<div class="hint">Mahina chunein to sirf usi mahine ke tickets aur un ka profit dikhega. <b>All months</b> par poora record.</div></div>';
+  }
+
+  var tc=0, ts=0;
+  list.forEach(function(t){ tc += Number(t.cost)||0; ts += Number(t.sale)||0; });
+  var tp = ts - tc;
+  html += '<div class="card"><h2>'+esc(T("tkhul"))+(ticketFilter==="all" ? "" : ' — '+esc(monthLabel(ticketFilter)))+'</h2><div class="grid2">'
+        + '<div class="stat"><div class="t">'+esc(T("kulcost"))+'</div><div class="v">'+money(tc)+'</div></div>'
+        + '<div class="stat"><div class="t">'+esc(T("kulsale"))+'</div><div class="v">'+money(ts)+'</div></div>'
+        + '<div class="stat" style="grid-column:1/-1;"><div class="t">'+esc(T("kulprofit"))+'</div><div class="v '+(tp>=0?"pos":"neg")+'">'+money(tp)+'</div></div>'
+        + '</div>';
+  html += '<div class="hint" style="margin-top:8px;">'+(ticketFilter==="all" ? "Poore record ke " : esc(monthLabel(ticketFilter))+" ke ")+list.length+' tickets</div>';
+  html += '<button class="btn small" id="clearTickets" style="margin-top:10px; width:100%; background:var(--red); color:#fff;">'+esc(T("cleartk"))+'</button></div>';
+
+  html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
+  html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
+  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkDetail" placeholder="'+esc(T("detailph"))+'"></div>';
+  html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
+  html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
+  html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("payment"))+'</label><select id="tkPaid"><option value="paid">'+esc(T("paidopt"))+'</option><option value="unpaid">'+esc(T("unpaidopt"))+'</option></select><input id="tkComm" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("commph"))+'" value="0"></div>';
+  html += '<button class="btn green" id="addTicket">'+esc(T("savetk"))+'</button>';
+  html += '<div class="hint">'+esc(T("tkhint"))+'</div>';
+  html += '</div>';
+
+  if(list.length){
+    var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+    html += '<div class="card"><h2>'+esc(T("tkhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
+    sorted.forEach(function(t){
+      var p = (Number(t.sale)||0) - (Number(t.cost)||0);
+      html += '<tr><td>'+esc(t.date)+'</td>'
+            + '<td><b>'+esc(t.client)+'</b>'+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
+            + '<td>'+money(t.cost)+'</td><td>'+money(t.sale)+'</td>'
+            + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
+            + '<td>'+(t.paid === false
+                  ? '<button class="btn small tk-toggle" data-id="'+t.id+'" style="margin:0 4px 0 0; padding:5px 9px; background:var(--gold); color:#fff;">'+esc(T("unpaid"))+'</button>'
+                  : '<span class="pill done">'+esc(T("paidp"))+'</span>')
+                +'<button class="del" data-type="ticket" data-id="'+t.id+'">✕</button>'
+                +'<button class="del tk-datedit" data-id="'+t.id+'" title="Tareekh theek karein" style="background:var(--muted); color:#fff; margin-left:4px;">📅</button></td></tr>';
+    });
+    html += '</table></div>';
+  } else {
+    html += '<div class="card"><div class="empty">'+(ticketFilter==="all" ? esc(T("emptytk")) : "Is mahine ("+esc(monthLabel(ticketFilter))+") koi ticket nahi. Filter se 'All months' chunein.")+'</div></div>';
+  }
+
+  if(months.length){
+    var shiftMids = Object.keys(S.months || {}).concat(months).filter(function(m,i,a){ return /^\d{4}-\d{2}$/.test(m) && a.indexOf(m) === i; }).sort();
+    html += '<div class="card"><h2>Ticket ka mahina shift</h2>';
+    html += '<div class="hint" style="margin-top:0;">Agar import se tickets kisi ghalat mahine ki tareekh ke sath aa gaye hon to yahan se poore mahine ke tickets doosre mahine mein le jayein (din wahi rehta hai). Ek ticket ki tareekh badalne ke liye table mein 📅 dabayein.</div>';
+    html += '<div class="row"><select id="tkFrom">'+shiftMids.map(function(m){ return '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+monthLabel(m)+' se</option>'; }).join("")+'</select>'
+          + '<select id="tkTo">'+shiftMids.map(function(m){ return '<option value="'+m+'">'+monthLabel(m)+' mein</option>'; }).join("")+'</select></div>';
+    html += '<button class="btn small" id="tkShift" style="width:100%;">Tickets shift karein</button>';
+    html += '</div>';
+  }
+
+  if(all.length){
+    html += '<div class="card"><h2>Duplicate tickets hataayein</h2>';
+    html += '<div class="hint" style="margin-top:0;">Agar ek hi ticket do mahino mein aa gaya ho (client + cost + sale same), to purani tareekh wala rakha jata hai aur baqi copies hat jati hain.</div>';
+    html += '<button class="btn small" id="dedupeTickets" style="width:100%; background:var(--red); color:#fff;">Duplicate check karein</button>';
+    html += '</div>';
+  }
+  return html;
+}
+
+/* ================= PARTNERS ================= */
+/* Mahine ke mutabiq filter — partner, Abbu, Waseem ke liye */
+var monthFilter = { DASH:"all", A:"all", B:"all", ABBU:"all", WS:"all", BAK:"all" };
+function filterMonths(){
+  var set = {};
+  Object.keys(S.months || {}).forEach(function(m){ if(m) set[m] = 1; });
+  (S.tickets||[]).forEach(function(t){ var m = String(t.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  (S.draws||[]).forEach(function(d){ var m = String(d.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  (S.waseem||[]).forEach(function(w){ var m = String(w.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  (S.receivables||[]).forEach(function(r){ var m = String(r.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  return Object.keys(set).filter(function(m){ return /^\d{4}-\d{2}$/.test(m); }).sort();
+}
+function monthFilterCard(key, hint){
+  var months = filterMonths();
+  var cur = monthFilter[key] || "all";
+  if(cur !== "all" && months.indexOf(cur) === -1) cur = monthFilter[key] = "all";
+  var opts = '<option value="all"'+(cur==="all"?" selected":"")+'>All months (overall)</option>';
+  months.forEach(function(m){
+    opts += '<option value="'+m+'"'+(m===cur?" selected":"")+'>'+esc(monthLabel(m))+'</option>';
+  });
+  return { cur:cur, months:months,
+    html: '<div class="card" style="padding-bottom:10px;"><label>Month filter</label><select id="'+key+'MonthFilter">'+opts+'</select>'
+        + '<div class="hint">'+hint+'</div></div>' };
+}
+function viewPartner(which){
+  var key = which==="pB" ? "B" : "A";
+  var st = S.settings, pb = partnerBalances();
+  var pname = key==="A" ? st.partnerA : st.partnerB;
+  var mf = monthFilterCard(key, "Mahina chunein to sirf usi mahine ka hissa aur nikasi. <b>All months</b> par poora hisab.");
+
+  var earned = pb.earned[key], drawn = pb.drawn[key];
+  var bal = (key==="A" ? pb.balA : pb.balB);
+
+  var rows = mf.months.map(function(mid){
+    var c = monthCalc(mid), liya = 0;
+    S.draws.forEach(function(d){
+      if(d.partner===key && String(d.date||"").slice(0,7)===mid) liya += Number(d.amount)||0;
+    });
+    return { mid:mid, applied:!!c.applied, bana:(c.applied ? c.each : 0), liya:liya };
+  });
+  var shown = (mf.cur==="all") ? rows : rows.filter(function(r){ return r.mid===mf.cur; });
+  var sB = 0, sL = 0;
+  shown.forEach(function(r){ sB += r.bana; sL += r.liya; });
+
+  var topBana  = (mf.cur==="all") ? earned : sB;
+  var topLiya  = (mf.cur==="all") ? drawn  : sL;
+  var topBaqi  = topBana - topLiya;
+
+  var html = mf.html;
+  html += '<div class="card"><h2>'+esc(pname)+' — '+esc(T("apnahissa"))+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</h2><div class="grid2">';
+  html += '<div class="stat"><div class="t">'+esc(T("bana"))+'</div><div class="v pos">'+money(topBana)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("liya"))+'</div><div class="v">'+money(topLiya)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("bakayalbl"))+'</div><div class="v '+(topBaqi>=0?"pos":"neg")+'">'+money(topBaqi)+'</div></div>';
+  if(mf.cur!=="all"){
+    html += '<div class="stat"><div class="t">Overall baqaya (ab tak)</div><div class="v '+(bal>=0?"pos":"neg")+'">'+money(bal)+'</div></div>';
+  }
+  html += '</div>';
+  if(mf.cur!=="all"){
+    html += '<div class="hint">Overall: Bana <b>'+money(earned)+'</b> • Liya <b>'+money(drawn)+'</b> • Baqaya <b>'+money(bal)+'</b></div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><h2>Month-wise hisab</h2>';
+  if(shown.length){
+    html += '<table><tr><th>Mahina</th><th>Bana</th><th>Liya</th><th>Farq</th></tr>';
+    shown.forEach(function(r){
+      html += '<tr><td><b>'+esc(monthLabel(r.mid))+'</b>'+(r.applied?'':' <span class="pill pending">'+esc(T("append"))+'</span>')+'</td>'
+            + '<td class="pos">'+(r.applied?money(r.bana):'—')+'</td>'
+            + '<td>'+money(r.liya)+'</td>'
+            + '<td class="'+((r.bana-r.liya)>=0?"pos":"neg")+'">'+money(r.bana-r.liya)+'</td></tr>';
+    });
+    html += '<tr><th>Total'+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</th><th class="pos">'+money(sB)+'</th><th>'+money(sL)+'</th><th class="'+((sB-sL)>=0?"pos":"neg")+'">'+money(sB-sL)+'</th></tr>';
+    html += '</table>';
+    html += '<div class="hint">Pending = us mahine ka hisab abhi apply nahi hua, is liye hissa 0 hai. Mahina khatam hone par khud apply ho jata hai.</div>';
+  } else {
+    html += '<div class="empty">Koi mahina nahi mila.</div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("nikrec"))+'</h2>';
+  html += '<div class="row"><input id="drawAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="drawDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<input id="drawNote" placeholder="'+esc(T("noteph"))+'" style="margin-top:8px;">';
+  html += '<button class="btn primary" id="addDraw" data-p="'+key+'">'+esc(T("savek"))+'</button></div>';
+
+  var mine = S.draws.filter(function(d){ return d.partner===key; });
+  if(mf.cur!=="all") mine = mine.filter(function(d){ return String(d.date||"").slice(0,7)===mf.cur; });
+  mine.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  if(mine.length){
+    html += '<div class="card"><h2>'+esc(T("nikhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    mine.forEach(function(d){
+      html += '<tr><td>'+esc(d.date)+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
+    });
+    html += '</table></div>';
+  } else {
+    html += '<div class="card"><div class="empty">'+esc(T("emptynik"))+'</div></div>';
+  }
+  return html;
+}
+
+function viewAbbu(){
+  var mf = monthFilterCard("ABBU", "Mahina chunein to us mahine ki nikasi. <b>All months</b> par poora record.");
+  var all = (S.draws||[]).filter(function(d){ return d.partner==="ABBU"; });
+  var total = 0;
+  all.forEach(function(d){ total += Number(d.amount)||0; });
+
+  var rows = mf.months.map(function(mid){
+    var liya = 0;
+    all.forEach(function(d){ if(String(d.date||"").slice(0,7)===mid) liya += Number(d.amount)||0; });
+    return { mid:mid, liya:liya };
+  });
+  var shown = (mf.cur==="all") ? rows : rows.filter(function(r){ return r.mid===mf.cur; });
+  var sL = 0; shown.forEach(function(r){ sL += r.liya; });
+
+  var html = mf.html;
+  html += '<div class="card"><h2>'+esc(T("abbu"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><div class="grid2">'
+        + '<div class="stat"><div class="t">'+(mf.cur==="all" ? esc(T("kulliya"))+" (ab tak)" : "Is mahine liya")+'</div><div class="v neg">'+money(sL)+'</div></div>';
+  if(mf.cur!=="all"){
+    html += '<div class="stat"><div class="t">'+esc(T("kulliya"))+' (ab tak)</div><div class="v neg">'+money(total)+'</div></div>';
+  }
+  html += '</div>';
+  html += '<div class="hint">'+esc(T("abbuyhint"))+'</div></div>';
+
+  html += '<div class="card"><h2>Month-wise nikasi</h2>';
+  if(shown.length){
+    html += '<table><tr><th>Mahina</th><th>Liya</th></tr>';
+    shown.forEach(function(r){
+      html += '<tr><td><b>'+esc(monthLabel(r.mid))+'</b></td><td class="neg">'+money(r.liya)+'</td></tr>';
+    });
+    html += '<tr><th>Total'+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</th><th class="neg">'+money(sL)+'</th></tr></table>';
+  } else {
+    html += '<div class="empty">Koi mahina nahi mila.</div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("abbunik"))+'</h2>';
+  html += '<div class="row"><input id="abbuAmt" type="number" min="0" inputmode="decimal" placeholder="Raqam (Rs)"><input id="abbuDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<input id="abbuNote" placeholder="Wajah / note" style="margin-top:8px;">';
+  html += '<button class="btn primary" id="addAbbu">Save karein</button></div>';
+
+  var mine = (mf.cur==="all") ? all.slice() : all.filter(function(d){ return String(d.date||"").slice(0,7)===mf.cur; });
+  mine.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  if(mine.length){
+    html += '<div class="card"><h2>'+esc(T("abbuhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    mine.forEach(function(d){
+      html += '<tr><td>'+esc(d.date)+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
+    });
+    html += '</table></div>';
+  }
+  return html;
+}
+
+/* ================= WASEEM (STAFF) ================= */
+function viewWaseem(){
+  var mf = monthFilterCard("WS", "Mahina chunein to us mahine ki commission/salary. <b>All months</b> par poora record.");
+  var kam = 0, diya = 0, sal = 0;
+  S.tickets.forEach(function(t){ kam += Number(t.commission)||0; });
+  (S.waseem||[]).forEach(function(w){
+    if(w.kind === "commission") diya += Number(w.amount)||0;
+    else sal += Number(w.amount)||0;
+  });
+  var rows = mf.months.map(function(mid){
+    var bana = 0, dada = 0, sala = 0;
+    S.tickets.forEach(function(t){ if(String(t.date||"").slice(0,7)===mid) bana += Number(t.commission)||0; });
+    (S.waseem||[]).forEach(function(w){
+      if(String(w.date||"").slice(0,7)!==mid) return;
+      if(w.kind === "commission") dada += Number(w.amount)||0; else sala += Number(w.amount)||0;
+    });
+    return { mid:mid, bana:bana, dada:dada, sala:sala };
+  });
+  var shown = (mf.cur==="all") ? rows : rows.filter(function(r){ return r.mid===mf.cur; });
+  var sB = 0, sD = 0, sS = 0;
+  shown.forEach(function(r){ sB += r.bana; sD += r.dada; sS += r.sala; });
+  var topKam = (mf.cur==="all") ? kam : sB;
+  var topDiya = (mf.cur==="all") ? diya : sD;
+  var topSal = (mf.cur==="all") ? sal : sS;
+  var topBaq = topKam - topDiya;
+  var mine = (S.waseem||[]).slice();
+  if(mf.cur!=="all") mine = mine.filter(function(w){ return String(w.date||"").slice(0,7)===mf.cur; });
+  mine.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  var html = mf.html;
+  html += '<div class="card"><h2>'+esc(T("wsh2"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><div class="grid2">';
+  html += '<div class="stat"><div class="t">'+esc(T("wsbana"))+'</div><div class="v pos">'+money(topKam)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("wsdiya"))+'</div><div class="v">'+money(topDiya)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("wsbaq2"))+'</div><div class="v '+(topBaq>=0?"pos":"neg")+'">'+money(topBaq)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("saldi"))+'</div><div class="v">'+money(topSal)+'</div></div>';
+  html += '</div>';
+  if(mf.cur!=="all"){
+    html += '<div class="hint">Overall: Commission bana <b>'+money(kam)+'</b> • Diya <b>'+money(diya)+'</b> • Baqaya <b>'+money(kam-diya)+'</b> • Salary <b>'+money(sal)+'</b></div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><h2>Month-wise hisab</h2>';
+  if(shown.length){
+    html += '<table><tr><th>Mahina</th><th>Commission bana</th><th>Diya</th><th>Baqaya</th><th>Salary</th></tr>';
+    shown.forEach(function(r){
+      html += '<tr><td><b>'+esc(monthLabel(r.mid))+'</b></td>'
+            + '<td class="pos">'+money(r.bana)+'</td>'
+            + '<td>'+money(r.dada)+'</td>'
+            + '<td class="'+((r.bana-r.dada)>=0?"pos":"neg")+'">'+money(r.bana-r.dada)+'</td>'
+            + '<td>'+money(r.sala)+'</td></tr>';
+    });
+    html += '<tr><th>Total'+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</th><th class="pos">'+money(sB)+'</th><th>'+money(sD)+'</th><th class="'+((sB-sD)>=0?"pos":"neg")+'">'+money(sB-sD)+'</th><th>'+money(sS)+'</th></tr></table>';
+  } else {
+    html += '<div class="empty">Koi mahina nahi mila.</div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("payrec"))+'</h2>';
+  html += '<div class="row"><select id="wsKind" style="max-width:200px;"><option value="commission">'+esc(T("kcomm"))+'</option><option value="salary">'+esc(T("ksal"))+'</option></select><input id="wsAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="wsDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<input id="wsNote" placeholder="'+esc(T("wsnote"))+'" style="margin-top:8px;">';
+  html += '<button class="btn primary" id="addWs">'+esc(T("savek"))+'</button></div>';
+
+  if(mine.length){
+    html += '<div class="card"><h2>'+esc(T("payhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thkism"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    mine.forEach(function(w){
+      html += '<tr><td>'+esc(w.date)+'</td><td>'+esc(w.kind === "commission" ? T("kcomm") : T("ksal"))+'</td><td>'+esc(w.note||"—")+'</td><td class="neg">'+money(w.amount)+'</td><td><button class="del" data-type="waseem" data-id="'+w.id+'">✕</button></td></tr>';
+    });
+    html += '</table></div>';
+  } else {
+    html += '<div class="card"><div class="empty">'+esc(T("emptyws"))+'</div></div>';
+  }
+  return html;
+}
+
+/* ================= QARZA (LOAN) ================= */
+function viewQarza(){
+  var html = "";
+  var paid = 0;
+  (S.qarzaPaid||[]).forEach(function(x){ paid += Number(x.amount)||0; });
+  var mine = (S.qarzaPaid||[]).slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  html += '<div class="card"><h2>'+esc(T("qarzah"))+'</h2><div class="grid2">';
+  html += '<div class="stat"><div class="t">'+esc(T("qzbaqi"))+'</div><div class="v neg">'+money(S.settings.loanBalance)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("qzpaid"))+'</div><div class="v pos">'+money(paid)+'</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="card"><h2>'+esc(T("qzadd"))+'</h2>';
+  html += '<div class="row"><input id="qzAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="qzDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<input id="qzNote" placeholder="'+esc(T("qznote"))+'" style="margin-top:8px;">';
+  html += '<button class="btn primary" id="addQz">'+esc(T("savek"))+'</button></div>';
+
+  if(mine.length){
+    html += '<div class="card"><h2>'+esc(T("qzhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    mine.forEach(function(x){
+      html += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.note||"—")+'</td><td class="pos">'+money(x.amount)+'</td><td><button class="del" data-type="qz" data-id="'+x.id+'">✕</button></td></tr>';
+    });
+    html += '</table></div>';
+  } else {
+    html += '<div class="card"><div class="empty">'+esc(T("emptynik"))+'</div></div>';
+  }
+  return html;
+}
+
+/* ================= BAKAYA (RECEIVABLES) ================= */
+function viewBakaya(){
+  var mf = monthFilterCard("BAK", "Mahina chunein to us mahine ke bakaya (unpaid tickets + clients). <b>All months</b> par poora bakaya.");
+  var html = mf.html;
+  var htmlX = "";
+  htmlX += '<div class="card"><h2>'+esc(T("newcl"))+'</h2>';
+  htmlX += '<label>'+esc(T("cliname"))+'</label><input id="rvClient" placeholder="Naam">';
+  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("tafseel"))+'</label><input id="rvNote" placeholder="Mas: Umrah package booking"></div>';
+  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  htmlX += '<button class="btn small primary" id="addRv" style="width:100%;">'+esc(T("addk"))+'</button>';
+  htmlX += '</div>';
+  html += htmlX;
+
+  // Unpaid tickets — bakaya mein khud aate hain
+  var unpaidT = S.tickets.filter(function(x){ return x.paid === false; });
+  if(mf.cur!=="all") unpaidT = unpaidT.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
+  html += '<div class="card"><h2>'+esc(T("unpaidtkh"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
+  if(!unpaidT.length){
+    html += '<div class="empty">'+esc(T("emptyub"))+'</div>';
+  } else {
+    unpaidT.forEach(function(x){
+      html += '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">';
+      html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">';
+      html += '<div><b>'+esc(x.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(x.date||"")+' • '+esc(x.detail||"")+'</div></div>';
+      html += '<div style="text-align:right;"><div class="gld" style="font-weight:800;">'+money(x.sale)+'</div><div style="font-size:12px; color:var(--muted);">'+esc(T("ublbl2"))+'</div></div>';
+      html += '</div>';
+      html += '<button class="btn small green tk-toggle" data-id="'+x.id+'" style="margin-top:8px;">'+esc(T("markpaid"))+'</button>';
+      html += '</div>';
+    });
+  }
+  html += '<div class="hint">'+esc(T("ubnote"))+'</div>';
+  html += '</div>';
+
+  var recs = S.receivables.slice();
+  if(mf.cur!=="all") recs = recs.filter(function(r){ return String(r.date||"").slice(0,7) === mf.cur; });
+
+  var shownTotal = 0;
+  unpaidT.forEach(function(x){ shownTotal += Number(x.sale)||0; });
+  recs.forEach(function(r){
+    var p = 0; (r.payments||[]).forEach(function(x){ p += Number(x.amount)||0; });
+    shownTotal += Math.max(0, (Number(r.total)||0) - p);
+  });
+
+  html += '<div class="card"><h2>'+esc(T("baklist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
+  if(!recs.length){
+    html += '<div class="empty">'+esc(T("emptybak"))+'</div>';
+  } else {
+    recs.forEach(function(r){
+      var paid = 0; (r.payments||[]).forEach(function(p){ paid += Number(p.amount)||0; });
+      var rem = (Number(r.total)||0) - paid;
+      html += '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">';
+      html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">';
+      html += '<div><b>'+esc(r.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(r.date || "purani entry (date nahi)")+(r.note ? " • "+esc(r.note) : "")+'</div></div>';
+      html += '<div style="text-align:right;"><div class="'+(rem<=0?"pos":"gld")+'" style="font-weight:800;">'+money(rem)+'</div><div style="font-size:12px; color:var(--muted);">Kul '+money(r.total)+' • Mila '+money(paid)+'</div></div>';
+      html += '</div>';
+      if(rem > 0){
+        html += '<div class="row" style="margin-top:10px;">';
+        html += '<input class="rv-pay" data-id="'+r.id+'" type="number" min="0" inputmode="decimal" placeholder="Payment raqam">';
+        html += '<input class="rv-date" data-id="'+r.id+'" type="date" value="'+today()+'" style="max-width:160px;">';
+        html += '<button class="btn small green rv-paybtn" data-id="'+r.id+'" style="flex:0 0 auto; margin-top:0;">Payment aayi</button>';
+        html += '</div>';
+      } else {
+        html += '<div class="ok-msg" style="margin-top:8px;">✓ Poori payment mil gayi</div>';
+      }
+      html += '<button class="del" data-type="receivable" data-id="'+r.id+'" style="margin-top:8px;">Delete</button>';
+      html += '</div>';
+    });
+  }
+  html += '<div class="hint">'+(mf.cur==="all" ? esc(T("kulb")) : "Is mahine ka bakaya: ")+'<b>'+money(shownTotal)+'</b></div>';
+  html += '</div>';
+  return html;
+}
+
+/* ================= SETTINGS ================= */
+function viewSettings(){
+  var st = S.settings;
+  var html = "";
+  html += '<div class="card"><h2>'+esc(T("seth"))+'</h2>';
+  html += '<label>'+esc(st.partnerA)+'</label><input id="setA" value="'+esc(st.partnerA)+'">';
+  html += '<label style="margin-top:8px;">'+esc(st.partnerB)+'</label><input id="setB" value="'+esc(st.partnerB)+'">';
+  html += '<div class="grid2" style="margin-top:8px;">'
+        + '<div><label>'+esc(T("sadqa"))+'</label><input id="setCharity" type="number" min="0" max="50" step="0.5" value="'+esc(st.charityRate)+'"></div>'
+        + '<div><label>'+esc(T("qarzap"))+'</label><input id="setLoan" type="number" min="0" max="100" step="1" value="'+esc(st.loanRate)+'"></div>'
+        + '</div>';
+  html += '<label style="margin-top:8px;">'+esc(T("loanbal"))+'</label><input id="setLoanBal" type="number" inputmode="decimal" value="'+esc(st.loanBalance)+'">';
+  html += '<button class="btn primary" id="saveSettings">'+esc(T("saveset"))+'</button>';
+  html += '<div class="hint">Default: sadqa 2%, qarza 40%. Qarza ka baqaya yahan se set/teek karein.</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("fixkh"))+'</h2>';
+  (S.settings.fixes||[]).forEach(function(f){
+    html += '<div class="row" style="margin-top:8px; align-items:center;">'
+          + '<input class="f-label" data-f-id="'+esc(f.id)+'" value="'+esc(f.label)+'" placeholder="Naam">'
+          + '<input class="f-amt" data-f-id="'+esc(f.id)+'" type="number" min="0" inputmode="decimal" value="'+esc(f.amount)+'" placeholder="Raqam">'
+          + '<label style="flex:0 0 auto; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="f-on" data-f-id="'+esc(f.id)+'"'+(f.on?' checked':'')+'> Jama</label>'
+          + '</div>';
+  });
+  html += '<button class="btn small primary" id="addFix" style="margin-top:8px; width:100%;">'+esc(T("nfix"))+'</button>';
+  html += '<div class="hint">Naya mahina bante waqt ye kharche khud judte hain. Raqam barhne par yahan barha dein — naya mahina shuru hote hi nayi raqam use hogi.</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("synch"))+'</h2>';
+  html += '<label>Sync URL (Google Apps Script web app)</label><input id="setSyncUrl" value="'+esc(st.syncUrl||"")+'" placeholder="https://script.google.com/.../exec">';
+  html += '<label style="margin-top:8px;">Sheet File ID (data isi file se aayega aur yahin save hoga)</label><input id="setImportId" value="'+esc(st.importId||"")+'" placeholder="Har mahine ki alag file ka File ID yahan daalein">';
+  html += '<div class="hint">File ID = file ke URL mein /d/ aur /edit ke beech wala lamba hissa. <b>January</b> ki file ka ID daal kar Save karein to data January ki file se aayega. Khali chhodne par script jis file mein deploy hai (September) usi ka data aata hai — isi wajah se ghalat file ka data nazar aata tha.</div>';
+  html += '<div class="row" style="margin-top:8px; align-items:center;">'
+        + '<button class="btn small primary" id="pullSync" style="flex:0 0 auto; margin-top:0;">Sheet se data lao</button>'
+        + '<button class="btn small" id="testSync" style="flex:0 0 auto; margin-top:0; background:var(--gold); color:#fff;">Test karein</button>'
+        + '<span class="hint hint-status" id="syncStatus" style="flex:2; margin-top:0;"></span>'
+        + '</div>';
+  html += '<button class="btn small green" id="importSheet" style="margin-top:10px; width:100%;">Google Sheet ka purana data import karein (tickets + kharche + qarza)</button>';
+  html += '<button class="btn small primary" id="copyShare" style="margin-top:8px; width:100%;">'+esc(T("copyshare"))+'</button>';
+  html += '<div id="syncReport" class="hint" style="margin-top:10px; line-height:1.7; word-break:break-word; background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px;"></div>';
+  html += '<div class="hint">Sync fail ho to: (1) deployment mein <b>Who has access: Anyone</b> hona chahiye, (2) URL ka aakhir <b>/exec</b> par khatam hona chahiye (…/dev nahi), (3) URL dobara copy kar ke daalein. "Test karein" button se pata chal jayega kya masla hai.</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("gascard"))+'</h2>';
+  html += '<div class="hint">1) Google Sheet kholen → <b>Extensions → Apps Script</b><br>2) Neeche ka code paste karein<br>3) <b>Deploy → New deployment → Web app</b> — Execute as: <b>Me</b>, Who has access: <b>Anyone</b><br>4) Jo URL banega (…/exec) wo upar "Sync URL" mein daal kar save karein</div>';
+  html += '<textarea id="gasCode" readonly style="width:100%; height:150px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px; margin-top:8px;">'+esc(GAS_CODE)+'</textarea>';
+  html += '<button class="btn small primary" id="copyGas" style="margin-top:8px;">Code copy karein</button>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("backuph"))+'</h2>';
+  html += '<button class="btn green" id="exportData">'+esc(T("exbtn"))+'</button>';
+  html += '<button class="btn small primary" id="repBtn" style="margin-top:8px; width:100%;">'+esc(T("repbtn"))+'</button>';
+  html += '<label style="margin-top:12px;">'+esc(T("imlbl"))+'</label><input type="file" id="importData" accept=".json">';
+  html += '<div class="hint">Data sirf is device par save hota hai. Har mahine backup zaroor lein!</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>'+esc(T("reseth"))+'</h2>';
+  html += '<button class="btn" id="resetAll" style="background:var(--red); color:#fff;">'+esc(T("resetbtn"))+'</button>';
+  html += '</div>';
+  html += '<div class="hint">App version: '+esc(APP_VER)+'</div>';
+  return html;
+}
+
+/* ================= EVENTS ================= */
+function bind(){
+  var app = document.getElementById("app");
+
+  var sel = document.getElementById("monthSel");
+  if(sel) sel.onchange = function(){ selectedMonth = sel.value; render(); };
+
+  var tmf = document.getElementById("tkMonthFilter");
+  if(tmf) tmf.onchange = function(){ ticketFilter = tmf.value; render(); };
+
+  ["DASH","A","B","ABBU","WS","BAK"].forEach(function(k){
+    var fm = document.getElementById(k+"MonthFilter");
+    if(fm) fm.onchange = function(){ monthFilter[k] = fm.value; render(); };
+  });
+
+  var addM = document.getElementById("addMonth");
+  if(addM) addM.onclick = function(){
+    downloadBackup(); // naya mahina shuru hone se pehle apne aap backup
+    autoDistribute(); // pichhle mahine ka profit hisaab khud baant do
+    var d = new Date(), i = d.getMonth(), y = d.getFullYear();
+    // pehli khali mahina dhoondein (current se aage)
+    var mid;
+    for(var k=0;k<24;k++){
+      var m2 = i+k, y2 = y + Math.floor(m2/12);
+      mid = y2+"-"+String((m2%12)+1).padStart(2,"0");
+      if(!S.months[mid]) break;
+    }
+    S.months[mid] = { incomes:[], expenses:[], applied:false };
+    addFixesToMonth(mid);
+    save(); selectedMonth = mid; render();
+  };
+
+  var delM = document.getElementById("delMonth");
+  if(delM) delM.onclick = function(){
+    var mid = selectedMonth;
+    if(!mid) return;
+    var m = S.months[mid];
+    if(!m){ alert(monthLabel(mid)+" mein koi data nahi hai."); return; }
+    var ne = (m.expenses||[]).length, ni = (m.incomes||[]).length;
+    if(!confirm(monthLabel(mid)+" ka mahina delete karein?\n\nKamai: "+ni+" — Kharche: "+ne+"\n\n(Tickets alag hote hain, wo nahi delete honge. Ghalat import kiye gaye mahine ko hatane ke liye ye istemal karein.)")) return;
+    delete S.months[mid];
+    selectedMonth = null;
+    save(); render();
+  };
+
+  var expShift = document.getElementById("expShift");
+  if(expShift) expShift.onclick = function(){
+    var from = (document.getElementById("expFrom")||{}).value;
+    var to = (document.getElementById("expTo")||{}).value;
+    if(!from || !to) return;
+    if(from === to){ alert("'Se' aur 'Mein' mahina alag chunein."); return; }
+    if(!S.months[from]) return;
+    var mv = (S.months[from].expenses||[]).slice();
+    if(!mv.length){ alert(monthLabel(from)+" mein koi kharcha nahi hai."); return; }
+    var tot = mv.reduce(function(a,b){ return a + (Number(b.amount)||0); }, 0);
+    if(!confirm(monthLabel(from)+" ke "+mv.length+" kharche ("+money(tot)+") "+monthLabel(to)+" mein shift karein?")) return;
+    if(!S.months[to]) S.months[to] = { incomes:[], expenses:[], applied:false };
+    S.months[to].expenses = (S.months[to].expenses||[]).concat(mv);
+    S.months[from].expenses = [];
+    save(); selectedMonth = to; render();
+  };
+
+  function addItem(type){
+    var dEl = document.getElementById(type==="income"?"inDesc":"exDesc");
+    var aEl = document.getElementById(type==="income"?"inAmt":"exAmt");
+    var desc = dEl.value.trim(), amt = Number(aEl.value);
+    if(!desc || !(amt>0)) return;
+    if(!S.months[selectedMonth]) S.months[selectedMonth] = { incomes:[], expenses:[], applied:false };
+    S.months[selectedMonth][type==="income"?"incomes":"expenses"].push({ id:uid(), desc:desc, amount:amt });
+    save(); render();
+  }
+  var ai = document.getElementById("addIncome"); if(ai) ai.onclick = function(){ addItem("income"); };
+  var ae = document.getElementById("addExpense"); if(ae) ae.onclick = function(){ addItem("expense"); };
+  var ia = document.getElementById("inAmt"); if(ia) ia.onkeydown = function(e){ if(e.key==="Enter") addItem("income"); };
+  var ea = document.getElementById("exAmt"); if(ea) ea.onkeydown = function(e){ if(e.key==="Enter") addItem("expense"); };
+
+  app.querySelectorAll(".del[data-type='income'], .del[data-type='expense']").forEach(function(b){
+    b.onclick = function(){
+      var type = b.getAttribute("data-type") === "income" ? "incomes" : "expenses";
+      var i = Number(b.getAttribute("data-i"));
+      S.months[selectedMonth][type].splice(i,1);
+      save(); render();
+    };
+  });
+
+  var ap = document.getElementById("applyMonth");
+  if(ap) ap.onclick = function(){
+    if(applyMonthNow(selectedMonth)) render();
+  };
+
+  app.querySelectorAll(".del[data-type='draw']").forEach(function(b){
+    b.onclick = function(){
+      S.draws = S.draws.filter(function(d){ return d.id !== b.getAttribute("data-id"); });
+      save(); render();
+    };
+  });
+  var ad = document.getElementById("addDraw");
+  if(ad) ad.onclick = function(){
+    var amt = Number(document.getElementById("drawAmt").value);
+    if(!(amt>0)) return;
+    var dd = document.getElementById("drawDate").value || today();
+    S.draws.push({ id:uid(), partner:ad.getAttribute("data-p")||"A", amount:amt,
+                   note:(document.getElementById("drawNote")||{}).value||"",
+                   date:dd });
+    monthFilter[ad.getAttribute("data-p")||"A"] = String(dd).slice(0,7); // nayi entry foran nazar aaye
+    save(); render();
+  };
+  var ab = document.getElementById("addAbbu");
+  if(ab) ab.onclick = function(){
+    var amt = Number(document.getElementById("abbuAmt").value);
+    if(!(amt>0)) return;
+    var dd = document.getElementById("abbuDate").value || today();
+    S.draws.push({ id:uid(), partner:"ABBU", amount:amt,
+                   note:(document.getElementById("abbuNote")||{}).value||"",
+                   date:dd });
+    monthFilter.ABBU = String(dd).slice(0,7);
+    save(); render();
+  };
+
+  var arv = document.getElementById("addRv");
+  if(arv) arv.onclick = function(){
+    var name = document.getElementById("rvClient").value.trim();
+    var total = Number(document.getElementById("rvTotal").value);
+    if(!name || !(total>0)) return;
+    var dd = (document.getElementById("rvDate")||{}).value || today();
+    S.receivables.push({ id:uid(), client:name, note:document.getElementById("rvNote").value.trim(), total:total, date:dd, payments:[] });
+    monthFilter.BAK = String(dd).slice(0,7);
+    save(); render();
+  };
+  app.querySelectorAll(".rv-paybtn").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id");
+      var r = S.receivables.find(function(x){ return x.id===id; }); if(!r) return;
+      var amtEl = app.querySelector(".rv-pay[data-id='"+id+"']");
+      var dateEl = app.querySelector(".rv-date[data-id='"+id+"']");
+      var amt = Number(amtEl.value);
+      if(!(amt>0)) return;
+      r.payments.push({ amount:amt, date:dateEl.value || today() });
+      save(); render();
+    };
+  });
+  app.querySelectorAll(".del[data-type='receivable']").forEach(function(b){
+    b.onclick = function(){
+      if(!confirm("Ye client entry delete karein?")) return;
+      S.receivables = S.receivables.filter(function(x){ return x.id !== b.getAttribute("data-id"); });
+      save(); render();
+    };
+  });
+
+  var tcs = document.getElementById("tkCost"), tsa = document.getElementById("tkSale");
+  function updTickHint(){
+    var hint = document.getElementById("tkProfitHint");
+    if(!hint) return;
+    var p = (Number(tsa && tsa.value)||0) - (Number(tcs && tcs.value)||0);
+    hint.innerHTML = 'Profit: <b>'+money(p)+'</b>'+(p<0?' <span style="color:var(--red);">(ghata)</span>':'');
+  }
+  if(tcs) tcs.oninput = updTickHint;
+  if(tsa) tsa.oninput = updTickHint;
+  var at = document.getElementById("addTicket");
+  if(at) at.onclick = function(){
+    var client = document.getElementById("tkClient").value.trim();
+    var cost = Number(document.getElementById("tkCost").value) || 0;
+    var sale = Number(document.getElementById("tkSale").value) || 0;
+    if(!client || !(sale>0 || cost>0)){ alert("Client ka naam aur kam az kam ek raqam (cost ya sale) zaroori hai."); return; }
+    var tkDate = document.getElementById("tkDate").value || today();
+    S.tickets.push({ id:uid(), date:tkDate, client:client,
+                     detail:document.getElementById("tkDetail").value.trim(), cost:cost, sale:sale,
+                     paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
+                     commission:Number(document.getElementById("tkComm").value) || 0 });
+    ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
+    save(); render();
+  };
+  app.querySelectorAll(".del[data-type='ticket']").forEach(function(b){
+    b.onclick = function(){
+      S.tickets = S.tickets.filter(function(t){ return t.id !== b.getAttribute("data-id"); });
+      save(); render();
+    };
+  });
+  app.querySelectorAll(".tk-datedit").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id");
+      var tk = (S.tickets||[]).filter(function(x){ return x.id === id; })[0];
+      if(!tk) return;
+      var ans = prompt("Ticket ki tareekh theek karein (mas: 2026-02-05)\n\nClient: "+(tk.client||"")+"\nAbhi ki tareekh: "+(tk.date||"?"), tk.date||"");
+      if(ans == null) return;
+      var nd = sheetDate(ans, "");
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){ alert("Tareekh samajh nahi aayi. Mas: 2026-02-05"); return; }
+      tk.date = nd;
+      ticketFilter = nd.slice(0,7);
+      save(); render();
+    };
+  });
+  var tkShift = document.getElementById("tkShift");
+  if(tkShift) tkShift.onclick = function(){
+    var from = (document.getElementById("tkFrom")||{}).value;
+    var to = (document.getElementById("tkTo")||{}).value;
+    if(!from || !to) return;
+    if(from === to){ alert("Alag mahine chunein."); return; }
+    var mv = (S.tickets||[]).filter(function(t){ return String(t.date||"").slice(0,7) === from; });
+    if(!mv.length){ alert(monthLabel(from)+" mein koi ticket nahi."); return; }
+    if(!confirm(monthLabel(from)+" ke "+mv.length+" tickets "+monthLabel(to)+" mein shift karein?\n\n(Din wahi rahega: mas 05 Jan → 05 Feb)")) return;
+    var maxD = new Date(Number(to.slice(0,4)), Number(to.slice(5,7)), 0).getDate();
+    mv.forEach(function(t){
+      var day = Number(String(t.date||"").slice(8,10)) || 1;
+      if(day > maxD) day = maxD;
+      t.date = to + "-" + String(day).padStart(2,"0");
+    });
+    ticketFilter = to;
+    save(); render();
+  };
+  var ddT = document.getElementById("dedupeTickets");
+  if(ddT) ddT.onclick = function(){
+    var seen = {}, rm = [];
+    (S.tickets||[]).slice().sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); }).forEach(function(t){
+      var k = String(t.client||"").trim().toLowerCase()+"|"+Number(t.cost)+"|"+Number(t.sale);
+      if(seen[k]) rm.push(t.id); else seen[k] = 1;
+    });
+    if(!rm.length){ alert("Koi duplicate ticket nahi mila."); return; }
+    if(!confirm(rm.length+" duplicate tickets mile (same client + same cost/sale).\n\nPurani tareekh wala rakha jayega, baqi hat jayenge. Hata dein?")) return;
+    S.tickets = S.tickets.filter(function(t){ return rm.indexOf(t.id) === -1; });
+    save(); render();
+  };
+  var ctk = document.getElementById("clearTickets");
+  if(ctk) ctk.onclick = function(){
+    if(!S.tickets.length){ alert("Koi ticket nahi hai."); return; }
+    if(confirm("Saari tickets ("+S.tickets.length+") delete hon gi — manual wali bhi. Theek hai?") &&
+       confirm("Pakka? Dobara import karna chahte hain?")){
+      S.tickets = [];
+      save(); render();
+    }
+  };
+
+  var ss = document.getElementById("saveSettings");
+  if(ss) ss.onclick = function(){
+    S.settings.partnerA = document.getElementById("setA").value.trim() || "Partner 1";
+    S.settings.partnerB = document.getElementById("setB").value.trim() || "Partner 2";
+    S.settings.charityRate = Number(document.getElementById("setCharity").value) || 0;
+    S.settings.loanRate = Number(document.getElementById("setLoan").value);
+    if(isNaN(S.settings.loanRate) || S.settings.loanRate < 0) S.settings.loanRate = 40;
+    S.settings.loanBalance = Number(document.getElementById("setLoanBal").value) || 0;
+    app.querySelectorAll("[data-f-id]").forEach(function(el){
+      var id = el.getAttribute("data-f-id");
+      var f = (S.settings.fixes||[]).filter(function(x){ return x.id === id; })[0];
+      if(!f) return;
+      if(el.classList.contains("f-label")) f.label = el.value.trim() || f.label;
+      else if(el.classList.contains("f-amt")) f.amount = Number(el.value) || 0;
+      else if(el.type === "checkbox") f.on = el.checked;
+    });
+    var prevId = extractFileId(S.settings.importId || "");
+    var prevUrl = String(S.settings.syncUrl || "");
+    S.settings.syncUrl = document.getElementById("setSyncUrl").value.trim();
+    S.settings.importId = document.getElementById("setImportId").value.trim();
+    var newId = extractFileId(S.settings.importId || "");
+    var changedFile = (newId !== prevId) || (S.settings.syncUrl !== prevUrl);
+    if(changedFile){
+      // Nayi file chuni gayi — pehle purana data us par na likhein, seedha wahan se data laayein
+      saveLocal(); render();
+      var m1 = "Settings save ho gayi.";
+      m1 += newId ? ("\n\nRead/Write file ID: "+newId) : "\n\nFile ID khali hai — script jis file mein deploy hai usi se data aayega.";
+      if(!S.settings.syncUrl){ alert(m1); return; }
+      alert(m1);
+      if(!confirm("Ab isi file se data laayein?\n\nHaan = Sheet se data lao (recommended)\nCancel = abhi nahi (baad mein 'Sheet se data lao' dabayein)")){
+        setSyncStatus("File ID save ho gayi — 'Sheet se data lao' dabayein", true);
+        return;
+      }
+      syncPull(function(){ render(); });
+      return;
+    }
+    save(); render(); alert("Settings save ho gayi." + (S.settings.syncUrl ? "\nAb data Google Sheet mein sync hoga." : ""));
+  };
+
+  var fx = document.getElementById("fixBtn");
+  if(fx) fx.onclick = function(){
+    if(confirm("Is mahine ke auto fix kharche (rent, tanker waghera) settings ke mutabiq dobara judenge. Theek hai?")){
+      refreshFixes(selectedMonth);
+    }
+  };
+  app.querySelectorAll(".bill-paid").forEach(function(b){
+    b.onclick = function(){
+      var x = (S.bills||[]).filter(function(y){ return y.id === b.getAttribute("data-id"); })[0];
+      if(!x) return;
+      x.paid = true;
+      save(); render();
+    };
+  });
+  app.querySelectorAll(".bill-del").forEach(function(b){
+    b.onclick = function(){
+      S.bills = (S.bills||[]).filter(function(y){ return y.id !== b.getAttribute("data-id"); });
+      save(); render();
+    };
+  });
+  var afx = document.getElementById("addFix");
+  if(afx) afx.onclick = function(){
+    var lbl = prompt("Fix kharche ka naam? (mas: Generator fuel)");
+    if(!lbl) return;
+    var amt = prompt("Mahana raqam (Rs)?", "0");
+    S.settings.fixes.push({ id:uid(), label:lbl.trim(), amount:Number(amt)||0, on:true });
+    save(); render();
+  };
+  app.querySelectorAll(".tk-toggle").forEach(function(b){
+    b.onclick = function(){
+      var t = S.tickets.filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
+      if(!t) return;
+      t.paid = true;
+      save(); render();
+    };
+  });
+
+  var aw = document.getElementById("addWs");
+  if(aw) aw.onclick = function(){
+    var amt = Number(document.getElementById("wsAmt").value);
+    if(!(amt>0)) return;
+    var dd = document.getElementById("wsDate").value || today();
+    S.waseem.push({ id:uid(), date:dd,
+                    kind:document.getElementById("wsKind").value,
+                    note:document.getElementById("wsNote").value.trim(), amount:amt });
+    monthFilter.WS = String(dd).slice(0,7);
+    save(); render();
+  };
+  app.querySelectorAll(".del[data-type='waseem']").forEach(function(b){
+    b.onclick = function(){
+      S.waseem = S.waseem.filter(function(w){ return w.id !== b.getAttribute("data-id"); });
+      save(); render();
+    };
+  });
+  var ach = document.getElementById("addCh");
+  if(ach) ach.onclick = function(){
+    var amt = Number(document.getElementById("chAmt").value);
+    if(!(amt>0)) return;
+    S.charityPaid.push({ id:uid(), date:document.getElementById("chDate").value || today(), amount:amt, note:document.getElementById("chNote").value.trim() });
+    save(); render();
+  };
+  app.querySelectorAll(".del[data-type='charity']").forEach(function(b){
+    b.onclick = function(){
+      S.charityPaid = S.charityPaid.filter(function(y){ return y.id !== b.getAttribute("data-id"); });
+      save(); render();
+    };
+  });
+  var aq = document.getElementById("addQz");
+  if(aq) aq.onclick = function(){
+    var amt = Number(document.getElementById("qzAmt").value);
+    if(!(amt>0)) return;
+    S.qarzaPaid.push({ id:uid(), date:document.getElementById("qzDate").value || today(), amount:amt, note:document.getElementById("qzNote").value.trim() });
+    S.settings.loanBalance = Math.max(0, (Number(S.settings.loanBalance)||0) - amt);
+    save(); render();
+  };
+  app.querySelectorAll(".del[data-type='qz']").forEach(function(b){
+    b.onclick = function(){
+      var x = (S.qarzaPaid||[]).filter(function(y){ return y.id === b.getAttribute("data-id"); })[0];
+      if(!x) return;
+      if(confirm("Ye payment record hatana hai? (Qarza balance wapis barh jayega)")){
+        S.settings.loanBalance = (Number(S.settings.loanBalance)||0) + (Number(x.amount)||0);
+        S.qarzaPaid = S.qarzaPaid.filter(function(y){ return y.id !== x.id; });
+        save(); render();
+      }
+    };
+  });
+
+  var ex = document.getElementById("exportData");
+  if(ex) ex.onclick = function(){
+    downloadBackup();
+    alert("Backup download ho gayi — is file ko sambhal kar rakhein (Google Drive ya USB mein).");
+  };
+  var bn = document.getElementById("backupNow");
+  if(bn) bn.onclick = function(){
+    downloadBackup();
+    alert("Backup download ho gayi — sambhal kar rakhein.");
+  };
+  var rb = document.getElementById("repBtn");
+  if(rb) rb.onclick = function(){
+    downloadReport();
+  };
+  var ps = document.getElementById("pullSync");
+  if(ps) ps.onclick = function(){
+    var u = document.getElementById("setSyncUrl").value.trim();
+    var iid = document.getElementById("setImportId");
+    S.settings.syncUrl = u;
+    if(iid) S.settings.importId = iid.value.trim();
+    saveLocal();
+    if(!u){ alert("Pehle sync URL daalein."); return; }
+    syncPull(function(ok){ if(ok) save(); render(); });
+  };
+  var tst = document.getElementById("testSync");
+  if(tst) tst.onclick = testSync;
+  var ish = document.getElementById("importSheet");
+  if(ish) ish.onclick = function(){
+    var u = document.getElementById("setSyncUrl"), iid = document.getElementById("setImportId");
+    if(u) S.settings.syncUrl = u.value.trim();
+    if(iid) S.settings.importId = iid.value.trim();
+    saveLocal();
+    importFromSheet();
+  };
+  var cg = document.getElementById("copyGas");
+  if(cg) cg.onclick = function(){
+    var ta = document.getElementById("gasCode");
+    ta.select();
+    try{ document.execCommand("copy"); alert("Code copy ho gaya — Apps Script editor mein paste karein."); }
+    catch(e){ alert("Text select kar ke manually copy karein."); }
+  };
+  var cs = document.getElementById("copyShare");
+  if(cs) cs.onclick = function(){
+    var site = location.origin + location.pathname;
+    var link = site + "?sync=" + encodeURIComponent(S.settings.syncUrl || "");
+    var sid = selectedSheetId();
+    if(sid) link += "&ssid=" + encodeURIComponent(sid);
+    if(!S.settings.syncUrl) alert("Sync URL abhi khali hai — link mein sirf app hoga, sync setup nahi.");
+    var ta = document.createElement("textarea");
+    ta.value = link;
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand("copy"); alert("Link copy ho gaya! Ye WhatsApp par bhej dein — kholte hi us ke mobile par sync setup ho jayega."); }
+    catch(e){ window.prompt("Ye link copy karein:", link); }
+    document.body.removeChild(ta);
+  };
+  var im = document.getElementById("importData");
+  if(im) im.onchange = function(){
+    var f = im.files[0]; if(!f) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        if(!data.settings) throw new Error("galat file");
+        S = data; if(!S.months) S.months = {};
+        if(!S.draws) S.draws = []; if(!S.receivables) S.receivables = []; if(!S.tickets) S.tickets = [];
+        ensureSettings(S);
+        if(!S.bills) S.bills = [];
+        if(!S.waseem) S.waseem = [];
+        if(!S.charityPaid) S.charityPaid = [];
+        if(!S.qarzaPayments) S.qarzaPayments = [];
+        if(!S.qarzaPaid) S.qarzaPaid = [];
+        save(); selectedMonth = null; render(); alert("Backup wapas aa gaya.");
+      }catch(e){ alert("Ye file theek nahi hai. Sirf backup file chunein."); }
+    };
+    reader.readAsText(f);
+  };
+  var ra = document.getElementById("resetAll");
+  if(ra) ra.onclick = function(){
+    if(confirm("SACH MEIN poora data delete karein?\n\n(Ye Google Sheet par save hua data bhi delete kar dega — backup pehle le lein!)")){
+      if(confirm("Aakhri tasdeeq: sab record khatam hoga aur sheet bhi khali ho jayegi.")){
+        var keepUrl = S.settings.syncUrl, keepId = S.settings.importId;
+        S = blankState();
+        S.settings.syncUrl = keepUrl;      // connection settings barqarar
+        S.settings.importId = keepId;
+        S.__ts = Date.now();
+        saveLocal(); selectedMonth = null; render();
+        setSyncStatus("Sheet se bhi data delete kiya ja raha hai…");
+        doPush(function(ok){
+          alert(ok
+            ? "✓ Local data aur Google Sheet ka data — dono delete ho gaye.\n\nAb sirf EK mahine ki file import karein."
+            : "Local data delete ho gaya, magar Google Sheet par data abhi bhi hai.\nInternet / sync URL check karein, warna purana data wapas aa sakta hai.");
+        });
+      }
+    }
+  };
+}
+
+render();
+autoDistribute();
+if(S.settings.syncUrl) syncPull(function(){ render(); autoDistribute(); });
+// Jab app dobara khole / tab par wapas aaye — sheet se taaza data khud aa jaye
+document.addEventListener("visibilitychange", function(){
+  if(document.hidden || !S.settings.syncUrl) return;
+  var el = document.activeElement;
+  var typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
+  if(!typing) syncPull(function(){ render(); });
+});
+var hintsB = document.getElementById("hintsBtn");
+if(hintsB) hintsB.onclick = function(){
+  S.settings.hints = (S.settings.hints === false) ? true : false;
+  save(); render();
+};
+</script>
+</body>
+</html>
