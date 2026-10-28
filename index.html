@@ -61,9 +61,8 @@
 </head>
 <body>
 <header>
-  <h1>Travel Office Hisab <span class="ver">v1.1</span></h1>
+  <h1>Travel Office Hisab <span class="ver">v1.2</span></h1>
   <button id="hintsBtn" class="hints-btn">Hints: ON</button>
-  <button id="langBtn" class="lang-btn">English</button>
 </header>
 <nav id="tabs">
   <button data-tab="dash" class="active">Khulasa</button>
@@ -606,7 +605,7 @@ function importFromSheet(){
           }
         }
       }
-      save(); selectedMonth = null; render();
+      save(); selectedMonth = null; autoDistribute(); render();
       var rep2 = document.getElementById("syncReport");
       if(rep2){
         var nBs2 = (j.bookings||[]).length, nEs2 = (j.expenses||[]).length;
@@ -654,6 +653,32 @@ function monthCalc(mid){
   }
   return { income:income, expenses:expenses, net:net, charity:charity, loanPay:loanPay, split:split, ticketProfit:ticketProfit, abbu:abbu, commission:commission,
            each:split/2, applied:!!m.applied, appliedInfo:m.appliedInfo||null };
+}
+function applyMonthNow(mid){
+  if(!S.months[mid]) return false;
+  var c = monthCalc(mid);
+  if(c.applied) return false;
+  if(c.net <= 0) return false; // munafa nahi — mahina bina taqseem rehta hai
+  S.months[mid].applied = true;
+  S.months[mid].appliedInfo = { date: today(), charity: c.charity, loan: c.loanPay, each: c.each };
+  S.settings.loanBalance = Math.max(0, (Number(S.settings.loanBalance)||0) - c.loanPay);
+  if(c.loanPay>0) S.qarzaPaid.push({ id:uid(), date:today(), amount:c.loanPay, note:monthLabel(mid) });
+  save();
+  return true;
+}
+function autoDistribute(){ // mahina khatam hote hi profit ka hisaab khud baantta hai
+  var todayMid = today().slice(0,7);
+  var done = [];
+  Object.keys(S.months).sort().forEach(function(mid){
+    if(mid < todayMid){
+      if(applyMonthNow(mid)) done.push(mid);
+    }
+  });
+  if(done.length){
+    render();
+    alert("Profit ka hisaab khud taqseem ho gaya: " + done.map(monthLabel).join(", ") + "\nSadqa, qarza aur partners ke tabs update ho gaye.");
+  }
+  return done;
 }
 function addFixesToMonth(mid){
   if(!S.months[mid]) return;
@@ -748,8 +773,6 @@ function render(){
     var el = document.querySelector('#tabs [data-tab="'+k+'"]');
     if(el) el.textContent = T(k);
   });
-  var lb = document.getElementById("langBtn");
-  if(lb) lb.textContent = S.settings.lang === "en" ? "اردو" : "English";
   document.body.classList.toggle("no-hints", S.settings.hints === false);
   var hb = document.getElementById("hintsBtn");
   if(hb){
@@ -798,21 +821,6 @@ function totals(){
 function viewDash(){
   var pb = partnerBalances(), t = totals(), st = S.settings;
   var html = "";
-  var ub = (S.bills||[]).filter(function(b){ return !b.paid; });
-  if(ub.length){
-    html += '<div class="card" style="border:2px solid var(--red);"><h2>'+esc(T("bijh"))+'</h2>';
-    ub.forEach(function(b){
-      var days = b.due ? Math.ceil((new Date(b.due) - new Date()) / 86400000) : null;
-      var cls = (days !== null && days <= 5) ? "neg" : "gld";
-      var dmsg = days === null ? "" : (days < 0 ? " — " + Math.abs(days) + T("dinover") : " — " + days + T("dinbaqi"));
-      html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line);">';
-      html += '<div><b>'+esc(b.label)+'</b><div style="font-size:12px; color:var(--muted);">'+esc(T("lastdatelbl"))+esc(b.due||"—")+dmsg+'</div></div>';
-      html += '<div style="text-align:right;"><b class="'+cls+'">'+money(b.amount)+'</b>';
-      html += '<div><button class="btn small green bill-paid" data-id="'+b.id+'" style="margin-top:4px;">'+esc(T("jama"))+'</button> <button class="btn small bill-del" data-id="'+b.id+'" style="margin-top:4px; background:var(--red); color:#fff;">✕</button></div></div>';
-      html += '</div>';
-    });
-    html += '</div>';
-  }
   var lb = st.lastBackup, daysSince = lb ? Math.floor((new Date() - new Date(lb)) / 86400000) : null;
   if(!lb || daysSince > 35){
     html += '<div class="card" style="border:2px solid var(--gold);"><h2>'+esc(T("bkremind"))+'</h2>';
@@ -895,7 +903,7 @@ function viewMonth(){
   } else html += '<div class="empty">Is mahine koi kamai add nahi ki.</div>';
   html += '</div>';
 
-  html += '<div class="card"><h2>'+esc(T("kharcha"))+'</h2><button class="btn small primary" id="fixBtn" style="width:100%; margin-top:2px;">'+esc(T("fixbtn"))+'</button><button class="btn small" id="bijBtn" style="width:100%; margin-top:8px; background:var(--gold); color:#fff;">'+esc(T("bijbtn"))+'</button>';
+  html += '<div class="card"><h2>'+esc(T("kharcha"))+'</h2><button class="btn small primary" id="fixBtn" style="width:100%; margin-top:2px;">'+esc(T("fixbtn"))+'</button>';
   html += '<div class="row"><input id="exDesc" placeholder="'+esc(T("exdesc"))+'"><input id="exAmt" type="number" min="0" inputmode="decimal" placeholder="Raqam"><button class="btn small" id="addExpense" style="flex:0 0 auto; margin-top:0; background:var(--red); color:#fff;">'+esc(T("jamak"))+'</button></div>';
   if((m.expenses||[]).length){
     html += '<table><tr><th>Tafseel</th><th>Raqam</th><th></th></tr>';
@@ -922,8 +930,7 @@ function viewMonth(){
     html += '<div class="ok-msg">✓ Ye mahina apply ho chuka hai ('+(ai.date||"")+'). Qarza '+money(ai.loan||0)+' kam hui, har partner ko '+money(ai.each||0)+' mil gaya, sadqa '+money(ai.charity||0)+' hua.</div>';
     html += '<div class="hint">Ghalti ho to pehle is mahine ki kamai/kharcha theek karein, phir Settings mein "reset" karein ya mujhe (AI) batayein.</div>';
   } else {
-    html += '<button class="btn green" id="applyMonth">'+esc(T("applybtn"))+'</button>';
-    html += '<div class="hint">Yeh button dabate hi: sadqa record hoga, qarza ke balance se kam hoga, aur har partner ke baqaye mein uska hissa jama hoga. Sirf ek baar apply karein.</div>';
+    html += '<div class="hint">Mahina khatam hone par (naya mahina shuru hote hi) profit ka hisaab khud baant diya jayega — sadqa, qarza aur partners ka hissa.</div>';
   }
   html += '</div>';
   return html;
@@ -1179,13 +1186,7 @@ function viewSettings(){
           + '</div>';
   });
   html += '<button class="btn small primary" id="addFix" style="margin-top:8px; width:100%;">'+esc(T("nfix"))+'</button>';
-  html += '<div class="hint">Naya mahina bante waqt ye kharche khud judte hain. Bijli jaise varying bills ke liye: pehle Mahana Hisab ke button se jama karein, phir ghalat ho to us entry delete kar ke asli raqam manually add karein. Rent/tanker barhne par yahan raqam barha dein.</div>';
-  html += '</div>';
-
-  html += '<div class="card"><h2>'+esc(T("bijcard"))+'</h2>';
-  html += '<label>'+esc(T("bijweb"))+'</label><input id="setKELink" value="'+esc(st.keLink||"https://www.k-electric.com.pk")+'" placeholder="https://...">';
-  html += '<label style="margin-top:8px;">'+esc(T("bijmeter"))+'</label><textarea id="keMetersTa" style="width:100%; height:70px; font-size:13px; border:1px solid var(--line); border-radius:10px; padding:8px;">'+esc((st.keMeters||[]).join("\n"))+'</textarea>';
-  html += '<div class="hint">Har mahine Mahana Hisab ke button se bill ka raqam aur last date likhein — app Khulasa par reminder dikhayega. (KE ki website app se seedha parhi nahi ja sakti, is liye raqam ek click ke baad likhni parti hai.)</div>';
+  html += '<div class="hint">Naya mahina bante waqt ye kharche khud judte hain. Raqam barhne par yahan barha dein — naya mahina shuru hote hi nayi raqam use hogi.</div>';
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("synch"))+'</h2>';
@@ -1233,6 +1234,7 @@ function bind(){
   var addM = document.getElementById("addMonth");
   if(addM) addM.onclick = function(){
     downloadBackup(); // naya mahina shuru hone se pehle apne aap backup
+    autoDistribute(); // pichhle mahine ka profit hisaab khud baant do
     var d = new Date(), i = d.getMonth(), y = d.getFullYear();
     // pehli khali mahina dhoondein (current se aage)
     var mid;
@@ -1271,17 +1273,7 @@ function bind(){
 
   var ap = document.getElementById("applyMonth");
   if(ap) ap.onclick = function(){
-    var c = monthCalc(selectedMonth);
-    if(c.applied) return;
-    if(c.net <= 0){ alert("Is mahine munafa nahi hai (kharcha zyada hai), is liye apply nahi ho sakta. Pehle hisaab theek karein."); return; }
-    S.months[selectedMonth].applied = true;
-    S.months[selectedMonth].appliedInfo = {
-      date: today(), charity: c.charity, loan: c.loanPay, each: c.each
-    };
-    S.settings.loanBalance = Math.max(0, (Number(S.settings.loanBalance)||0) - c.loanPay);
-    if(c.loanPay>0) S.qarzaPaid.push({ id:uid(), date:today(), amount:c.loanPay, note:monthLabel(selectedMonth) });
-    save(); render();
-    alert("Mahina apply ho gaya!\n\nSadqa: "+money(c.charity)+" (channel par dein, yad rakhein)\nQarza kam hua: "+money(c.loanPay)+"\nBaqi qarza: "+money(S.settings.loanBalance)+"\nHar partner ka hissa: "+money(c.each));
+    if(applyMonthNow(selectedMonth)) render();
   };
 
   app.querySelectorAll(".del[data-type='draw']").forEach(function(b){
@@ -1382,8 +1374,6 @@ function bind(){
     S.settings.loanRate = Number(document.getElementById("setLoan").value);
     if(isNaN(S.settings.loanRate) || S.settings.loanRate < 0) S.settings.loanRate = 40;
     S.settings.loanBalance = Number(document.getElementById("setLoanBal").value) || 0;
-    S.settings.keLink = document.getElementById("setKELink").value.trim() || "https://www.k-electric.com.pk";
-    S.settings.keMeters = document.getElementById("keMetersTa").value.split(/\n+/).map(function(s){ return s.trim(); }).filter(function(s){ return s; });
     app.querySelectorAll("[data-f-id]").forEach(function(el){
       var id = el.getAttribute("data-f-id");
       var f = (S.settings.fixes||[]).filter(function(x){ return x.id === id; })[0];
@@ -1402,23 +1392,6 @@ function bind(){
     if(confirm("Is mahine ke auto fix kharche (rent, tanker waghera) settings ke mutabiq dobara judenge. Theek hai?")){
       refreshFixes(selectedMonth);
     }
-  };
-  var bb = document.getElementById("bijBtn");
-  if(bb) bb.onclick = function(){
-    if(!(S.settings.keMeters||[]).length){ alert("Pehle Settings mein meter numbers daalein."); return; }
-    window.open(S.settings.keLink || "https://www.k-electric.com.pk", "_blank");
-    S.settings.keMeters.forEach(function(m){
-      var amt = prompt("Meter " + m + " ka bill kitna aya? (khaali chhod dein agar is meter ka nahi)", "");
-      if(amt === null || amt.trim() === "") return;
-      var due = prompt("Bill ki last date? (2025-09-15 jaisi)", "") || "";
-      S.bills.push({ id:uid(), label:"Bijli ka bill — meter " + m, amount:Number(amt)||0, due:due.trim(), paid:false });
-      if(!S.months[selectedMonth]) S.months[selectedMonth] = { incomes:[], expenses:[], applied:false };
-      var desc = "Bijli ka bill — meter " + m;
-      var ex2 = S.months[selectedMonth].expenses.filter(function(x){ return x.desc === desc; })[0];
-      if(ex2) ex2.amount = Number(amt)||0;
-      else S.months[selectedMonth].expenses.push({ id:uid(), desc:desc, amount:Number(amt)||0 });
-    });
-    save(); render();
   };
   app.querySelectorAll(".bill-paid").forEach(function(b){
     b.onclick = function(){
@@ -1576,7 +1549,8 @@ function bind(){
 }
 
 render();
-if(S.settings.syncUrl) syncPull(function(){ render(); });
+autoDistribute();
+if(S.settings.syncUrl) syncPull(function(){ render(); autoDistribute(); });
 // Jab app dobara khole / tab par wapas aaye — sheet se taaza data khud aa jaye
 document.addEventListener("visibilitychange", function(){
   if(document.hidden || !S.settings.syncUrl) return;
@@ -1584,11 +1558,6 @@ document.addEventListener("visibilitychange", function(){
   var typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
   if(!typing) syncPull(function(){ render(); });
 });
-var langB = document.getElementById("langBtn");
-if(langB) langB.onclick = function(){
-  S.settings.lang = (S.settings.lang === "en") ? "ur" : "en";
-  save(); render();
-};
 var hintsB = document.getElementById("hintsBtn");
 if(hintsB) hintsB.onclick = function(){
   S.settings.hints = (S.settings.hints === false) ? true : false;
