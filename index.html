@@ -145,7 +145,7 @@ var TXT = {
     bijmeter:"Meter / account numbers (ek har line par)",
     fixkh:"Mahana fix kharche (har mahine khud judte hain)", nfix:"Naya fix kharcha add karein",
     synch:"Doosre PC se data sync (Google Sheet)", copyshare:"Mobile ke liye link bana kar copy karein (bhai ko bhejne ke liye)", gascard:"Google Sheet setup (sirf ek dafa)",
-    backuph:"Backup / Backup wapas", exbtn:"Data download karein (backup)",
+    backuph:"Backup / Backup wapas", exbtn:"Data download karein (backup)", repbtn:"Report download karein (Excel file — poora hisaab dekhne ke liye)",
     imlbl:"Purana backup file se wapas layein",
     reseth:"Sab data mita dein", resetbtn:"Poora data delete karein",
     bkremind:"Backup yaad-dihani", bknow:"Abhi backup download karein"
@@ -213,6 +213,7 @@ var TXT = {
     fixkh:"Fixed monthly expenses (added automatically each month)", nfix:"Add new fixed expense",
     synch:"Sync with other PC (Google Sheet)", copyshare:"Build & copy share link (to send to mobile)", gascard:"Google Sheet setup (one time only)",
     backuph:"Backup / Restore", exbtn:"Download data (backup)",
+    repbtn:"Download report (Excel file — readable summary)",
     imlbl:"Restore old backup from file",
     reseth:"Delete all data", resetbtn:"Delete all data",
     bkremind:"Backup reminder", bknow:"Download backup now"
@@ -667,6 +668,46 @@ function downloadBackup(){
   S.settings.lastBackup = today();
   save();
 }
+function csvVal(v){
+  return '"' + String(v==null?"":v).replace(/"/g,'""') + '"';
+}
+function downloadReport(){
+  var rows = [];
+  rows.push(["Mahina","Tareekh","Kism","Client/Tafseel","Cost","Sale","Profit","Raqam","Status","Note"].map(csvVal).join(","));
+  var mids = Object.keys(S.months).sort();
+  mids.forEach(function(mid){
+    var m = S.months[mid];
+    (m.incomes||[]).forEach(function(x){ rows.push([mid,"","Kamai",x.desc,"","","",x.amount,"",""].map(csvVal).join(",")); });
+    (m.expenses||[]).forEach(function(x){ rows.push([mid,"","Kharcha",x.desc,"","","",x.amount,"",(x.fixId?"mahana fix":"")].map(csvVal).join(",")); });
+  });
+  S.tickets.slice().sort(function(a,b){ return (a.date||"").localeCompare(b.date||""); }).forEach(function(t){
+    rows.push([(t.date||"").slice(0,7),t.date,"Ticket",(t.client||"")+(t.detail?" - "+t.detail:""),t.cost,t.sale,(Number(t.sale)||0)-(Number(t.cost)||0),"",(t.paid===false?"Unpaid":"Paid"),(t.commission?"Waseem comm: "+t.commission:"")].map(csvVal).join(","));
+  });
+  S.draws.slice().sort(function(a,b){ return (a.date||"").localeCompare(b.date||""); }).forEach(function(d){
+    var k = (d.partner==="ABBU" ? "Abbu ka liya" : ("Nikasi (" + (d.partner==="A"?S.settings.partnerA:S.settings.partnerB) + ")"));
+    rows.push([(d.date||"").slice(0,7),d.date,k,(d.note||""),"","","",d.amount,"",""].map(csvVal).join(","));
+  });
+  (S.waseem||[]).forEach(function(w){
+    rows.push([(w.date||"").slice(0,7),w.date,(w.kind==="commission"?"Waseem commission di":"Waseem salary di"),(w.note||""),"","","",w.amount,"",""].map(csvVal).join(","));
+  });
+  (S.charityPaid||[]).forEach(function(x){
+    rows.push([(x.date||"").slice(0,7),x.date,"Sadqa di",(x.note||""),"","","",x.amount,"",""].map(csvVal).join(","));
+  });
+  rows.push(["","","","","","","","","",""].map(csvVal).join(","));
+  rows.push(["=== MAHINA KA KHULASA ===","","","","","","","","",""].map(csvVal).join(","));
+  rows.push(["Mahina","","Kul kamai","Kul kharcha","Saadgi","Sadqa","Qarza (40%)","Partners ka hissa","Abbu ka liya","Waseem comm"].map(csvVal).join(","));
+  mids.forEach(function(mid){
+    var c = monthCalc(mid);
+    rows.push([mid,"",c.income,c.expenses,c.net,c.charity,c.loanPay,c.split,c.abbu,c.commission].map(csvVal).join(","));
+  });
+  var blob = new Blob(["\uFEFF" + rows.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "hisab-report-" + today() + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 /* ================= TABS ================= */
 var currentTab = "dash";
@@ -1111,6 +1152,7 @@ function viewSettings(){
 
   html += '<div class="card"><h2>'+esc(T("backuph"))+'</h2>';
   html += '<button class="btn green" id="exportData">'+esc(T("exbtn"))+'</button>';
+  html += '<button class="btn small primary" id="repBtn" style="margin-top:8px; width:100%;">'+esc(T("repbtn"))+'</button>';
   html += '<label style="margin-top:12px;">'+esc(T("imlbl"))+'</label><input type="file" id="importData" accept=".json">';
   html += '<div class="hint">Data sirf is device par save hota hai. Har mahine backup zaroor lein!</div>';
   html += '</div>';
@@ -1373,6 +1415,10 @@ function bind(){
   if(bn) bn.onclick = function(){
     downloadBackup();
     alert("Backup download ho gayi — sambhal kar rakhein.");
+  };
+  var rb = document.getElementById("repBtn");
+  if(rb) rb.onclick = function(){
+    downloadReport();
   };
   var ps = document.getElementById("pullSync");
   if(ps) ps.onclick = function(){
