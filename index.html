@@ -81,9 +81,9 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.1";
+var APP_VER = "1.8";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-var GAS_CODE = "function doGet(e){\n  var ss;\n  try{\n    if(e && e.parameter && e.parameter.ssid){ ss = SpreadsheetApp.openById(e.parameter.ssid); }\n    else{ ss = SpreadsheetApp.getActiveSpreadsheet(); }\n  }catch(err){\n    return ContentService.createTextOutput(JSON.stringify({ok:false, err:\"Spreadsheet nahi khuli (File ID check karein): \"+err})).setMimeType(ContentService.MimeType.JSON);\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !(e && e.parameter && e.parameter.ssid)){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, data:d||\"\", debug:{spreadsheet: ss.getName(), sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doPost(e){\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n  try{\n    var raw = (e.postData && e.postData.contents) || \"\";\n    var req = JSON.parse(raw);\n    if(req && req.data != null) sh.getRange(\"A1\").setValue(String(req.data));\n  }catch(err){}\n  return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}";
+var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Spreadsheet nahi khuli (File ID check karein): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail (File ID check karein): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
   ur: {
@@ -271,17 +271,25 @@ function ensureSettings(s){
   for(var k in b){ if(s.settings[k] === undefined) s.settings[k] = b[k]; }
 }
 var S = load();
-// ?sync=<url> ke saath link khola jaye to sync setup khud ho jaye
+// ?sync=<url>&ssid=<fileId> ke saath link khola jaye to sync setup khud ho jaye
 (function(){
   try{
     var m = location.search.match(/[?&]sync=([^&]+)/);
     if(m && m[1]){
       var u = decodeURIComponent(m[1]);
-      if(u && u !== S.settings.syncUrl){ S.settings.syncUrl = u; save(); }
+      if(u && u !== S.settings.syncUrl){ S.settings.syncUrl = u; S.__urlFromLink = true; }
     }
+    var mi = location.search.match(/[?&]ssid=([^&]+)/);
+    if(mi && mi[1]){
+      var fid = decodeURIComponent(mi[1]);
+      if(fid && fid !== S.settings.importId){ S.settings.importId = fid; S.__idFromLink = true; }
+    }
+    if(S.__urlFromLink || S.__idFromLink){ delete S.__urlFromLink; delete S.__idFromLink; saveLocal(); }
   }catch(e){}
 }());
-function save(){ localStorage.setItem(KEY, JSON.stringify(S)); syncPush(); }
+function saveLocal(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+function save(){ S.__ts = Date.now(); saveLocal(); syncPush(); }
+function saveNow(cb){ S.__ts = Date.now(); saveLocal(); if(syncTimer) clearTimeout(syncTimer); doPush(cb); }
 
 /* ================= SYNC (GOOGLE SHEET) ================= */
 var syncTimer = null;
@@ -289,33 +297,91 @@ function setSyncStatus(msg, bad){
   var el = document.getElementById("syncStatus");
   if(el){ el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)"; }
 }
+/* Shaamil file ID helpers — read + write dono isi file par */
+function selectedSheetId(){
+  try{ return extractFileId(S.settings.importId || ""); }catch(e){ return ""; }
+}
+function withQuery(base, id, bust){
+  if(!base) return "";
+  var url = String(base).trim();
+  if(id){ url += (url.indexOf("?") >= 0 ? "&" : "?") + "ssid=" + encodeURIComponent(id); }
+  if(bust){ url += (url.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now(); }
+  return url;
+}
+function sheetUrl(base, bust){
+  return withQuery(base || S.settings.syncUrl, selectedSheetId(), bust);
+}
+/* Agar deployment purana ho (ssid support na ho) to saaf batayein */
+function ssidWarning(j, wantId){
+  if(!wantId) return "";
+  var got = (j && j.debug && j.debug.ssid) ? String(j.debug.ssid) : "";
+  if(!got) return "Purana deployment chal raha hai — file ID bhejne par bhi ignore ho raha hai. Apps Script mein naya code paste kar ke Deploy → New deployment banayein (Manage deployments → Edit → New version bhi kaafi hai).";
+  if(got !== wantId) return "Ghalat file khuli: "+((j.debug && j.debug.spreadsheet) || got)+" — File ID dobara check karein.";
+  return "";
+}
+
+function doPush(after){
+  var url = S.settings.syncUrl; if(!url){ if(after) after(false); return; }
+  setSyncStatus("Sync ho raha hai…");
+  var target = sheetUrl(url, false);
+  fetch(target, { method:"POST", headers:{ "Content-Type":"text/plain" }, body: JSON.stringify({ action:"save", ssid: selectedSheetId(), data: JSON.stringify(S) }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j && j.ok === false){ setSyncStatus("Sync fail — "+(j.err || "sheet ne mana kar diya"), true); if(after) after(false); return; }
+      setSyncStatus("✓ Sheet mein save ho gaya ("+new Date().toLocaleTimeString()+")");
+      if(after) after(true);
+    })
+    .catch(function(){ setSyncStatus("Sync fail — 'Test karein' se URL check karein", true); if(after) after(false); });
+}
 function syncPush(){
   var url = S.settings.syncUrl; if(!url) return;
   if(syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(function(){
-    setSyncStatus("Sync ho raha hai…");
-    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain" }, body: JSON.stringify({ action:"save", data: JSON.stringify(S) }) })
-      .then(function(r){ return r.json(); })
-      .then(function(){ setSyncStatus("✓ Sheet mein save ho gaya ("+new Date().toLocaleTimeString()+")"); })
-      .catch(function(){ setSyncStatus("Sync fail — 'Test karein' se URL check karein", true); });
-  }, 2000);
+  syncTimer = setTimeout(function(){ doPush(); }, 2000);
 }
 function syncPull(cb){
   var url = S.settings.syncUrl;
   if(!url){ if(cb) cb(false); return; }
   setSyncStatus("Sheet se data aa raha hai…");
-  fetch(url)
+  var wantId = selectedSheetId();
+  fetch(sheetUrl(url, true))
     .then(function(r){ return r.json(); })
     .then(function(j){
+      if(!j || j.ok === false){
+        setSyncStatus("✗ "+((j && j.err) || "Sheet ne sahi jawab nahi diya"), true);
+        if(cb) cb(false); return;
+      }
+      var warn = ssidWarning(j, wantId);
+      if(warn){ setSyncStatus("✗ "+warn, true); if(cb) cb(false); return; }
       try{
         var data = JSON.parse(j.data);
         if(data && data.settings){
-          var blobEmpty = !(data.months && Object.keys(data.months).length) && !(data.tickets && data.tickets.length)
-                        && !(data.draws && data.draws.length) && !(data.receivables && data.receivables.length);
-          var localHas = Object.keys(S.months).length > 0 || (S.tickets && S.tickets.length > 0)
+          var remoteHas = !!(data.months && Object.keys(data.months).length) || !!(data.tickets && data.tickets.length)
+                       || !!(data.draws && data.draws.length) || !!(data.receivables && data.receivables.length);
+          var localHas = Object.keys(S.months || {}).length > 0 || (S.tickets && S.tickets.length > 0)
                       || (S.draws && S.draws.length > 0) || (S.receivables && S.receivables.length > 0);
-          if(blobEmpty && localHas && !confirm("Sheet mein abhi koi app-data nahi mila (purana data import nahi hua).\nAap ka mojooda data khali sheet se badal dein?")){
-            setSyncStatus("Local data rakha gaya — pehle import karein", true);
+          var remoteTs = Number(data.__ts) || 0;
+          var localTs = Number(S.__ts) || 0;
+
+          // Sheet par purana data hai — local naya hai to sheet ko local se update kar dein
+          if(localTs > remoteTs){
+            setSyncStatus("Sheet par purana data tha — aap ka naya data sheet mein bhej diya");
+            doPush();
+            if(cb) cb(false);
+            return;
+          }
+          if(!remoteHas){
+            if(localHas){
+              setSyncStatus("Sheet khali hai — local data rakha gaya, usi ko sheet mein bheja ja raha hai");
+              doPush();
+            } else {
+              setSyncStatus("Sheet bhi khali hai");
+            }
+            if(cb) cb(false);
+            return;
+          }
+          // Remote purana ya barabar — local data ko chhedna nahi
+          if(localHas && remoteTs <= localTs){
+            setSyncStatus("✓ Local data naya hai — sheet se purana data nahi uthaya");
             if(cb) cb(false);
             return;
           }
@@ -339,6 +405,7 @@ function syncPull(cb){
           return;
         }
       }catch(err){}
+      setSyncStatus("Sheet mein app-data nahi mila — us file se pehle import karein", true);
       if(cb) cb(false);
     })
     .catch(function(){ setSyncStatus("Sheet se data nahi mila — 'Test karein' se URL check karein", true); if(cb) cb(false); });
@@ -348,27 +415,38 @@ function testSync(){
   var el = document.getElementById("setSyncUrl");
   var url = el ? el.value.trim() : S.settings.syncUrl;
   if(!url){ setSyncStatus("Pehle sync URL daalein", true); return; }
+  var wantId = (function(){
+    var iid = document.getElementById("setImportId");
+    return extractFileId(iid ? iid.value.trim() : (S.settings.importId || ""));
+  })();
   setSyncStatus("Test ho raha hai…");
-  fetch(url)
+  fetch(withQuery(url, wantId, true))
     .then(function(r){
       return r.text().then(function(txt){ return { status:r.status, txt:txt }; });
     })
     .then(function(res){
-      var ok = false;
-      try{ ok = JSON.parse(res.txt).ok === true; }catch(e){}
+      var ok = false, jj = null;
+      try{ jj = JSON.parse(res.txt); ok = jj && jj.ok === true; }catch(e){}
       if(ok){
-        setSyncStatus("✓ URL sahi hai — sync kaam karega");
+        var w = ssidWarning(jj, wantId);
+        setSyncStatus(w ? "✗ "+w : "✓ URL sahi hai — sync kaam karega", !!w);
         try{
-          var jj = JSON.parse(res.txt);
           if(jj.debug){
-            alert("Test kamyab!\n\nScript is file ka data parh rahi hai:\n"+jj.debug.spreadsheet+"\n\nTabs: "+((jj.debug.sheets||[]).join(", "))+"\n\nBookings rows: "+((jj.bookings||[]).length)+" — Kharche rows: "+((jj.expenses||[]).length)
-            +"\n\nPehli booking ke headings: ["+Object.keys((jj.bookings||[])[0]||{}).join(" | ")+"]"
-            +"\nPehli booking ki values: ["+Object.values((jj.bookings||[])[0]||{}).join(" | ")+"]"
-            +"\n\nPehla kharcha ke headings: ["+Object.keys((jj.expenses||[])[0]||{}).join(" | ")+"]"
-            +"\nPehle kharche ki values: ["+Object.values((jj.expenses||[])[0]||{}).join(" | ")+"]"
-            +"\n\nIs window ka screenshot bhej dein agar data import na ho raha ho.");
+            var dbg = jj.debug;
+            alert("Test kamyab!\n\nScript ne ye file kholi:\n"+(dbg.spreadsheet||"?")
+              +"\n\nFile ID: "+((dbg.ssid) || "(jawab mein ID nahi aayi — deployment purana hai)")
+              +(wantId ? "\nAap ne maangi thi: "+wantId : "\n(Aap ne koi File ID nahi daali — script wali file use hui)")
+              +(w ? "\n\n⚠ "+w : "")
+              +"\n\nTabs: "+((dbg.sheets||[]).join(", "))+"\n\nBookings rows: "+((jj.bookings||[]).length)+" — Kharche rows: "+((jj.expenses||[]).length)
+              +"\n\nPehli booking ke headings: ["+Object.keys((jj.bookings||[])[0]||{}).join(" | ")+"]"
+              +"\nPehli booking ki values: ["+Object.values((jj.bookings||[])[0]||{}).join(" | ")+"]"
+              +"\n\nPehla kharcha ke headings: ["+Object.keys((jj.expenses||[])[0]||{}).join(" | ")+"]"
+              +"\nPehle kharche ki values: ["+Object.values((jj.expenses||[])[0]||{}).join(" | ")+"]"
+              +"\n\nIs window ka screenshot bhej dein agar data import na ho raha ho.");
           }
         }catch(e){}
+      } else if(jj && jj.ok === false){
+        setSyncStatus("✗ "+(jj.err || "Script ne error diya"), true);
       } else if(res.txt.toLowerCase().indexOf("<!doctype html") !== -1 || res.txt.indexOf("Sign in") !== -1){
         setSyncStatus("✗ URL khula magar Google ne login page diya — deployment mein 'Who has access: Anyone' karein, phir naya URL lein", true);
       } else {
@@ -406,9 +484,10 @@ function kvHtml(o){
   return parts.length ? parts.join("; ") : "—";
 }
 function sheetNum(v){ var n = Number(String(v==null?"":v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?0:n; }
-function sheetDate(v){
+function sheetDate(v, expectMid){
   v = String(v==null?"":v).trim();
   if(!v) return "";
+  var expMo = (expectMid && /^\d{4}-\d{2}$/.test(expectMid)) ? Number(expectMid.slice(5,7)) : 0;
   var m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(m) return m[0];
   m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
@@ -418,6 +497,11 @@ function sheetDate(v){
     var dd = a, mm = b;
     if(a > 12 && b <= 12){ dd = a; mm = b; }
     else if(b > 12 && a <= 12){ dd = b; mm = a; }
+    else if(expMo && a <= 12 && b <= 12 && a !== b){
+      // Dono 12 se chhote (mas: 1/3/2026) — file ke mahine se milne wala tarika chunein
+      if(b === expMo){ dd = a; mm = b; }
+      else if(a === expMo){ dd = b; mm = a; }
+    }
     if(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return y+"-"+String(mm).padStart(2,"0")+"-"+String(dd).padStart(2,"0");
   }
   var mn = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
@@ -449,20 +533,36 @@ function extractFileId(v){
   return v;
 }
 function importUrl(){
-  var base = S.settings.syncUrl;
-  if(!base) return "";
-  var id = extractFileId(S.settings.importId);
-  if(!id) return base;
-  return base + (base.indexOf("?") >= 0 ? "&" : "?") + "ssid=" + encodeURIComponent(id);
+  return sheetUrl(S.settings.syncUrl, true);
 }
 function importFromSheet(){
   var url = importUrl();
   if(!url){ alert("Pehle sync setup karein aur sync URL daalein."); return; }
   setSyncStatus("Sheet se purana data aa raha hai…");
+  var wantId = selectedSheetId();
   fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(j){
-      var nT = 0, nE = 0, nSkip = 0, nSkipE = 0, nP = 0, nC = 0;
+      if(!j || j.ok === false){
+        setSyncStatus("✗ "+((j && j.err) || "Sheet ne sahi jawab nahi diya"), true);
+        alert("Sheet se data nahi mila.\n\n"+((j && j.err) || "Apps Script ne sahi jawab nahi diya."));
+        return;
+      }
+      var warn = ssidWarning(j, wantId);
+      if(warn){
+        setSyncStatus("✗ "+warn, true);
+        alert("⚠ "+warn+"\n\nAbhi jo file khuli: "+((j.debug && j.debug.spreadsheet) || "?" )+"\nAap ne File ID di: "+(wantId || "(khali)"));
+        return;
+      }
+      var nT = 0, nE = 0, nSkip = 0, nSkipE = 0, nP = 0, nC = 0, nDup = 0;
+      var monthTally = {}, offMonth = [];
+      function tallyAdd(mid, kind, amt, sample){
+        if(!mid) return;
+        var t = monthTally[mid] || (monthTally[mid] = { n:0, total:0, sample:"" });
+        t.n++; t.total += Number(amt)||0;
+        if(!t.sample) t.sample = kind + ": " + String(sample||"").slice(0,40);
+        if(midDefault && mid !== midDefault) offMonth.push(mid);
+      }
       var midDefault = "", midSrc = "";
       (function(){
         var nm = (j.debug && j.debug.spreadsheet) || "";
@@ -477,51 +577,42 @@ function importFromSheet(){
         }
       })();
       if(midDefault){
-        if(confirm("File ke naam se mahina pehchana gaya: "+midDefault+"\n\nTheek hai?")){
+        var existE = (S.months[midDefault] && (S.months[midDefault].expenses||[]).length) || 0;
+        var cmsg = "File ke naam se mahina pehchana gaya: "+monthLabel(midDefault)+"\n\n"
+          + "Is file ke saare kharche (Daily Expenses) BHI isi mahine ("+monthLabel(midDefault)+") mein jayenge — sheet ki date ignore hogi."
+          + (existE ? "\n\nNote: is mahine mein pehle se "+existE+" kharcha maujood hai." : "")
+          + "\n\nTheek hai? (Cancel karne par aap khud mahina likh sakte hain)";
+        if(confirm(cmsg)){
           midSrc = " (file ke naam se)";
         } else {
           midDefault = "";
         }
       }
       if(!midDefault){
-        var ans = prompt("Ye data kis mahine ka hai? Format: 2026-09", "");
+        var ans = prompt("Ye data kis mahine ka hai? Format: 2026-09\n\nKharche bhi isi mahine mein jayenge (sheet ki date ignore hogi).", "");
         if(!ans) return;
         var m2 = String(ans).trim().match(/^(\d{4})-(\d{1,2})$/);
         if(!m2 || Number(m2[2]) < 1 || Number(m2[2]) > 12){ alert("Format theek nahi tha (mas: 2026-09). Import nahi hua."); return; }
         midDefault = m2[1]+"-"+String(Number(m2[2])).padStart(2,"0");
       }
       (j.bookings||[]).forEach(function(b){
+        // Tickets: mahina hamesha FILE ka — sheet ki date ka mahina ignore, sirf din rakhte hain
         var rawDate = findKey(b, "date");
         var sRaw = String(rawDate==null?"":rawDate).trim();
-        var d = sheetDate(rawDate);
-        if(!d && midDefault){
-          var dayNum = Number(sRaw);
-          if(dayNum >= 1 && dayNum <= 31 && dayNum === Math.floor(dayNum) && sRaw.indexOf("/") === -1){
-            d = midDefault+"-"+String(dayNum).padStart(2,"0");
-          }
+        var parsed = sheetDate(rawDate, midDefault);
+        var dayNum = 0;
+        if(parsed){
+          var dpn = Number(parsed.slice(8,10));
+          if(dpn >= 1 && dpn <= 31) dayNum = dpn;
+        } else {
+          var nOnly = Number(sRaw);
+          if(nOnly >= 1 && nOnly <= 31 && nOnly === Math.floor(nOnly) && sRaw.indexOf("/") === -1) dayNum = nOnly;
         }
-        if(!d && midDefault){
-          var mdm = sRaw.match(/^(\d{1,2})[\/\-.](\d{1,2})$/);
-          if(mdm){
-            var a1 = Number(mdm[1]), a2 = Number(mdm[2]);
-            var fileMo = Number(midDefault.slice(5,7));
-            var dd2 = a1, mm2 = a2;
-            if(a1 === fileMo && a2 !== fileMo){ mm2 = a1; dd2 = a2; }
-            else if(a2 === fileMo && a1 !== fileMo){ mm2 = a2; dd2 = a1; }
-            if(mm2 >= 1 && mm2 <= 12 && dd2 >= 1 && dd2 <= 31)
-              d = midDefault.slice(0,4)+"-"+String(mm2).padStart(2,"0")+"-"+String(dd2).padStart(2,"0");
-          }
-        }
-        if(!d && midDefault){
-          var mds = sRaw.match(/^(\d{1,2})[\s\-\/]*([a-zA-Z]{3,})$/) || sRaw.match(/^([a-zA-Z]{3,})[\s\-\/]*(\d{1,2})$/);
-          if(mds){
-            var mnm = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
-            var mv = mnm[mds[1].toLowerCase()] || mnm[mds[2].toLowerCase()];
-            var dv = (mnm[mds[1].toLowerCase()] != null) ? Number(mds[2]) : Number(mds[1]);
-            if(mv && dv >= 1 && dv <= 31) d = midDefault+"-"+String(mv).padStart(2,"0")+"-"+String(dv).padStart(2,"0");
-          }
-        }
-        if(!d && midDefault) d = midDefault+"-01";
+        var midT = midDefault || (parsed ? parsed.slice(0,7) : "");
+        if(!midT){ nSkip++; return; }
+        var maxDay = new Date(Number(midT.slice(0,4)), Number(midT.slice(5,7)), 0).getDate();
+        if(dayNum < 1 || dayNum > maxDay) dayNum = 1;
+        var d = midT + "-" + String(dayNum).padStart(2,"0");
         var name = String(findKey(b, "name")||findKey(b, "customer")||"").trim();
         // Sheet mein cost/sale pehle se total hain — quantity se multiply NAHI hota
         var cost = sheetNum(findKey(b, "cost"));
@@ -530,19 +621,23 @@ function importFromSheet(){
         if(sp !== 0) sale = cost + sp; // sheet ka apna Profit column haqeeqat hai
         // TOTAL / grand total / bilkul khali rows skip karein
         if(/^(total|grand|sum)/i.test(name) || (!name && !String(findKey(b, "service")||"").trim())){ nSkip++; return; }
-        if(!d || !(cost>0 || sale>0)){ nSkip++; return; }
-        var dup = S.tickets.some(function(t){ return t.date===d && t.client===name && Number(t.cost)===cost && Number(t.sale)===sale; });
-        if(dup) return;
+        if(!(cost>0 || sale>0)){ nSkip++; return; }
+        // Duplicate check: client + cost + sale kisi bhi mahine mein pehle se ho to dobara na aaye
+        var dup = S.tickets.some(function(t){
+          return String(t.client||"").trim().toLowerCase() === String(name||"Client").trim().toLowerCase()
+              && Number(t.cost) === cost && Number(t.sale) === sale;
+        });
+        if(dup){ nDup++; return; }
         S.tickets.push({ id:uid(), date:d, client:name || "Client",
           detail:String(findKey(b, "service")||findKey(b, "remarks")||"").trim(), cost:cost, sale:sale });
         nT++;
       });
       (j.expenses||[]).forEach(function(e){
-        var d = sheetDate(findKey(e, "date"));
-        if(!d && midDefault) d = midDefault;
+        // Daily Expenses: date ko ignore karte hain — kharcha usi mahine mein jata hai jis file se aaya hai
         var amt = sheetNum(findKey(e, "amount"));
-        if(!d || !(amt>0)){ nSkipE++; return; }
-        var mid = d.slice(0,7);
+        if(!(amt>0)){ nSkipE++; return; }
+        var mid = midDefault || String(sheetDate(findKey(e, "date"), midDefault)||"").slice(0,7);
+        if(!mid){ nSkipE++; return; }
         if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
         var det = String(findKey(e, "detail")||"").trim();
         var desc = (String(findKey(e, "expense")||"").trim() + (det ? " — "+det : "")) || "Kharcha";
@@ -550,6 +645,7 @@ function importFromSheet(){
         if(dup) return;
         S.months[mid].expenses.push({ id:uid(), desc:desc, amount:amt });
         nE++;
+        tallyAdd(mid, "Kharcha", amt, String(findKey(e, "date")) + " — " + desc);
       });
       // Monthly Summary ke kharche (B2:B6 — aap ka formula)
       (j.summary||[]).forEach(function(s){
@@ -564,6 +660,7 @@ function importFromSheet(){
         if(dup) return;
         S.months[mid].expenses.push({ id:uid(), desc:desc, amount:amt });
         nE++;
+        tallyAdd(mid, "Summary", amt, desc);
       });
       // PARTNERS tab — kis partner ne kitna liya (Umair/Sarmad/Abbu ke column)
       (j.partnersRows||[]).forEach(function(p){
@@ -604,17 +701,30 @@ function importFromSheet(){
           }
         }
       }
-      save(); selectedMonth = null; autoDistribute(); render();
+      var tallyKeys = Object.keys(monthTally).sort();
+      var offUniq = offMonth.filter(function(v,i,a){ return a.indexOf(v)===i; });
+      var tallyHtml = tallyKeys.map(function(k){
+        var t = monthTally[k];
+        return "<b>"+esc(monthLabel(k))+"</b>: "+t.n+" kharcha, "+esc(money(t.total))+" <span style='opacity:.75;'>(mas: "+esc(t.sample)+")</span>";
+      }).join("<br>") || "—";
+      var tallyTxt = tallyKeys.map(function(k){ var t=monthTally[k]; return monthLabel(k)+": "+t.n+" kharcha, "+money(t.total); }).join("\n");
+      var offTxt = offUniq.length ? "\n\n⚠ Doosre mahine ki rows bhi mili: " + offUniq.map(monthLabel).join(", ") : "";
+      ticketFilter = midDefault || "all"; // import ke baad tickets bhi usi mahine ke dikhein
+      selectedMonth = midDefault || null;
+      saveNow(); autoDistribute(); render();
       var rep2 = document.getElementById("syncReport");
       if(rep2){
         var nBs2 = (j.bookings||[]).length, nEs2 = (j.expenses||[]).length;
         var h2 = "<b>Import natija:</b> sheet se rows mile: bookings "+nBs2+", kharche "+nEs2
-          +"<br><b>Tickets add hue:</b> "+nT+" — <b>Kharche add hue:</b> "+nE+" — <b>Chhore gaye:</b> "+(nSkip+nSkipE);
+          +"<br><b>Tickets add hue:</b> "+nT+" — <b>Kharche add hue:</b> "+nE+" — <b>Chhore gaye:</b> "+(nSkip+nSkipE)
+          +(nDup ? "<br><b>Duplicate tickets chhore gaye (pehle se maujood):</b> "+nDup : "")
+          +"<br><br><b>Kharche kis mahine mein gaye:</b><br>"+tallyHtml
+          + (offUniq.length ? "<br><b style='color:#b00;'>⚠ Doosre mahine ki rows bhi mili: "+esc(offUniq.map(monthLabel).join(", "))+"</b>" : "");
         if(nT===0 && nBs2>0) h2 += "<br><b>Pehli booking (jo add nahi hui):</b><br>"+kvHtml(j.bookings[0]);
         if(nE===0 && nEs2>0) h2 += "<br><b>Pehla kharcha (jo add nahi hua):</b><br>"+kvHtml(j.expenses[0]);
         rep2.innerHTML = h2;
       }
-      alert("Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+"\nKharche add hue: "+nE+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : "")));
+      alert("Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+(nDup ? " (duplicate chhore gaye: "+nDup+")" : "")+"\nKharche add hue: "+nE+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+(tallyTxt ? "\n\nKharche kis mahine mein gaye:\n"+tallyTxt : "")+offTxt+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : "")));
     })
     .catch(function(){ setSyncStatus("Sheet se data nahi mila (URL/internet check karein)", true); alert("Sheet se data nahi mila. Sync URL aur internet check karein."); });
 }
@@ -819,26 +929,67 @@ function totals(){
 }
 function viewDash(){
   var pb = partnerBalances(), t = totals(), st = S.settings;
-  var html = "";
+  var mf = monthFilterCard("DASH", "Poora overall summary dekhein ya kisi ek mahine ka. <b>All months</b> par sab kuch.");
+  var html = mf.html;
   var lb = st.lastBackup, daysSince = lb ? Math.floor((new Date() - new Date(lb)) / 86400000) : null;
   if(!lb || daysSince > 35){
     html += '<div class="card" style="border:2px solid var(--gold);"><h2>'+esc(T("bkremind"))+'</h2>';
     html += '<div class="hint">'+(!lb ? "Abhi tak kabhi backup nahi liya gaya." : "Aakhri backup "+lb+" ko hua tha — "+daysSince+" din ho gaye.")+' Har mahine backup zaroori hai!</div>';
     html += '<button class="btn primary" id="backupNow">'+esc(T("bknow"))+'</button></div>';
   }
-  html += '<div class="card"><h2>'+esc(T("todaysum"))+'</h2><div class="grid2">';
-  html += '<div class="stat"><div class="t">'+esc(T("loanbaqi"))+'</div><div class="v neg">'+money(st.loanBalance)+'</div></div>';
-  html += '<div class="stat"><div class="t">'+esc(st.partnerA)+esc(T("kaq"))+'</div><div class="v '+(pb.balA>=0?"pos":"neg")+'">'+money(pb.balA)+'</div></div>';
-  html += '<div class="stat"><div class="t">'+esc(st.partnerB)+esc(T("kaq"))+'</div><div class="v '+(pb.balB>=0?"pos":"neg")+'">'+money(pb.balB)+'</div></div>';
-  html += '<div class="stat"><div class="t">'+esc(T("clbak"))+'</div><div class="v gld">'+money(t.bakaya)+'</div></div>';
-  html += '</div>';
-  html += '<div class="hint">'+esc(T("kulsadqa"))+'<b>'+money(t.charity)+'</b>'+esc(T("kulqarza"))+'<b>'+money(t.loanPaid)+'</b>'+esc(T("appm"))+'<b>'+t.monthsApplied+'</b>'+(t.abbuTotal ? esc(T("abbuliya"))+'<b>'+money(t.abbuTotal)+'</b>' : '')+(t.waseemDena ? esc(T("wsbaqi"))+'<b>'+money(t.waseemDena)+'</b>' : '')+((t.charity>0||t.charityPaid>0)? esc(T("chbani"))+money(t.charity)+esc(T("chdi"))+money(t.charityPaid):'')+(t.charityBaqi > 0 ? esc(T("chbaqi"))+'<b>'+money(t.charityBaqi)+'</b>' : '')+'</div>';
-  html += '</div>';
 
-  var mids = Object.keys(S.months).sort().reverse();
-  if(mids.length){
+  if(mf.cur === "all"){
+    html += '<div class="card"><h2>'+esc(T("todaysum"))+' — All months</h2><div class="grid2">';
+    html += '<div class="stat"><div class="t">'+esc(T("loanbaqi"))+'</div><div class="v neg">'+money(st.loanBalance)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerA)+esc(T("kaq"))+'</div><div class="v '+(pb.balA>=0?"pos":"neg")+'">'+money(pb.balA)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerB)+esc(T("kaq"))+'</div><div class="v '+(pb.balB>=0?"pos":"neg")+'">'+money(pb.balB)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(T("clbak"))+'</div><div class="v gld">'+money(t.bakaya)+'</div></div>';
+    html += '</div>';
+    html += '<div class="hint">'+esc(T("kulsadqa"))+'<b>'+money(t.charity)+'</b>'+esc(T("kulqarza"))+'<b>'+money(t.loanPaid)+'</b>'+esc(T("appm"))+'<b>'+t.monthsApplied+'</b>'+(t.abbuTotal ? esc(T("abbuliya"))+'<b>'+money(t.abbuTotal)+'</b>' : '')+(t.waseemDena ? esc(T("wsbaqi"))+'<b>'+money(t.waseemDena)+'</b>' : '')+((t.charity>0||t.charityPaid>0)? esc(T("chbani"))+money(t.charity)+esc(T("chdi"))+money(t.charityPaid):'')+(t.charityBaqi > 0 ? esc(T("chbaqi"))+'<b>'+money(t.charityBaqi)+'</b>' : '')+'</div>';
+    html += '</div>';
+  } else {
+    var c = monthCalc(mf.cur);
+    var drawA = 0, drawB = 0, drawAbbu = 0;
+    S.draws.forEach(function(d){
+      if(String(d.date||"").slice(0,7) !== mf.cur) return;
+      if(d.partner==="A") drawA += Number(d.amount)||0;
+      else if(d.partner==="B") drawB += Number(d.amount)||0;
+      else if(d.partner==="ABBU") drawAbbu += Number(d.amount)||0;
+    });
+
+    html += '<div class="card"><h2>'+esc(monthLabel(mf.cur))+' — Khulasa</h2><div class="grid2">';
+    html += '<div class="stat"><div class="t">'+esc(T("kulkam"))+'</div><div class="v pos">'+money(c.income)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(T("kulkh"))+'</div><div class="v neg">'+money(c.expenses)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(T("tkpl"))+'</div><div class="v '+(c.ticketProfit>=0?"pos":"neg")+'">'+money(c.ticketProfit)+'</div></div>';
+    html += '<div class="stat"><div class="t">Saadgi (munafa)</div><div class="v '+(c.net>=0?"pos":"neg")+'">'+money(c.net)+'</div></div>';
+    html += '</div>';
+    html += '<table style="margin-top:10px;">';
+    html += '<tr><td>Sadqa ('+esc(st.charityRate)+'%)</td><td class="gld">'+money(c.charity)+'</td></tr>';
+    html += '<tr><td>Qarza ki payment ('+esc(st.loanRate)+'%)</td><td class="blu">'+money(c.loanPay)+'</td></tr>';
+    html += '<tr><td>'+esc(st.partnerA)+' ka hissa</td><td class="pos">'+money(c.each)+'</td></tr>';
+    html += '<tr><td>'+esc(st.partnerB)+' ka hissa</td><td class="pos">'+money(c.each)+'</td></tr>';
+    if(c.abbu) html += '<tr><td>Abbu ka liya</td><td class="neg">'+money(c.abbu)+'</td></tr>';
+    if(c.commission) html += '<tr><td>Waseem commission</td><td class="neg">'+money(c.commission)+'</td></tr>';
+    html += '</table>';
+    html += (c.applied
+      ? '<div class="ok-msg">✓ Ye mahina apply ho chuka hai — hissa partners ko mil gaya, qarza aur sadqa bhi update ho gaye.</div>'
+      : '<div class="hint">Ye mahina abhi apply nahi hua (pending). Mahina khatam hone par khud apply ho jayega.</div>');
+    html += '<div class="hint" style="margin-top:6px;">Overall (ab tak): Qarza baqi <b>'+money(st.loanBalance)+'</b> • '+esc(st.partnerA)+' <b>'+money(pb.balA)+'</b> • '+esc(st.partnerB)+' <b>'+money(pb.balB)+'</b> • Bakaya <b>'+money(t.bakaya)+'</b></div>';
+    html += '</div>';
+
+    html += '<div class="card"><h2>'+esc(monthLabel(mf.cur))+' ki nikasi</h2><div class="grid2">';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerA)+' liya</div><div class="v">'+money(drawA)+'</div></div>';
+    html += '<div class="stat"><div class="t">'+esc(st.partnerB)+' liya</div><div class="v">'+money(drawB)+'</div></div>';
+    html += '<div class="stat"><div class="t">Abbu liya</div><div class="v">'+money(drawAbbu)+'</div></div>';
+    html += '<div class="stat"><div class="t">Kul nikasi</div><div class="v">'+money(drawA+drawB+drawAbbu)+'</div></div>';
+    html += '</div></div>';
+  }
+
+  var mids = Object.keys(S.months).sort();
+  var showMids = (mf.cur === "all") ? mids : mids.filter(function(m){ return m === mf.cur; });
+  if(showMids.length){
     html += '<div class="card"><h2>'+esc(T("pmah"))+'</h2><table><tr><th>'+esc(T("thm"))+'</th><th>'+esc(T("thk"))+'</th><th>'+esc(T("thkh"))+'</th><th>'+esc(T("ths"))+'</th></tr>';
-    mids.slice(0,6).forEach(function(mid){
+    showMids.forEach(function(mid){
       var c = monthCalc(mid);
       html += '<tr><td><b>'+monthLabel(mid)+'</b></td><td class="pos">'+money(c.income)+'</td><td class="neg">'+money(c.expenses)+'</td>'
             + '<td>'+(c.applied?'<span class="pill done">'+esc(T("apdone"))+'</span>':'<span class="pill pending">'+esc(T("append"))+'</span>')+'</td></tr>';
@@ -849,8 +1000,10 @@ function viewDash(){
   }
 
   // Sadqa (charity) — di hui payments
-  var chL = (S.charityPaid||[]).slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
-  html += '<div class="card"><h2>'+esc(T("chled"))+'</h2>';
+  var chL = (S.charityPaid||[]).slice();
+  if(mf.cur !== "all") chL = chL.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
+  chL.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  html += '<div class="card"><h2>'+esc(T("chled"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
   html += '<div class="row"><input id="chAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="chDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="chNote" placeholder="'+esc(T("thw"))+'" style="margin-top:8px;">';
   html += '<button class="btn small primary" id="addCh" style="width:100%;">'+esc(T("savek"))+'</button>';
@@ -864,6 +1017,7 @@ function viewDash(){
     html += '<div class="empty">'+esc(T("chempty"))+'</div>';
   }
   html += '</div>';
+  html += '<div class="hint" style="text-align:center;">App version: '+esc(APP_VER)+'</div>';
   return html;
 }
 
@@ -874,6 +1028,7 @@ function monthOptions(){
   var now = new Date();
   var current = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
   if(mids.indexOf(current) === -1) mids.push(current);
+  mids.sort();
   if(!selectedMonth) selectedMonth = mids[mids.length-1];
   if(mids.indexOf(selectedMonth) === -1) selectedMonth = mids[mids.length-1];
   return mids.map(function(m){ return '<option value="'+m+'"'+(m===selectedMonth?" selected":"")+'>'+monthLabel(m)+'</option>'; }).join("");
@@ -883,7 +1038,8 @@ function viewMonth(){
   var mid = selectedMonth, m = S.months[mid] || {incomes:[], expenses:[]}, c = monthCalc(mid), st = S.settings;
   var html = "";
   html += '<div class="card"><div class="monthbar"><select id="monthSel">'+opts+'</select>'
-        + '<button class="btn small primary" id="addMonth">'+esc(T("newmonth"))+'</button></div>';
+        + '<button class="btn small primary" id="addMonth">'+esc(T("newmonth"))+'</button>'
+        + '<button class="btn small" id="delMonth" style="background:var(--red); color:#fff;">Mahina delete</button></div>';
   html += '<div class="grid2">'
         + '<div class="stat"><div class="t">'+esc(T("kulkam"))+'</div><div class="v pos">'+money(c.income)+'</div></div>'
         + '<div class="stat"><div class="t">'+esc(T("kulkh"))+'</div><div class="v neg">'+money(c.expenses)+'</div></div>'
@@ -932,20 +1088,60 @@ function viewMonth(){
     html += '<div class="hint">Mahina khatam hone par (naya mahina shuru hote hi) profit ka hisaab khud baant diya jayega — sadqa, qarza aur partners ka hissa.</div>';
   }
   html += '</div>';
+
+  // Kharche ka mahina — check aur shift
+  var allMids = Object.keys(S.months).sort();
+  html += '<div class="card"><h2>Kharche ka mahina check / shift</h2>';
+  html += '<div class="hint" style="margin-top:0;">Naya import kharche hamesha usi mahine mein daalta hai jis file se pull hota hai (sheet ki date ignore). Agar purane import se kharche kisi ghalat mahine mein chale gaye hon to yahan se shift kar dein.</div>';
+  html += '<table>';
+  allMids.forEach(function(x){
+    var ex = (S.months[x].expenses||[]);
+    var tot = ex.reduce(function(a,b){ return a + (Number(b.amount)||0); }, 0);
+    html += '<tr><td>'+monthLabel(x)+'</td><td class="neg">'+ex.length+' kharcha</td><td class="neg">'+money(tot)+'</td></tr>';
+  });
+  html += '</table>';
+  html += '<div class="row" style="margin-top:8px;">'
+        + '<select id="expFrom">'+allMids.map(function(x){ return '<option value="'+x+'"'+(x===mid?" selected":"")+'>'+monthLabel(x)+' se</option>'; }).join("")+'</select>'
+        + '<select id="expTo">'+allMids.map(function(x){ return '<option value="'+x+'">'+monthLabel(x)+' mein</option>'; }).join("")+'</select>'
+        + '</div>';
+  html += '<button class="btn small" id="expShift" style="width:100%;">Saare kharche shift karein</button>';
+  html += '</div>';
   return html;
 }
 
 /* ================= TICKETS ================= */
+var ticketFilter = "all";
 function viewTickets(){
+  var all = S.tickets || [];
+  var ms = {};
+  all.forEach(function(t){ var m = String(t.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) ms[m] = true; });
+  var months = Object.keys(ms).sort();
+  if(ticketFilter !== "all" && months.indexOf(ticketFilter) === -1) ticketFilter = "all";
+  var list = (ticketFilter === "all") ? all : all.filter(function(t){ return String(t.date||"").slice(0,7) === ticketFilter; });
+
   var html = "";
+
+  // Sab se oper: mahina chunne wala filter
+  if(all.length){
+    var opts = '<option value="all"'+(ticketFilter==="all"?" selected":"")+'>All months — '+all.length+' tickets</option>';
+    months.forEach(function(m){
+      var n = all.filter(function(t){ return String(t.date||"").slice(0,7) === m; }).length;
+      opts += '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+esc(monthLabel(m))+' — '+n+' tickets</option>';
+    });
+    html += '<div class="card" style="padding-bottom:10px;"><label>Month filter</label>'
+          + '<select id="tkMonthFilter">'+opts+'</select>'
+          + '<div class="hint">Mahina chunein to sirf usi mahine ke tickets aur un ka profit dikhega. <b>All months</b> par poora record.</div></div>';
+  }
+
   var tc=0, ts=0;
-  S.tickets.forEach(function(t){ tc += Number(t.cost)||0; ts += Number(t.sale)||0; });
+  list.forEach(function(t){ tc += Number(t.cost)||0; ts += Number(t.sale)||0; });
   var tp = ts - tc;
-  html += '<div class="card"><h2>'+esc(T("tkhul"))+'</h2><div class="grid2">'
+  html += '<div class="card"><h2>'+esc(T("tkhul"))+(ticketFilter==="all" ? "" : ' — '+esc(monthLabel(ticketFilter)))+'</h2><div class="grid2">'
         + '<div class="stat"><div class="t">'+esc(T("kulcost"))+'</div><div class="v">'+money(tc)+'</div></div>'
         + '<div class="stat"><div class="t">'+esc(T("kulsale"))+'</div><div class="v">'+money(ts)+'</div></div>'
         + '<div class="stat" style="grid-column:1/-1;"><div class="t">'+esc(T("kulprofit"))+'</div><div class="v '+(tp>=0?"pos":"neg")+'">'+money(tp)+'</div></div>'
         + '</div>';
+  html += '<div class="hint" style="margin-top:8px;">'+(ticketFilter==="all" ? "Poore record ke " : esc(monthLabel(ticketFilter))+" ke ")+list.length+' tickets</div>';
   html += '<button class="btn small" id="clearTickets" style="margin-top:10px; width:100%; background:var(--red); color:#fff;">'+esc(T("cleartk"))+'</button></div>';
 
   html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
@@ -958,8 +1154,8 @@ function viewTickets(){
   html += '<div class="hint">'+esc(T("tkhint"))+'</div>';
   html += '</div>';
 
-  if(S.tickets.length){
-    var sorted = S.tickets.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  if(list.length){
+    var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
     html += '<div class="card"><h2>'+esc(T("tkhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
     sorted.forEach(function(t){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
@@ -970,38 +1166,122 @@ function viewTickets(){
             + '<td>'+(t.paid === false
                   ? '<button class="btn small tk-toggle" data-id="'+t.id+'" style="margin:0 4px 0 0; padding:5px 9px; background:var(--gold); color:#fff;">'+esc(T("unpaid"))+'</button>'
                   : '<span class="pill done">'+esc(T("paidp"))+'</span>')
-                +'<button class="del" data-type="ticket" data-id="'+t.id+'">✕</button></td></tr>';
+                +'<button class="del" data-type="ticket" data-id="'+t.id+'">✕</button>'
+                +'<button class="del tk-datedit" data-id="'+t.id+'" title="Tareekh theek karein" style="background:var(--muted); color:#fff; margin-left:4px;">📅</button></td></tr>';
     });
     html += '</table></div>';
   } else {
-    html += '<div class="card"><div class="empty">'+esc(T("emptytk"))+'</div></div>';
+    html += '<div class="card"><div class="empty">'+(ticketFilter==="all" ? esc(T("emptytk")) : "Is mahine ("+esc(monthLabel(ticketFilter))+") koi ticket nahi. Filter se 'All months' chunein.")+'</div></div>';
+  }
+
+  if(months.length){
+    var shiftMids = Object.keys(S.months || {}).concat(months).filter(function(m,i,a){ return /^\d{4}-\d{2}$/.test(m) && a.indexOf(m) === i; }).sort();
+    html += '<div class="card"><h2>Ticket ka mahina shift</h2>';
+    html += '<div class="hint" style="margin-top:0;">Agar import se tickets kisi ghalat mahine ki tareekh ke sath aa gaye hon to yahan se poore mahine ke tickets doosre mahine mein le jayein (din wahi rehta hai). Ek ticket ki tareekh badalne ke liye table mein 📅 dabayein.</div>';
+    html += '<div class="row"><select id="tkFrom">'+shiftMids.map(function(m){ return '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+monthLabel(m)+' se</option>'; }).join("")+'</select>'
+          + '<select id="tkTo">'+shiftMids.map(function(m){ return '<option value="'+m+'">'+monthLabel(m)+' mein</option>'; }).join("")+'</select></div>';
+    html += '<button class="btn small" id="tkShift" style="width:100%;">Tickets shift karein</button>';
+    html += '</div>';
+  }
+
+  if(all.length){
+    html += '<div class="card"><h2>Duplicate tickets hataayein</h2>';
+    html += '<div class="hint" style="margin-top:0;">Agar ek hi ticket do mahino mein aa gaya ho (client + cost + sale same), to purani tareekh wala rakha jata hai aur baqi copies hat jati hain.</div>';
+    html += '<button class="btn small" id="dedupeTickets" style="width:100%; background:var(--red); color:#fff;">Duplicate check karein</button>';
+    html += '</div>';
   }
   return html;
 }
 
 /* ================= PARTNERS ================= */
+/* Mahine ke mutabiq filter — partner, Abbu, Waseem ke liye */
+var monthFilter = { DASH:"all", A:"all", B:"all", ABBU:"all", WS:"all", BAK:"all" };
+function filterMonths(){
+  var set = {};
+  Object.keys(S.months || {}).forEach(function(m){ if(m) set[m] = 1; });
+  (S.tickets||[]).forEach(function(t){ var m = String(t.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  (S.draws||[]).forEach(function(d){ var m = String(d.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  (S.waseem||[]).forEach(function(w){ var m = String(w.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  (S.receivables||[]).forEach(function(r){ var m = String(r.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) set[m] = 1; });
+  return Object.keys(set).filter(function(m){ return /^\d{4}-\d{2}$/.test(m); }).sort();
+}
+function monthFilterCard(key, hint){
+  var months = filterMonths();
+  var cur = monthFilter[key] || "all";
+  if(cur !== "all" && months.indexOf(cur) === -1) cur = monthFilter[key] = "all";
+  var opts = '<option value="all"'+(cur==="all"?" selected":"")+'>All months (overall)</option>';
+  months.forEach(function(m){
+    opts += '<option value="'+m+'"'+(m===cur?" selected":"")+'>'+esc(monthLabel(m))+'</option>';
+  });
+  return { cur:cur, months:months,
+    html: '<div class="card" style="padding-bottom:10px;"><label>Month filter</label><select id="'+key+'MonthFilter">'+opts+'</select>'
+        + '<div class="hint">'+hint+'</div></div>' };
+}
 function viewPartner(which){
   var key = which==="pB" ? "B" : "A";
   var st = S.settings, pb = partnerBalances();
   var pname = key==="A" ? st.partnerA : st.partnerB;
+  var mf = monthFilterCard(key, "Mahina chunein to sirf usi mahine ka hissa aur nikasi. <b>All months</b> par poora hisab.");
+
   var earned = pb.earned[key], drawn = pb.drawn[key];
-  var bal = key==="A" ? pb.balA : pb.balB;
-  var html = "";
-  html += '<div class="card"><h2>'+esc(pname)+' — '+esc(T("apnahissa"))+'</h2><div class="grid2">';
-  html += '<div class="stat"><div class="t">'+esc(T("bana"))+'</div><div class="v pos">'+money(earned)+'</div></div>';
-  html += '<div class="stat"><div class="t">'+esc(T("liya"))+'</div><div class="v">'+money(drawn)+'</div></div>';
-  html += '<div class="stat" style="grid-column:1/-1;"><div class="t">'+esc(T("bakayalbl"))+'</div><div class="v '+(bal>=0?"pos":"neg")+'">'+money(bal)+'</div></div>';
-  html += '</div></div>';
+  var bal = (key==="A" ? pb.balA : pb.balB);
+
+  var rows = mf.months.map(function(mid){
+    var c = monthCalc(mid), liya = 0;
+    S.draws.forEach(function(d){
+      if(d.partner===key && String(d.date||"").slice(0,7)===mid) liya += Number(d.amount)||0;
+    });
+    return { mid:mid, applied:!!c.applied, bana:(c.applied ? c.each : 0), liya:liya };
+  });
+  var shown = (mf.cur==="all") ? rows : rows.filter(function(r){ return r.mid===mf.cur; });
+  var sB = 0, sL = 0;
+  shown.forEach(function(r){ sB += r.bana; sL += r.liya; });
+
+  var topBana  = (mf.cur==="all") ? earned : sB;
+  var topLiya  = (mf.cur==="all") ? drawn  : sL;
+  var topBaqi  = topBana - topLiya;
+
+  var html = mf.html;
+  html += '<div class="card"><h2>'+esc(pname)+' — '+esc(T("apnahissa"))+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</h2><div class="grid2">';
+  html += '<div class="stat"><div class="t">'+esc(T("bana"))+'</div><div class="v pos">'+money(topBana)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("liya"))+'</div><div class="v">'+money(topLiya)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("bakayalbl"))+'</div><div class="v '+(topBaqi>=0?"pos":"neg")+'">'+money(topBaqi)+'</div></div>';
+  if(mf.cur!=="all"){
+    html += '<div class="stat"><div class="t">Overall baqaya (ab tak)</div><div class="v '+(bal>=0?"pos":"neg")+'">'+money(bal)+'</div></div>';
+  }
+  html += '</div>';
+  if(mf.cur!=="all"){
+    html += '<div class="hint">Overall: Bana <b>'+money(earned)+'</b> • Liya <b>'+money(drawn)+'</b> • Baqaya <b>'+money(bal)+'</b></div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><h2>Month-wise hisab</h2>';
+  if(shown.length){
+    html += '<table><tr><th>Mahina</th><th>Bana</th><th>Liya</th><th>Farq</th></tr>';
+    shown.forEach(function(r){
+      html += '<tr><td><b>'+esc(monthLabel(r.mid))+'</b>'+(r.applied?'':' <span class="pill pending">'+esc(T("append"))+'</span>')+'</td>'
+            + '<td class="pos">'+(r.applied?money(r.bana):'—')+'</td>'
+            + '<td>'+money(r.liya)+'</td>'
+            + '<td class="'+((r.bana-r.liya)>=0?"pos":"neg")+'">'+money(r.bana-r.liya)+'</td></tr>';
+    });
+    html += '<tr><th>Total'+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</th><th class="pos">'+money(sB)+'</th><th>'+money(sL)+'</th><th class="'+((sB-sL)>=0?"pos":"neg")+'">'+money(sB-sL)+'</th></tr>';
+    html += '</table>';
+    html += '<div class="hint">Pending = us mahine ka hisab abhi apply nahi hua, is liye hissa 0 hai. Mahina khatam hone par khud apply ho jata hai.</div>';
+  } else {
+    html += '<div class="empty">Koi mahina nahi mila.</div>';
+  }
+  html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("nikrec"))+'</h2>';
   html += '<div class="row"><input id="drawAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="drawDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="drawNote" placeholder="'+esc(T("noteph"))+'" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addDraw" data-p="'+key+'">'+esc(T("savek"))+'</button></div>';
 
-  var mine = S.draws.filter(function(d){ return d.partner===key; })
-                  .sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  var mine = S.draws.filter(function(d){ return d.partner===key; });
+  if(mf.cur!=="all") mine = mine.filter(function(d){ return String(d.date||"").slice(0,7)===mf.cur; });
+  mine.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
   if(mine.length){
-    html += '<div class="card"><h2>'+esc(T("nikhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    html += '<div class="card"><h2>'+esc(T("nikhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     mine.forEach(function(d){
       html += '<tr><td>'+esc(d.date)+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
     });
@@ -1013,22 +1293,49 @@ function viewPartner(which){
 }
 
 function viewAbbu(){
-  var html = "";
-  var total = 0, mine = [];
-  S.draws.forEach(function(d){
-    if(d.partner==="ABBU"){ mine.push(d); total += Number(d.amount)||0; }
+  var mf = monthFilterCard("ABBU", "Mahina chunein to us mahine ki nikasi. <b>All months</b> par poora record.");
+  var all = (S.draws||[]).filter(function(d){ return d.partner==="ABBU"; });
+  var total = 0;
+  all.forEach(function(d){ total += Number(d.amount)||0; });
+
+  var rows = mf.months.map(function(mid){
+    var liya = 0;
+    all.forEach(function(d){ if(String(d.date||"").slice(0,7)===mid) liya += Number(d.amount)||0; });
+    return { mid:mid, liya:liya };
   });
-  mine.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
-  html += '<div class="card"><h2>'+esc(T("abbu"))+'</h2><div class="stat"><div class="t">'+esc(T("kulliya"))+'</div><div class="v neg">'+money(total)+'</div></div>';
+  var shown = (mf.cur==="all") ? rows : rows.filter(function(r){ return r.mid===mf.cur; });
+  var sL = 0; shown.forEach(function(r){ sL += r.liya; });
+
+  var html = mf.html;
+  html += '<div class="card"><h2>'+esc(T("abbu"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><div class="grid2">'
+        + '<div class="stat"><div class="t">'+(mf.cur==="all" ? esc(T("kulliya"))+" (ab tak)" : "Is mahine liya")+'</div><div class="v neg">'+money(sL)+'</div></div>';
+  if(mf.cur!=="all"){
+    html += '<div class="stat"><div class="t">'+esc(T("kulliya"))+' (ab tak)</div><div class="v neg">'+money(total)+'</div></div>';
+  }
+  html += '</div>';
   html += '<div class="hint">'+esc(T("abbuyhint"))+'</div></div>';
+
+  html += '<div class="card"><h2>Month-wise nikasi</h2>';
+  if(shown.length){
+    html += '<table><tr><th>Mahina</th><th>Liya</th></tr>';
+    shown.forEach(function(r){
+      html += '<tr><td><b>'+esc(monthLabel(r.mid))+'</b></td><td class="neg">'+money(r.liya)+'</td></tr>';
+    });
+    html += '<tr><th>Total'+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</th><th class="neg">'+money(sL)+'</th></tr></table>';
+  } else {
+    html += '<div class="empty">Koi mahina nahi mila.</div>';
+  }
+  html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("abbunik"))+'</h2>';
   html += '<div class="row"><input id="abbuAmt" type="number" min="0" inputmode="decimal" placeholder="Raqam (Rs)"><input id="abbuDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="abbuNote" placeholder="Wajah / note" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addAbbu">Save karein</button></div>';
 
+  var mine = (mf.cur==="all") ? all.slice() : all.filter(function(d){ return String(d.date||"").slice(0,7)===mf.cur; });
+  mine.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
   if(mine.length){
-    html += '<div class="card"><h2>'+esc(T("abbuhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    html += '<div class="card"><h2>'+esc(T("abbuhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     mine.forEach(function(d){
       html += '<tr><td>'+esc(d.date)+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
     });
@@ -1039,22 +1346,59 @@ function viewAbbu(){
 
 /* ================= WASEEM (STAFF) ================= */
 function viewWaseem(){
-  var html = "";
-  var kam = 0, diya = 0, sal = 0, mine = [];
+  var mf = monthFilterCard("WS", "Mahina chunein to us mahine ki commission/salary. <b>All months</b> par poora record.");
+  var kam = 0, diya = 0, sal = 0;
   S.tickets.forEach(function(t){ kam += Number(t.commission)||0; });
   (S.waseem||[]).forEach(function(w){
     if(w.kind === "commission") diya += Number(w.amount)||0;
     else sal += Number(w.amount)||0;
-    mine.push(w);
   });
+  var rows = mf.months.map(function(mid){
+    var bana = 0, dada = 0, sala = 0;
+    S.tickets.forEach(function(t){ if(String(t.date||"").slice(0,7)===mid) bana += Number(t.commission)||0; });
+    (S.waseem||[]).forEach(function(w){
+      if(String(w.date||"").slice(0,7)!==mid) return;
+      if(w.kind === "commission") dada += Number(w.amount)||0; else sala += Number(w.amount)||0;
+    });
+    return { mid:mid, bana:bana, dada:dada, sala:sala };
+  });
+  var shown = (mf.cur==="all") ? rows : rows.filter(function(r){ return r.mid===mf.cur; });
+  var sB = 0, sD = 0, sS = 0;
+  shown.forEach(function(r){ sB += r.bana; sD += r.dada; sS += r.sala; });
+  var topKam = (mf.cur==="all") ? kam : sB;
+  var topDiya = (mf.cur==="all") ? diya : sD;
+  var topSal = (mf.cur==="all") ? sal : sS;
+  var topBaq = topKam - topDiya;
+  var mine = (S.waseem||[]).slice();
+  if(mf.cur!=="all") mine = mine.filter(function(w){ return String(w.date||"").slice(0,7)===mf.cur; });
   mine.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
-  var baq = kam - diya;
-  html += '<div class="card"><h2>'+esc(T("wsh2"))+'</h2><div class="grid2">';
-  html += '<div class="stat"><div class="t">'+esc(T("wsbana"))+'</div><div class="v pos">'+money(kam)+'</div></div>';
-  html += '<div class="stat"><div class="t">'+esc(T("wsdiya"))+'</div><div class="v">'+money(diya)+'</div></div>';
-  html += '<div class="stat"><div class="t">'+esc(T("wsbaq2"))+'</div><div class="v '+(baq>=0?"pos":"neg")+'">'+money(baq)+'</div></div>';
-  html += '<div class="stat"><div class="t">'+esc(T("saldi"))+'</div><div class="v">'+money(sal)+'</div></div>';
-  html += '</div></div>';
+  var html = mf.html;
+  html += '<div class="card"><h2>'+esc(T("wsh2"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><div class="grid2">';
+  html += '<div class="stat"><div class="t">'+esc(T("wsbana"))+'</div><div class="v pos">'+money(topKam)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("wsdiya"))+'</div><div class="v">'+money(topDiya)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("wsbaq2"))+'</div><div class="v '+(topBaq>=0?"pos":"neg")+'">'+money(topBaq)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("saldi"))+'</div><div class="v">'+money(topSal)+'</div></div>';
+  html += '</div>';
+  if(mf.cur!=="all"){
+    html += '<div class="hint">Overall: Commission bana <b>'+money(kam)+'</b> • Diya <b>'+money(diya)+'</b> • Baqaya <b>'+money(kam-diya)+'</b> • Salary <b>'+money(sal)+'</b></div>';
+  }
+  html += '</div>';
+
+  html += '<div class="card"><h2>Month-wise hisab</h2>';
+  if(shown.length){
+    html += '<table><tr><th>Mahina</th><th>Commission bana</th><th>Diya</th><th>Baqaya</th><th>Salary</th></tr>';
+    shown.forEach(function(r){
+      html += '<tr><td><b>'+esc(monthLabel(r.mid))+'</b></td>'
+            + '<td class="pos">'+money(r.bana)+'</td>'
+            + '<td>'+money(r.dada)+'</td>'
+            + '<td class="'+((r.bana-r.dada)>=0?"pos":"neg")+'">'+money(r.bana-r.dada)+'</td>'
+            + '<td>'+money(r.sala)+'</td></tr>';
+    });
+    html += '<tr><th>Total'+(mf.cur==="all"?"":' ('+esc(monthLabel(mf.cur))+')')+'</th><th class="pos">'+money(sB)+'</th><th>'+money(sD)+'</th><th class="'+((sB-sD)>=0?"pos":"neg")+'">'+money(sB-sD)+'</th><th>'+money(sS)+'</th></tr></table>';
+  } else {
+    html += '<div class="empty">Koi mahina nahi mila.</div>';
+  }
+  html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("payrec"))+'</h2>';
   html += '<div class="row"><select id="wsKind" style="max-width:200px;"><option value="commission">'+esc(T("kcomm"))+'</option><option value="salary">'+esc(T("ksal"))+'</option></select><input id="wsAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="wsDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
@@ -1062,7 +1406,7 @@ function viewWaseem(){
   html += '<button class="btn primary" id="addWs">'+esc(T("savek"))+'</button></div>';
 
   if(mine.length){
-    html += '<div class="card"><h2>'+esc(T("payhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thkism"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    html += '<div class="card"><h2>'+esc(T("payhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thkism"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     mine.forEach(function(w){
       html += '<tr><td>'+esc(w.date)+'</td><td>'+esc(w.kind === "commission" ? T("kcomm") : T("ksal"))+'</td><td>'+esc(w.note||"—")+'</td><td class="neg">'+money(w.amount)+'</td><td><button class="del" data-type="waseem" data-id="'+w.id+'">✕</button></td></tr>';
     });
@@ -1103,16 +1447,21 @@ function viewQarza(){
 
 /* ================= BAKAYA (RECEIVABLES) ================= */
 function viewBakaya(){
-  var html = "";
-  html += '<div class="card"><h2>'+esc(T("newcl"))+'</h2>';
-  html += '<label>'+esc(T("cliname"))+'</label><input id="rvClient" placeholder="Naam">';
-  html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("tafseel"))+'</label><input id="rvNote" placeholder="Mas: Umrah package booking"></div>';
-  html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><button class="btn small primary" id="addRv" style="flex:0 0 auto; margin-top:24px;">'+esc(T("addk"))+'</button></div>';
-  html += '</div>';
+  var mf = monthFilterCard("BAK", "Mahina chunein to us mahine ke bakaya (unpaid tickets + clients). <b>All months</b> par poora bakaya.");
+  var html = mf.html;
+  var htmlX = "";
+  htmlX += '<div class="card"><h2>'+esc(T("newcl"))+'</h2>';
+  htmlX += '<label>'+esc(T("cliname"))+'</label><input id="rvClient" placeholder="Naam">';
+  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("tafseel"))+'</label><input id="rvNote" placeholder="Mas: Umrah package booking"></div>';
+  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  htmlX += '<button class="btn small primary" id="addRv" style="width:100%;">'+esc(T("addk"))+'</button>';
+  htmlX += '</div>';
+  html += htmlX;
 
   // Unpaid tickets — bakaya mein khud aate hain
   var unpaidT = S.tickets.filter(function(x){ return x.paid === false; });
-  html += '<div class="card"><h2>'+esc(T("unpaidtkh"))+'</h2>';
+  if(mf.cur!=="all") unpaidT = unpaidT.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
+  html += '<div class="card"><h2>'+esc(T("unpaidtkh"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
   if(!unpaidT.length){
     html += '<div class="empty">'+esc(T("emptyub"))+'</div>';
   } else {
@@ -1129,17 +1478,26 @@ function viewBakaya(){
   html += '<div class="hint">'+esc(T("ubnote"))+'</div>';
   html += '</div>';
 
-  var t = totals();
-  html += '<div class="card"><h2>'+esc(T("baklist"))+'</h2>';
-  if(!S.receivables.length){
+  var recs = S.receivables.slice();
+  if(mf.cur!=="all") recs = recs.filter(function(r){ return String(r.date||"").slice(0,7) === mf.cur; });
+
+  var shownTotal = 0;
+  unpaidT.forEach(function(x){ shownTotal += Number(x.sale)||0; });
+  recs.forEach(function(r){
+    var p = 0; (r.payments||[]).forEach(function(x){ p += Number(x.amount)||0; });
+    shownTotal += Math.max(0, (Number(r.total)||0) - p);
+  });
+
+  html += '<div class="card"><h2>'+esc(T("baklist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
+  if(!recs.length){
     html += '<div class="empty">'+esc(T("emptybak"))+'</div>';
   } else {
-    S.receivables.forEach(function(r){
+    recs.forEach(function(r){
       var paid = 0; (r.payments||[]).forEach(function(p){ paid += Number(p.amount)||0; });
       var rem = (Number(r.total)||0) - paid;
       html += '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">';
       html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">';
-      html += '<div><b>'+esc(r.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(r.note||"")+'</div></div>';
+      html += '<div><b>'+esc(r.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(r.date || "purani entry (date nahi)")+(r.note ? " • "+esc(r.note) : "")+'</div></div>';
       html += '<div style="text-align:right;"><div class="'+(rem<=0?"pos":"gld")+'" style="font-weight:800;">'+money(rem)+'</div><div style="font-size:12px; color:var(--muted);">Kul '+money(r.total)+' • Mila '+money(paid)+'</div></div>';
       html += '</div>';
       if(rem > 0){
@@ -1155,7 +1513,7 @@ function viewBakaya(){
       html += '</div>';
     });
   }
-  html += '<div class="hint">'+esc(T("kulb"))+'<b>'+money(t.bakaya)+'</b></div>';
+  html += '<div class="hint">'+(mf.cur==="all" ? esc(T("kulb")) : "Is mahine ka bakaya: ")+'<b>'+money(shownTotal)+'</b></div>';
   html += '</div>';
   return html;
 }
@@ -1190,8 +1548,8 @@ function viewSettings(){
 
   html += '<div class="card"><h2>'+esc(T("synch"))+'</h2>';
   html += '<label>Sync URL (Google Apps Script web app)</label><input id="setSyncUrl" value="'+esc(st.syncUrl||"")+'" placeholder="https://script.google.com/.../exec">';
-  html += '<label style="margin-top:8px;">Purana data kis file se import karein — Sheet File ID (optional)</label><input id="setImportId" value="'+esc(st.importId||"")+'" placeholder="Har mahine ki alag file ka File ID yahan daalein">';
-  html += '<div class="hint">File ID = file ke URL mein /d/ aur /edit ke beech wala lamba hissa. Khali chhod dein to script jis file mein bani hai usi ka data import hoga.</div>';
+  html += '<label style="margin-top:8px;">Sheet File ID (data isi file se aayega aur yahin save hoga)</label><input id="setImportId" value="'+esc(st.importId||"")+'" placeholder="Har mahine ki alag file ka File ID yahan daalein">';
+  html += '<div class="hint">File ID = file ke URL mein /d/ aur /edit ke beech wala lamba hissa. <b>January</b> ki file ka ID daal kar Save karein to data January ki file se aayega. Khali chhodne par script jis file mein deploy hai (September) usi ka data aata hai — isi wajah se ghalat file ka data nazar aata tha.</div>';
   html += '<div class="row" style="margin-top:8px; align-items:center;">'
         + '<button class="btn small primary" id="pullSync" style="flex:0 0 auto; margin-top:0;">Sheet se data lao</button>'
         + '<button class="btn small" id="testSync" style="flex:0 0 auto; margin-top:0; background:var(--gold); color:#fff;">Test karein</button>'
@@ -1219,7 +1577,7 @@ function viewSettings(){
   html += '<div class="card"><h2>'+esc(T("reseth"))+'</h2>';
   html += '<button class="btn" id="resetAll" style="background:var(--red); color:#fff;">'+esc(T("resetbtn"))+'</button>';
   html += '</div>';
-  html += '<div class="hint">App version: 1.1</div>';
+  html += '<div class="hint">App version: '+esc(APP_VER)+'</div>';
   return html;
 }
 
@@ -1229,6 +1587,14 @@ function bind(){
 
   var sel = document.getElementById("monthSel");
   if(sel) sel.onchange = function(){ selectedMonth = sel.value; render(); };
+
+  var tmf = document.getElementById("tkMonthFilter");
+  if(tmf) tmf.onchange = function(){ ticketFilter = tmf.value; render(); };
+
+  ["DASH","A","B","ABBU","WS","BAK"].forEach(function(k){
+    var fm = document.getElementById(k+"MonthFilter");
+    if(fm) fm.onchange = function(){ monthFilter[k] = fm.value; render(); };
+  });
 
   var addM = document.getElementById("addMonth");
   if(addM) addM.onclick = function(){
@@ -1245,6 +1611,36 @@ function bind(){
     S.months[mid] = { incomes:[], expenses:[], applied:false };
     addFixesToMonth(mid);
     save(); selectedMonth = mid; render();
+  };
+
+  var delM = document.getElementById("delMonth");
+  if(delM) delM.onclick = function(){
+    var mid = selectedMonth;
+    if(!mid) return;
+    var m = S.months[mid];
+    if(!m){ alert(monthLabel(mid)+" mein koi data nahi hai."); return; }
+    var ne = (m.expenses||[]).length, ni = (m.incomes||[]).length;
+    if(!confirm(monthLabel(mid)+" ka mahina delete karein?\n\nKamai: "+ni+" — Kharche: "+ne+"\n\n(Tickets alag hote hain, wo nahi delete honge. Ghalat import kiye gaye mahine ko hatane ke liye ye istemal karein.)")) return;
+    delete S.months[mid];
+    selectedMonth = null;
+    save(); render();
+  };
+
+  var expShift = document.getElementById("expShift");
+  if(expShift) expShift.onclick = function(){
+    var from = (document.getElementById("expFrom")||{}).value;
+    var to = (document.getElementById("expTo")||{}).value;
+    if(!from || !to) return;
+    if(from === to){ alert("'Se' aur 'Mein' mahina alag chunein."); return; }
+    if(!S.months[from]) return;
+    var mv = (S.months[from].expenses||[]).slice();
+    if(!mv.length){ alert(monthLabel(from)+" mein koi kharcha nahi hai."); return; }
+    var tot = mv.reduce(function(a,b){ return a + (Number(b.amount)||0); }, 0);
+    if(!confirm(monthLabel(from)+" ke "+mv.length+" kharche ("+money(tot)+") "+monthLabel(to)+" mein shift karein?")) return;
+    if(!S.months[to]) S.months[to] = { incomes:[], expenses:[], applied:false };
+    S.months[to].expenses = (S.months[to].expenses||[]).concat(mv);
+    S.months[from].expenses = [];
+    save(); selectedMonth = to; render();
   };
 
   function addItem(type){
@@ -1285,18 +1681,22 @@ function bind(){
   if(ad) ad.onclick = function(){
     var amt = Number(document.getElementById("drawAmt").value);
     if(!(amt>0)) return;
+    var dd = document.getElementById("drawDate").value || today();
     S.draws.push({ id:uid(), partner:ad.getAttribute("data-p")||"A", amount:amt,
                    note:(document.getElementById("drawNote")||{}).value||"",
-                   date:document.getElementById("drawDate").value || today() });
+                   date:dd });
+    monthFilter[ad.getAttribute("data-p")||"A"] = String(dd).slice(0,7); // nayi entry foran nazar aaye
     save(); render();
   };
   var ab = document.getElementById("addAbbu");
   if(ab) ab.onclick = function(){
     var amt = Number(document.getElementById("abbuAmt").value);
     if(!(amt>0)) return;
+    var dd = document.getElementById("abbuDate").value || today();
     S.draws.push({ id:uid(), partner:"ABBU", amount:amt,
                    note:(document.getElementById("abbuNote")||{}).value||"",
-                   date:document.getElementById("abbuDate").value || today() });
+                   date:dd });
+    monthFilter.ABBU = String(dd).slice(0,7);
     save(); render();
   };
 
@@ -1305,7 +1705,9 @@ function bind(){
     var name = document.getElementById("rvClient").value.trim();
     var total = Number(document.getElementById("rvTotal").value);
     if(!name || !(total>0)) return;
-    S.receivables.push({ id:uid(), client:name, note:document.getElementById("rvNote").value.trim(), total:total, payments:[] });
+    var dd = (document.getElementById("rvDate")||{}).value || today();
+    S.receivables.push({ id:uid(), client:name, note:document.getElementById("rvNote").value.trim(), total:total, date:dd, payments:[] });
+    monthFilter.BAK = String(dd).slice(0,7);
     save(); render();
   };
   app.querySelectorAll(".rv-paybtn").forEach(function(b){
@@ -1343,10 +1745,12 @@ function bind(){
     var cost = Number(document.getElementById("tkCost").value) || 0;
     var sale = Number(document.getElementById("tkSale").value) || 0;
     if(!client || !(sale>0 || cost>0)){ alert("Client ka naam aur kam az kam ek raqam (cost ya sale) zaroori hai."); return; }
-    S.tickets.push({ id:uid(), date:document.getElementById("tkDate").value || today(), client:client,
+    var tkDate = document.getElementById("tkDate").value || today();
+    S.tickets.push({ id:uid(), date:tkDate, client:client,
                      detail:document.getElementById("tkDetail").value.trim(), cost:cost, sale:sale,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
+    ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
   };
   app.querySelectorAll(".del[data-type='ticket']").forEach(function(b){
@@ -1355,6 +1759,50 @@ function bind(){
       save(); render();
     };
   });
+  app.querySelectorAll(".tk-datedit").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id");
+      var tk = (S.tickets||[]).filter(function(x){ return x.id === id; })[0];
+      if(!tk) return;
+      var ans = prompt("Ticket ki tareekh theek karein (mas: 2026-02-05)\n\nClient: "+(tk.client||"")+"\nAbhi ki tareekh: "+(tk.date||"?"), tk.date||"");
+      if(ans == null) return;
+      var nd = sheetDate(ans, "");
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){ alert("Tareekh samajh nahi aayi. Mas: 2026-02-05"); return; }
+      tk.date = nd;
+      ticketFilter = nd.slice(0,7);
+      save(); render();
+    };
+  });
+  var tkShift = document.getElementById("tkShift");
+  if(tkShift) tkShift.onclick = function(){
+    var from = (document.getElementById("tkFrom")||{}).value;
+    var to = (document.getElementById("tkTo")||{}).value;
+    if(!from || !to) return;
+    if(from === to){ alert("Alag mahine chunein."); return; }
+    var mv = (S.tickets||[]).filter(function(t){ return String(t.date||"").slice(0,7) === from; });
+    if(!mv.length){ alert(monthLabel(from)+" mein koi ticket nahi."); return; }
+    if(!confirm(monthLabel(from)+" ke "+mv.length+" tickets "+monthLabel(to)+" mein shift karein?\n\n(Din wahi rahega: mas 05 Jan → 05 Feb)")) return;
+    var maxD = new Date(Number(to.slice(0,4)), Number(to.slice(5,7)), 0).getDate();
+    mv.forEach(function(t){
+      var day = Number(String(t.date||"").slice(8,10)) || 1;
+      if(day > maxD) day = maxD;
+      t.date = to + "-" + String(day).padStart(2,"0");
+    });
+    ticketFilter = to;
+    save(); render();
+  };
+  var ddT = document.getElementById("dedupeTickets");
+  if(ddT) ddT.onclick = function(){
+    var seen = {}, rm = [];
+    (S.tickets||[]).slice().sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); }).forEach(function(t){
+      var k = String(t.client||"").trim().toLowerCase()+"|"+Number(t.cost)+"|"+Number(t.sale);
+      if(seen[k]) rm.push(t.id); else seen[k] = 1;
+    });
+    if(!rm.length){ alert("Koi duplicate ticket nahi mila."); return; }
+    if(!confirm(rm.length+" duplicate tickets mile (same client + same cost/sale).\n\nPurani tareekh wala rakha jayega, baqi hat jayenge. Hata dein?")) return;
+    S.tickets = S.tickets.filter(function(t){ return rm.indexOf(t.id) === -1; });
+    save(); render();
+  };
   var ctk = document.getElementById("clearTickets");
   if(ctk) ctk.onclick = function(){
     if(!S.tickets.length){ alert("Koi ticket nahi hai."); return; }
@@ -1381,8 +1829,26 @@ function bind(){
       else if(el.classList.contains("f-amt")) f.amount = Number(el.value) || 0;
       else if(el.type === "checkbox") f.on = el.checked;
     });
+    var prevId = extractFileId(S.settings.importId || "");
+    var prevUrl = String(S.settings.syncUrl || "");
     S.settings.syncUrl = document.getElementById("setSyncUrl").value.trim();
     S.settings.importId = document.getElementById("setImportId").value.trim();
+    var newId = extractFileId(S.settings.importId || "");
+    var changedFile = (newId !== prevId) || (S.settings.syncUrl !== prevUrl);
+    if(changedFile){
+      // Nayi file chuni gayi — pehle purana data us par na likhein, seedha wahan se data laayein
+      saveLocal(); render();
+      var m1 = "Settings save ho gayi.";
+      m1 += newId ? ("\n\nRead/Write file ID: "+newId) : "\n\nFile ID khali hai — script jis file mein deploy hai usi se data aayega.";
+      if(!S.settings.syncUrl){ alert(m1); return; }
+      alert(m1);
+      if(!confirm("Ab isi file se data laayein?\n\nHaan = Sheet se data lao (recommended)\nCancel = abhi nahi (baad mein 'Sheet se data lao' dabayein)")){
+        setSyncStatus("File ID save ho gayi — 'Sheet se data lao' dabayein", true);
+        return;
+      }
+      syncPull(function(){ render(); });
+      return;
+    }
     save(); render(); alert("Settings save ho gayi." + (S.settings.syncUrl ? "\nAb data Google Sheet mein sync hoga." : ""));
   };
 
@@ -1427,9 +1893,11 @@ function bind(){
   if(aw) aw.onclick = function(){
     var amt = Number(document.getElementById("wsAmt").value);
     if(!(amt>0)) return;
-    S.waseem.push({ id:uid(), date:document.getElementById("wsDate").value || today(),
+    var dd = document.getElementById("wsDate").value || today();
+    S.waseem.push({ id:uid(), date:dd,
                     kind:document.getElementById("wsKind").value,
                     note:document.getElementById("wsNote").value.trim(), amount:amt });
+    monthFilter.WS = String(dd).slice(0,7);
     save(); render();
   };
   app.querySelectorAll(".del[data-type='waseem']").forEach(function(b){
@@ -1488,14 +1956,23 @@ function bind(){
   var ps = document.getElementById("pullSync");
   if(ps) ps.onclick = function(){
     var u = document.getElementById("setSyncUrl").value.trim();
+    var iid = document.getElementById("setImportId");
     S.settings.syncUrl = u;
+    if(iid) S.settings.importId = iid.value.trim();
+    saveLocal();
     if(!u){ alert("Pehle sync URL daalein."); return; }
-    syncPull(function(){ save(); render(); });
+    syncPull(function(ok){ if(ok) save(); render(); });
   };
   var tst = document.getElementById("testSync");
   if(tst) tst.onclick = testSync;
   var ish = document.getElementById("importSheet");
-  if(ish) ish.onclick = importFromSheet;
+  if(ish) ish.onclick = function(){
+    var u = document.getElementById("setSyncUrl"), iid = document.getElementById("setImportId");
+    if(u) S.settings.syncUrl = u.value.trim();
+    if(iid) S.settings.importId = iid.value.trim();
+    saveLocal();
+    importFromSheet();
+  };
   var cg = document.getElementById("copyGas");
   if(cg) cg.onclick = function(){
     var ta = document.getElementById("gasCode");
@@ -1507,6 +1984,8 @@ function bind(){
   if(cs) cs.onclick = function(){
     var site = location.origin + location.pathname;
     var link = site + "?sync=" + encodeURIComponent(S.settings.syncUrl || "");
+    var sid = selectedSheetId();
+    if(sid) link += "&ssid=" + encodeURIComponent(sid);
     if(!S.settings.syncUrl) alert("Sync URL abhi khali hai — link mein sirf app hoga, sync setup nahi.");
     var ta = document.createElement("textarea");
     ta.value = link;
@@ -1539,9 +2018,20 @@ function bind(){
   };
   var ra = document.getElementById("resetAll");
   if(ra) ra.onclick = function(){
-    if(confirm("SACH MEIN poora data delete karein? Backup pehle le lein!")){
-      if(confirm("Aakhri tasdeeq: sab record khatam hoga.")){
-        S = blankState(); save(); selectedMonth = null; render();
+    if(confirm("SACH MEIN poora data delete karein?\n\n(Ye Google Sheet par save hua data bhi delete kar dega — backup pehle le lein!)")){
+      if(confirm("Aakhri tasdeeq: sab record khatam hoga aur sheet bhi khali ho jayegi.")){
+        var keepUrl = S.settings.syncUrl, keepId = S.settings.importId;
+        S = blankState();
+        S.settings.syncUrl = keepUrl;      // connection settings barqarar
+        S.settings.importId = keepId;
+        S.__ts = Date.now();
+        saveLocal(); selectedMonth = null; render();
+        setSyncStatus("Sheet se bhi data delete kiya ja raha hai…");
+        doPush(function(ok){
+          alert(ok
+            ? "✓ Local data aur Google Sheet ka data — dono delete ho gaye.\n\nAb sirf EK mahine ki file import karein."
+            : "Local data delete ho gaya, magar Google Sheet par data abhi bhi hai.\nInternet / sync URL check karein, warna purana data wapas aa sakta hai.");
+        });
       }
     }
   };
