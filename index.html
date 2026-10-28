@@ -225,12 +225,11 @@ var TXT = {
   }
 };
 function T(k){
-  var d = TXT[S.settings.lang] || TXT.ur;
-  return (d[k] !== undefined) ? d[k] : ((TXT.ur[k] !== undefined) ? TXT.ur[k] : k);
+  return (TXT.en[k] !== undefined) ? TXT.en[k] : k;
 }
 function blankState(){
   return {
-    settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"ur", hints:true, lastBackup:"",
+    settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"en", hints:true, lastBackup:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
       { id:"fix-rent", label:"Office rent", amount:70000, on:true },
