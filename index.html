@@ -18,7 +18,9 @@
   header .tag{font-size:12px; color:#94a3b8; margin-top:2px;}
   .lang-btn{position:absolute; top:14px; right:95px; border:1px solid #475569; background:#1e293b; color:#fff; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
   .hints-btn{position:absolute; top:14px; right:14px; border:1px solid #475569; background:#1e293b; color:#94a3b8; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
+  .ver{font-size:11px; color:#94a3b8; font-weight:400; margin-left:6px;}
   body.no-hints .hint:not(.hint-status){display:none;}
+  .ver{font-size:11px; color:#94a3b8; font-weight:600; margin-left:6px;}
   nav{display:flex; overflow-x:auto; gap:6px; padding:10px 12px; background:#0f172a;}
   nav::-webkit-scrollbar{display:none;}
   nav button{flex:0 0 auto; border:none; background:#1e293b; color:#cbd5e1; padding:8px 14px; border-radius:999px; font-size:14px; font-weight:600;}
@@ -59,7 +61,7 @@
 </head>
 <body>
 <header>
-  <h1>Travel Office Hisab</h1>
+  <h1>Travel Office Hisab <span class="ver">v1.1</span></h1>
   <button id="hintsBtn" class="hints-btn">Hints: ON</button>
   <button id="langBtn" class="lang-btn">English</button>
 </header>
@@ -71,6 +73,7 @@
   <button data-tab="pB" id="tabPB">Sarmad</button>
   <button data-tab="abbu">Abbu</button>
   <button data-tab="waseem">Waseem</button>
+  <button data-tab="qarza">Qarza</button>
   <button data-tab="bakaya">Bakaya Payments</button>
   <button data-tab="settings">Settings</button>
 </nav>
@@ -79,6 +82,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
+var APP_VER = "1.1";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var ss;\n  try{\n    if(e && e.parameter && e.parameter.ssid){ ss = SpreadsheetApp.openById(e.parameter.ssid); }\n    else{ ss = SpreadsheetApp.getActiveSpreadsheet(); }\n  }catch(err){\n    return ContentService.createTextOutput(JSON.stringify({ok:false, err:\"Spreadsheet nahi khuli (File ID check karein): \"+err})).setMimeType(ContentService.MimeType.JSON);\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !(e && e.parameter && e.parameter.ssid)){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, data:d||\"\", debug:{spreadsheet: ss.getName(), sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doPost(e){\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n  try{\n    var raw = (e.postData && e.postData.contents) || \"\";\n    var req = JSON.parse(raw);\n    if(req && req.data != null) sh.getRange(\"A1\").setValue(String(req.data));\n  }catch(err){}\n  return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}";
 
@@ -88,7 +92,8 @@ var TXT = {
     abbu:"Abbu", waseem:"Waseem",
     todaysum:"Aaj ka khulasa", loanbaqi:"Qarza baqi (loan)", kaq:" ka baqaya", clbak:"Bakaya payments (clients)",
     kulsadqa:"Kul sadqa diya gaya: ", kulqarza:" • Kul qarza utara: ", appm:" • Apply kiye gaye mahine: ",
-    abbuliya:" • Abbu ne liya: ", wsbaqi:" • Waseem ko commission baqi: ", chbaqi:" • Sadqa baqi: ",
+    abbuliya:" • Abbu ne liya: ", wsbaqi:" • Waseem ko commission baqi: ", chbaqi:" • Sadqa baqi: ", chbani:" • Sadqa bani: ", chdi:" • Sadqa di: ", chled:"Sadqa (charity) — di hui", chempty:"Abhi koi sadqa di nahi gayi.",
+    qarzah:"Qarza Tracker", qzbaqi:"Baqi qarza", qzpaid:"Kul qarza paid", qzadd:"Qarza payment record karein (balance kam hogi)", qznote:"Note (mas: September ki qarza)", qzhist:"Qarza payment history", qarza:"Qarza",
     pmah:"Pichhli mahine", thm:"Mahina", thk:"Kamai", thkh:"Kharcha", ths:"Status",
     apdone:"Apply ho gaya", append:"Pending",
     nomonth:"Abhi koi mahina add nahi hua. 'Mahana Hisab' se pehla mahina shuru karein.",
@@ -155,7 +160,8 @@ var TXT = {
     abbu:"Father", waseem:"Waseem",
     todaysum:"Today's Summary", loanbaqi:"Loan remaining", kaq:"'s balance", clbak:"Client payments pending",
     kulsadqa:"Total charity given: ", kulqarza:" • Total loan paid: ", appm:" • Months applied: ",
-    abbuliya:" • Father took: ", wsbaqi:" • Waseem commission due: ", chbaqi:" • Charity remaining: ",
+    abbuliya:" • Father took: ", wsbaqi:" • Waseem commission due: ", chbaqi:" • Charity remaining: ", chbani:" • Charity accrued: ", chdi:" • Charity paid: ", chled:"Charity — paid", chempty:"No charity payments yet.",
+    qarzah:"Loan Tracker", qzbaqi:"Loan remaining", qzpaid:"Total loan paid", qzadd:"Record loan payment (balance reduces)", qznote:"Note (e.g. September loan)", qzhist:"Loan Payment History", qarza:"Loan",
     pmah:"Recent months", thm:"Month", thk:"Income", thkh:"Expenses", ths:"Status",
     apdone:"Applied", append:"Pending",
     nomonth:"No month added yet. Start the first month from 'Monthly Accounts'.",
@@ -239,6 +245,7 @@ function blankState(){
     tickets: [],       // {id, date, client, detail, cost, sale, paid, commission}
     waseem: [],        // {id, date, kind:"commission"|"salary", note, amount}
     charityPaid: [],   // {id, date, amount, note} — di hui sadqa
+    qarzaPaid: [],     // {id, date, amount, note} — qarza ki payments
     bills: []          // {id, label, amount, due:"2025-09-15", paid:false}
   };
 }
@@ -255,6 +262,8 @@ function load(){
     if(!s.bills) s.bills = [];
     if(!s.waseem) s.waseem = [];
     if(!s.charityPaid) s.charityPaid = [];
+    if(!s.qarzaPayments) s.qarzaPayments = [];
+    if(!s.qarzaPaid) s.qarzaPaid = [];
     ensureSettings(s);
     return s;
   }catch(e){ return blankState(); }
@@ -321,6 +330,8 @@ function syncPull(cb){
           if(!data.bills) data.bills = [];
           if(!data.waseem) data.waseem = [];
           if(!data.charityPaid) data.charityPaid = [];
+          if(!data.qarzaPayments) data.qarzaPayments = [];
+          if(!data.qarzaPaid) data.qarzaPaid = [];
           S = data;
           ensureSettings(S);
           localStorage.setItem(KEY, JSON.stringify(S));
@@ -726,13 +737,14 @@ function render(){
   else if(currentTab==="pA" || currentTab==="pB") app.innerHTML = viewPartner(currentTab);
   else if(currentTab==="abbu") app.innerHTML = viewAbbu();
   else if(currentTab==="waseem") app.innerHTML = viewWaseem();
+  else if(currentTab==="qarza") app.innerHTML = viewQarza();
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
   else app.innerHTML = viewSettings();
   bind();
   var t1 = document.getElementById("tabPA"), t2 = document.getElementById("tabPB");
   if(t1) t1.textContent = S.settings.partnerA;
   if(t2) t2.textContent = S.settings.partnerB;
-  ["dash","month","tickets","bakaya","settings","abbu","waseem"].forEach(function(k){
+  ["dash","month","tickets","bakaya","settings","abbu","waseem","qarza"].forEach(function(k){
     var el = document.querySelector('#tabs [data-tab="'+k+'"]');
     if(el) el.textContent = T(k);
   });
@@ -771,8 +783,10 @@ function totals(){
   });
   var chP = 0;
   (S.charityPaid||[]).forEach(function(x){ chP += Number(x.amount)||0; });
+  var qzP = 0;
+  (S.qarzaPaid||[]).forEach(function(x){ qzP += Number(x.amount)||0; });
   return { charity:charity, loanPaid:loanPaid, monthsApplied:monthsApplied, bakaya:bakaya,
-           charityPaid:chP, charityBaqi:Math.max(0, charity - chP),
+           charityPaid:chP, charityBaqi:Math.max(0, charity - chP), qzPaid:qzP,
            abbuTotal:(function(){ var a=0; S.draws.forEach(function(d){ if(d.partner==="ABBU") a += Number(d.amount)||0; }); return a; })(),
            waseemDena:(function(){
              var k = 0;
@@ -811,7 +825,7 @@ function viewDash(){
   html += '<div class="stat"><div class="t">'+esc(st.partnerB)+esc(T("kaq"))+'</div><div class="v '+(pb.balB>=0?"pos":"neg")+'">'+money(pb.balB)+'</div></div>';
   html += '<div class="stat"><div class="t">'+esc(T("clbak"))+'</div><div class="v gld">'+money(t.bakaya)+'</div></div>';
   html += '</div>';
-  html += '<div class="hint">'+esc(T("kulsadqa"))+'<b>'+money(t.charity)+'</b>'+esc(T("kulqarza"))+'<b>'+money(t.loanPaid)+'</b>'+esc(T("appm"))+'<b>'+t.monthsApplied+'</b>'+(t.abbuTotal ? esc(T("abbuliya"))+'<b>'+money(t.abbuTotal)+'</b>' : '')+(t.waseemDena ? esc(T("wsbaqi"))+'<b>'+money(t.waseemDena)+'</b>' : '')+(t.charityBaqi > 0 ? esc(T("chbaqi"))+'<b>'+money(t.charityBaqi)+'</b>' : '')+'</div>';
+  html += '<div class="hint">'+esc(T("kulsadqa"))+'<b>'+money(t.charity)+'</b>'+esc(T("kulqarza"))+'<b>'+money(t.loanPaid)+'</b>'+esc(T("appm"))+'<b>'+t.monthsApplied+'</b>'+(t.abbuTotal ? esc(T("abbuliya"))+'<b>'+money(t.abbuTotal)+'</b>' : '')+(t.waseemDena ? esc(T("wsbaqi"))+'<b>'+money(t.waseemDena)+'</b>' : '')+((t.charity>0||t.charityPaid>0)? esc(T("chbani"))+money(t.charity)+esc(T("chdi"))+money(t.charityPaid):'')+(t.charityBaqi > 0 ? esc(T("chbaqi"))+'<b>'+money(t.charityBaqi)+'</b>' : '')+'</div>';
   html += '</div>';
 
   var mids = Object.keys(S.months).sort().reverse();
@@ -826,6 +840,23 @@ function viewDash(){
   } else {
     html += '<div class="card"><div class="empty">'+esc(T("nomonth"))+'</div></div>';
   }
+
+  // Sadqa (charity) — di hui payments
+  var chL = (S.charityPaid||[]).slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  html += '<div class="card"><h2>'+esc(T("chled"))+'</h2>';
+  html += '<div class="row"><input id="chAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="chDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<input id="chNote" placeholder="'+esc(T("thw"))+'" style="margin-top:8px;">';
+  html += '<button class="btn small primary" id="addCh" style="width:100%;">'+esc(T("savek"))+'</button>';
+  if(chL.length){
+    html += '<table style="margin-top:8px;"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    chL.forEach(function(x){
+      html += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.note||"—")+'</td><td class="neg">'+money(x.amount)+'</td><td><button class="del" data-type="charity" data-id="'+x.id+'">✕</button></td></tr>';
+    });
+    html += '</table>';
+  } else {
+    html += '<div class="empty">'+esc(T("chempty"))+'</div>';
+  }
+  html += '</div>';
   return html;
 }
 
@@ -1036,6 +1067,34 @@ function viewWaseem(){
   return html;
 }
 
+/* ================= QARZA (LOAN) ================= */
+function viewQarza(){
+  var html = "";
+  var paid = 0;
+  (S.qarzaPaid||[]).forEach(function(x){ paid += Number(x.amount)||0; });
+  var mine = (S.qarzaPaid||[]).slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+  html += '<div class="card"><h2>'+esc(T("qarzah"))+'</h2><div class="grid2">';
+  html += '<div class="stat"><div class="t">'+esc(T("qzbaqi"))+'</div><div class="v neg">'+money(S.settings.loanBalance)+'</div></div>';
+  html += '<div class="stat"><div class="t">'+esc(T("qzpaid"))+'</div><div class="v pos">'+money(paid)+'</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="card"><h2>'+esc(T("qzadd"))+'</h2>';
+  html += '<div class="row"><input id="qzAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="qzDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<input id="qzNote" placeholder="'+esc(T("qznote"))+'" style="margin-top:8px;">';
+  html += '<button class="btn primary" id="addQz">'+esc(T("savek"))+'</button></div>';
+
+  if(mine.length){
+    html += '<div class="card"><h2>'+esc(T("qzhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
+    mine.forEach(function(x){
+      html += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.note||"—")+'</td><td class="pos">'+money(x.amount)+'</td><td><button class="del" data-type="qz" data-id="'+x.id+'">✕</button></td></tr>';
+    });
+    html += '</table></div>';
+  } else {
+    html += '<div class="card"><div class="empty">'+esc(T("emptynik"))+'</div></div>';
+  }
+  return html;
+}
+
 /* ================= BAKAYA (RECEIVABLES) ================= */
 function viewBakaya(){
   var html = "";
@@ -1160,6 +1219,7 @@ function viewSettings(){
   html += '<div class="card"><h2>'+esc(T("reseth"))+'</h2>';
   html += '<button class="btn" id="resetAll" style="background:var(--red); color:#fff;">'+esc(T("resetbtn"))+'</button>';
   html += '</div>';
+  html += '<div class="hint">App version: 1.1</div>';
   return html;
 }
 
@@ -1219,6 +1279,7 @@ function bind(){
       date: today(), charity: c.charity, loan: c.loanPay, each: c.each
     };
     S.settings.loanBalance = Math.max(0, (Number(S.settings.loanBalance)||0) - c.loanPay);
+    if(c.loanPay>0) S.qarzaPaid.push({ id:uid(), date:today(), amount:c.loanPay, note:monthLabel(selectedMonth) });
     save(); render();
     alert("Mahina apply ho gaya!\n\nSadqa: "+money(c.charity)+" (channel par dein, yad rakhein)\nQarza kam hua: "+money(c.loanPay)+"\nBaqi qarza: "+money(S.settings.loanBalance)+"\nHar partner ka hissa: "+money(c.each));
   };
@@ -1405,6 +1466,38 @@ function bind(){
       save(); render();
     };
   });
+  var ach = document.getElementById("addCh");
+  if(ach) ach.onclick = function(){
+    var amt = Number(document.getElementById("chAmt").value);
+    if(!(amt>0)) return;
+    S.charityPaid.push({ id:uid(), date:document.getElementById("chDate").value || today(), amount:amt, note:document.getElementById("chNote").value.trim() });
+    save(); render();
+  };
+  app.querySelectorAll(".del[data-type='charity']").forEach(function(b){
+    b.onclick = function(){
+      S.charityPaid = S.charityPaid.filter(function(y){ return y.id !== b.getAttribute("data-id"); });
+      save(); render();
+    };
+  });
+  var aq = document.getElementById("addQz");
+  if(aq) aq.onclick = function(){
+    var amt = Number(document.getElementById("qzAmt").value);
+    if(!(amt>0)) return;
+    S.qarzaPaid.push({ id:uid(), date:document.getElementById("qzDate").value || today(), amount:amt, note:document.getElementById("qzNote").value.trim() });
+    S.settings.loanBalance = Math.max(0, (Number(S.settings.loanBalance)||0) - amt);
+    save(); render();
+  };
+  app.querySelectorAll(".del[data-type='qz']").forEach(function(b){
+    b.onclick = function(){
+      var x = (S.qarzaPaid||[]).filter(function(y){ return y.id === b.getAttribute("data-id"); })[0];
+      if(!x) return;
+      if(confirm("Ye payment record hatana hai? (Qarza balance wapis barh jayega)")){
+        S.settings.loanBalance = (Number(S.settings.loanBalance)||0) + (Number(x.amount)||0);
+        S.qarzaPaid = S.qarzaPaid.filter(function(y){ return y.id !== x.id; });
+        save(); render();
+      }
+    };
+  });
 
   var ex = document.getElementById("exportData");
   if(ex) ex.onclick = function(){
@@ -1465,6 +1558,8 @@ function bind(){
         if(!S.bills) S.bills = [];
         if(!S.waseem) S.waseem = [];
         if(!S.charityPaid) S.charityPaid = [];
+        if(!S.qarzaPayments) S.qarzaPayments = [];
+        if(!S.qarzaPaid) S.qarzaPaid = [];
         save(); selectedMonth = null; render(); alert("Backup wapas aa gaya.");
       }catch(e){ alert("Ye file theek nahi hai. Sirf backup file chunein."); }
     };
