@@ -2053,5 +2053,139 @@ if(hintsB) hintsB.onclick = function(){
   save(); render();
 };
 </script>
+
+<script>
+(function(){
+  "use strict";
+
+  var AIRLINES = [
+    { c:"PK", n:"PIA",              m:"https://www.piac.com.pk/manage-booking",           s:"https://www.piac.com.pk/flight-status" },
+    { c:"PA", n:"AirBlue",          m:"https://www.airblue.com/manage-booking",           s:"https://www.airblue.com/flight-status" },
+    { c:"ER", n:"Serene Air",       m:"https://www.sereneair.com/manage-booking",         s:"https://www.sereneair.com/flight-status" },
+    { c:"EK", n:"Emirates",         m:"https://www.emirates.com/manage-booking",          s:"https://www.emirates.com/flight-status" },
+    { c:"QR", n:"Qatar Airways",    m:"https://www.qatarairways.com/managebooking",       s:"https://www.qatarairways.com/flight-status" },
+    { c:"EY", n:"Etihad",           m:"https://www.etihad.com/manage",                    s:"https://www.etihad.com/flight-status" },
+    { c:"TK", n:"Turkish Airlines", m:"https://www.turkishairlines.com/manage-booking",   s:"https://www.turkishairlines.com/flight-status" },
+    { c:"SV", n:"Saudia",           m:"https://www.saudia.com/manage-booking",            s:"https://www.saudia.com/flight-status" },
+    { c:"FZ", n:"flydubai",         m:"https://www.flydubai.com/manage-booking",          s:"https://www.flydubai.com/flight-status" },
+    { c:"G9", n:"Air Arabia",       m:"https://www.airarabia.com/manage-booking",         s:"https://www.airarabia.com/flight-status" },
+    { c:"BA", n:"British Airways",  m:"https://www.britishairways.com/travel/managebooking", s:"https://www.britishairways.com/travel/flightstatus" },
+    { c:"SQ", n:"Singapore Air",    m:"https://www.singaporeair.com/manage-booking",      s:"https://www.singaporeair.com/flight-status" },
+    { c:"TG", n:"Thai Airways",     m:"https://www.thaiairways.com/manage-booking",       s:"https://www.thaiairways.com/flight-status" },
+    { c:"MH", n:"Malaysia Air",     m:"https://www.malaysiaairlines.com/manage-booking",  s:"https://www.malaysiaairlines.com/flight-status" }
+  ];
+
+  var KEY = "travelOfficeLookups";
+  var last = { code:"", pnr:"", name:"" };
+
+  function recent(){
+    try{ return JSON.parse(localStorage.getItem(KEY) || "[]"); }catch(e){ return []; }
+  }
+  function addRecent(x){
+    var a = recent().filter(function(y){ return !(y.code===x.code && y.pnr===x.pnr); });
+    a.unshift(x);
+    localStorage.setItem(KEY, JSON.stringify(a.slice(0,20)));
+  }
+  function clean(s){ return String(s||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,""); }
+
+  function view(){
+    var h = "";
+    h += '<div class="card"><h2>PNR / Booking Lookup</h2>';
+    h += '<div class="hint" style="margin-top:0;">Airline chunein, PNR aur last name daalein. Button dabane par airline ka page khulega aur PNR + naam clipboard mein chala jayega — wahan paste kar dein.</div>';
+    h += '<label>Airline</label><select id="lkAir"><option value="">— Airline chunein —</option>';
+    AIRLINES.forEach(function(a){
+      h += '<option value="'+esc(a.c)+'"'+(a.c===last.code?" selected":"")+'>'+esc(a.n)+' ('+esc(a.c)+')</option>';
+    });
+    h += '</select>';
+    h += '<div class="row" style="margin-top:8px;">'
+       + '<div><label>PNR / Booking reference</label><input id="lkPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase;" value="'+esc(last.pnr)+'"></div>'
+       + '<div><label>Last name</label><input id="lkName" placeholder="KHAN" autocomplete="off" style="text-transform:uppercase;" value="'+esc(last.name)+'"></div>'
+       + '</div>';
+    h += '<button class="btn primary" id="lkGo">Manage Booking kholein</button>';
+    h += '<button class="btn small green" id="lkSt" style="margin-top:8px; width:100%;">Flight Status kholein</button>';
+    h += '<div class="hint" id="lkMsg"></div></div>';
+
+    var r = recent();
+    if(r.length){
+      h += '<div class="card"><h2>Haal ki lookups</h2><table><tr><th>Airline</th><th>PNR</th><th></th></tr>';
+      r.forEach(function(x,i){
+        var nm = (AIRLINES.filter(function(a){ return a.c===x.code; })[0]||{}).n || x.code;
+        h += '<tr><td>'+esc(nm)+'</td><td><b>'+esc(x.pnr)+'</b>'
+           + (x.name?'<div style="font-size:12px;color:var(--muted);">'+esc(x.name)+'</div>':'')
+           + '</td><td><button class="btn small lkAgain" data-i="'+i+'" style="margin:0 4px 0 0;padding:5px 9px;">Kholein</button>'
+           + '<button class="del lkDel" data-i="'+i+'">✕</button></td></tr>';
+      });
+      h += '</table></div>';
+    }
+
+    h += '<div class="card"><div class="hint" style="margin-top:0;">Koi server request nahi — browser seedha airline ki site par jata hai, is liye IP ban ka khatra nahi. Koi airline ka URL badal jaye to upar <b>AIRLINES</b> list mein us line ko theek kar dein.</div></div>';
+    return h;
+  }
+
+  function go(kind){
+    var code = (document.getElementById("lkAir")||{}).value || "";
+    var pnr  = clean((document.getElementById("lkPnr")||{}).value);
+    var nm   = clean((document.getElementById("lkName")||{}).value);
+    var msg  = document.getElementById("lkMsg");
+    if(!code){ if(msg) msg.textContent = "Pehle airline chunein."; return; }
+    if(pnr.length < 5){ if(msg) msg.textContent = "PNR kam az kam 5 characters ka hota hai."; return; }
+    var a = AIRLINES.filter(function(x){ return x.c===code; })[0];
+    if(!a) return;
+    last = { code:code, pnr:pnr, name:nm };
+    addRecent({ code:code, pnr:pnr, name:nm, ts:Date.now() });
+    var txt = pnr + (nm ? " " + nm : "");
+    if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(function(){});
+    var url = (kind==="s") ? a.s : a.m;
+    var w = window.open(url, "_blank");
+    if(!w) location.href = url;
+    if(msg) msg.innerHTML = "✓ Khul gaya — <b>"+esc(pnr)+"</b> clipboard mein hai.";
+    window.render();
+  }
+
+  function bindView(){
+    var app = document.getElementById("app");
+    var g = document.getElementById("lkGo"); if(g) g.onclick = function(){ go("m"); };
+    var s = document.getElementById("lkSt"); if(s) s.onclick = function(){ go("s"); };
+    var p = document.getElementById("lkPnr");
+    if(p) p.oninput = function(){ last.pnr = clean(p.value); };
+    app.querySelectorAll(".lkDel").forEach(function(b){
+      b.onclick = function(){
+        var a = recent(); a.splice(Number(b.getAttribute("data-i")),1);
+        localStorage.setItem(KEY, JSON.stringify(a)); window.render();
+      };
+    });
+    app.querySelectorAll(".lkAgain").forEach(function(b){
+      b.onclick = function(){
+        var x = recent()[Number(b.getAttribute("data-i"))]; if(!x) return;
+        last = { code:x.code, pnr:x.pnr, name:x.name||"" };
+        window.render(); go("m");
+      };
+    });
+  }
+
+  // nav mein button jodein
+  function addTab(){
+    var nav = document.getElementById("tabs");
+    if(!nav || nav.querySelector('[data-tab="lookup"]')) return;
+    var b = document.createElement("button");
+    b.setAttribute("data-tab","lookup");
+    b.textContent = "PNR Lookup";
+    nav.appendChild(b);
+  }
+
+  // render ko wrap karein — jab lookup tab ho to apna view dikhayein
+  var orig = window.render;
+  window.render = function(){
+    orig.apply(this, arguments);
+    if(typeof currentTab !== "undefined" && currentTab === "lookup"){
+      var app = document.getElementById("app");
+      if(app){ app.innerHTML = view(); bindView(); }
+    }
+  };
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", addTab);
+  else addTab();
+})();
+</script>
 </body>
 </html>
