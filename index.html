@@ -88,7 +88,7 @@ var TXT = {
     abbu:"Abbu", waseem:"Waseem",
     todaysum:"Aaj ka khulasa", loanbaqi:"Qarza baqi (loan)", kaq:" ka baqaya", clbak:"Bakaya payments (clients)",
     kulsadqa:"Kul sadqa diya gaya: ", kulqarza:" • Kul qarza utara: ", appm:" • Apply kiye gaye mahine: ",
-    abbuliya:" • Abbu ne liya: ", wsbaqi:" • Waseem ko commission baqi: ",
+    abbuliya:" • Abbu ne liya: ", wsbaqi:" • Waseem ko commission baqi: ", chbaqi:" • Sadqa baqi: ",
     pmah:"Pichhli mahine", thm:"Mahina", thk:"Kamai", thkh:"Kharcha", ths:"Status",
     apdone:"Apply ho gaya", append:"Pending",
     nomonth:"Abhi koi mahina add nahi hua. 'Mahana Hisab' se pehla mahina shuru karein.",
@@ -155,7 +155,7 @@ var TXT = {
     abbu:"Father", waseem:"Waseem",
     todaysum:"Today's Summary", loanbaqi:"Loan remaining", kaq:"'s balance", clbak:"Client payments pending",
     kulsadqa:"Total charity given: ", kulqarza:" • Total loan paid: ", appm:" • Months applied: ",
-    abbuliya:" • Father took: ", wsbaqi:" • Waseem commission due: ",
+    abbuliya:" • Father took: ", wsbaqi:" • Waseem commission due: ", chbaqi:" • Charity remaining: ",
     pmah:"Recent months", thm:"Month", thk:"Income", thkh:"Expenses", ths:"Status",
     apdone:"Applied", append:"Pending",
     nomonth:"No month added yet. Start the first month from 'Monthly Accounts'.",
@@ -237,6 +237,7 @@ function blankState(){
     receivables: [],   // {id, client, note, total, payments:[{date, amount}]}
     tickets: [],       // {id, date, client, detail, cost, sale, paid, commission}
     waseem: [],        // {id, date, kind:"commission"|"salary", note, amount}
+    charityPaid: [],   // {id, date, amount, note} — di hui sadqa
     bills: []          // {id, label, amount, due:"2025-09-15", paid:false}
   };
 }
@@ -252,6 +253,7 @@ function load(){
     if(!s.tickets) s.tickets = [];
     if(!s.bills) s.bills = [];
     if(!s.waseem) s.waseem = [];
+    if(!s.charityPaid) s.charityPaid = [];
     ensureSettings(s);
     return s;
   }catch(e){ return blankState(); }
@@ -317,6 +319,7 @@ function syncPull(cb){
           if(!data.tickets) data.tickets = [];
           if(!data.bills) data.bills = [];
           if(!data.waseem) data.waseem = [];
+          if(!data.charityPaid) data.charityPaid = [];
           S = data;
           ensureSettings(S);
           localStorage.setItem(KEY, JSON.stringify(S));
@@ -449,7 +452,7 @@ function importFromSheet(){
   fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(j){
-      var nT = 0, nE = 0, nSkip = 0, nSkipE = 0, nP = 0;
+      var nT = 0, nE = 0, nSkip = 0, nSkipE = 0, nP = 0, nC = 0;
       var midDefault = "", midSrc = "";
       (function(){
         var nm = (j.debug && j.debug.spreadsheet) || "";
@@ -566,6 +569,15 @@ function importFromSheet(){
         addPDraw("A", sheetNum(findKey(p, "umair")));
         addPDraw("B", sheetNum(findKey(p, "sarmad")));
         addPDraw("ABBU", sheetNum(findKey(p, "abbu")));
+        // THE PARTNER column — sadqa/charity di hui
+        var chA = sheetNum(findKey(p, "partner"));
+        if(chA > 0 && midDefault){
+          var cdup = (S.charityPaid||[]).some(function(x){ return Number(x.amount) === chA && (x.date||"").slice(0,7) === midDefault; });
+          if(!cdup){
+            S.charityPaid.push({ id:uid(), date:midDefault + "-01", amount:chA, note:"Sheet import (" + midDefault + ")" });
+            nC++;
+          }
+        }
       });
       var p = j.partners||{};
       if(p.A && p.B && S.settings.partnerA==="Partner 1" && S.settings.partnerB==="Partner 2"){
@@ -592,7 +604,7 @@ function importFromSheet(){
         if(nE===0 && nEs2>0) h2 += "<br><b>Pehla kharcha (jo add nahi hua):</b><br>"+kvHtml(j.expenses[0]);
         rep2.innerHTML = h2;
       }
-      alert("Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+"\nKharche add hue: "+nE+"\nPartner nikasiyan add hui: "+nP+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : "")));
+      alert("Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+"\nKharche add hue: "+nE+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : "")));
     })
     .catch(function(){ setSyncStatus("Sheet se data nahi mila (URL/internet check karein)", true); alert("Sheet se data nahi mila. Sync URL aur internet check karein."); });
 }
@@ -716,7 +728,10 @@ function totals(){
     var paid=0; (r.payments||[]).forEach(function(p){ paid+=Number(p.amount)||0; });
     bakaya += Math.max(0, (Number(r.total)||0) - paid);
   });
+  var chP = 0;
+  (S.charityPaid||[]).forEach(function(x){ chP += Number(x.amount)||0; });
   return { charity:charity, loanPaid:loanPaid, monthsApplied:monthsApplied, bakaya:bakaya,
+           charityPaid:chP, charityBaqi:Math.max(0, charity - chP),
            abbuTotal:(function(){ var a=0; S.draws.forEach(function(d){ if(d.partner==="ABBU") a += Number(d.amount)||0; }); return a; })(),
            waseemDena:(function(){
              var k = 0;
@@ -755,7 +770,7 @@ function viewDash(){
   html += '<div class="stat"><div class="t">'+esc(st.partnerB)+esc(T("kaq"))+'</div><div class="v '+(pb.balB>=0?"pos":"neg")+'">'+money(pb.balB)+'</div></div>';
   html += '<div class="stat"><div class="t">'+esc(T("clbak"))+'</div><div class="v gld">'+money(t.bakaya)+'</div></div>';
   html += '</div>';
-  html += '<div class="hint">'+esc(T("kulsadqa"))+'<b>'+money(t.charity)+'</b>'+esc(T("kulqarza"))+'<b>'+money(t.loanPaid)+'</b>'+esc(T("appm"))+'<b>'+t.monthsApplied+'</b>'+(t.abbuTotal ? esc(T("abbuliya"))+'<b>'+money(t.abbuTotal)+'</b>' : '')+(t.waseemDena ? esc(T("wsbaqi"))+'<b>'+money(t.waseemDena)+'</b>' : '')+'</div>';
+  html += '<div class="hint">'+esc(T("kulsadqa"))+'<b>'+money(t.charity)+'</b>'+esc(T("kulqarza"))+'<b>'+money(t.loanPaid)+'</b>'+esc(T("appm"))+'<b>'+t.monthsApplied+'</b>'+(t.abbuTotal ? esc(T("abbuliya"))+'<b>'+money(t.abbuTotal)+'</b>' : '')+(t.waseemDena ? esc(T("wsbaqi"))+'<b>'+money(t.waseemDena)+'</b>' : '')+(t.charityBaqi > 0 ? esc(T("chbaqi"))+'<b>'+money(t.charityBaqi)+'</b>' : '')+'</div>';
   html += '</div>';
 
   var mids = Object.keys(S.months).sort().reverse();
@@ -1403,6 +1418,7 @@ function bind(){
         ensureSettings(S);
         if(!S.bills) S.bills = [];
         if(!S.waseem) S.waseem = [];
+        if(!S.charityPaid) S.charityPaid = [];
         save(); selectedMonth = null; render(); alert("Backup wapas aa gaya.");
       }catch(e){ alert("Ye file theek nahi hai. Sirf backup file chunein."); }
     };
