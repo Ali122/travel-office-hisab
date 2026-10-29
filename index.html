@@ -751,16 +751,18 @@ function monthCalc(mid){
   S.tickets.forEach(function(t){ if((t.date||"").slice(0,7) === mid) commission += Number(t.commission)||0; });
   var net = income - expenses - abbu - commission;
   var charity = 0, rest = net;
+  var effCharity = (m.charityRate !== undefined && m.charityRate !== null && m.charityRate !== "") ? (Number(m.charityRate)||0) : (Number(S.settings.charityRate)||0);
+  var effLoan = (m.loanRate !== undefined && m.loanRate !== null && m.loanRate !== "") ? (Number(m.loanRate)||0) : (Number(S.settings.loanRate)||0);
   if(net > 0){
-    charity = net * (Number(S.settings.charityRate)||0) / 100;
+    charity = net * effCharity / 100;
     rest = net - charity;
   }
   var loanPay = 0, split = 0;
   if(rest > 0){
-    loanPay = rest * (Number(S.settings.loanRate)||0) / 100;
+    loanPay = rest * effLoan / 100;
     split = rest - loanPay;
   }
-  return { income:income, expenses:expenses, net:net, charity:charity, loanPay:loanPay, split:split, ticketProfit:ticketProfit, abbu:abbu, commission:commission,
+  return { income:income, expenses:expenses, net:net, charity:charity, loanPay:loanPay, split:split, ticketProfit:ticketProfit, abbu:abbu, commission:commission, charityRate:effCharity, loanRate:effLoan,
            each:split/2, applied:!!m.applied, appliedInfo:m.appliedInfo||null };
 }
 function applyMonthNow(mid){
@@ -774,6 +776,21 @@ function applyMonthNow(mid){
   if(c.loanPay>0) S.qarzaPaid.push({ id:uid(), date:today(), amount:c.loanPay, note:monthLabel(mid) });
   save();
   return true;
+}
+function reapplyMonth(mid){
+  // pehle se apply shuda mahine ki taqseem naye nisab (%) ke saath dobara karein
+  var m = S.months[mid]; if(!m || !m.applied) return false;
+  var info = m.appliedInfo || {};
+  var oldLoan = (Number(info.loan)||0);
+  if(oldLoan > 0){
+    // purani qarza katra wapas: balance wapas barha dein aur history se hata dein
+    S.settings.loanBalance = (Number(S.settings.loanBalance)||0) + oldLoan;
+    S.qarzaPaid = (S.qarzaPaid||[]).filter(function(q){ return !(q.note === monthLabel(mid)); });
+  }
+  m.applied = false; m.appliedInfo = null;
+  var ok = applyMonthNow(mid); // naye % ke saath dobara (0 munafa par apply khali reh jayega)
+  save();
+  return ok;
 }
 function autoDistribute(){ // mahina khatam hote hi profit ka hisaab khud baantta hai
   var todayMid = today().slice(0,7);
@@ -964,8 +981,8 @@ function viewDash(){
     html += '<div class="stat"><div class="t">Saadgi (munafa)</div><div class="v '+(c.net>=0?"pos":"neg")+'">'+money(c.net)+'</div></div>';
     html += '</div>';
     html += '<table style="margin-top:10px;">';
-    html += '<tr><td>Sadqa ('+esc(st.charityRate)+'%)</td><td class="gld">'+money(c.charity)+'</td></tr>';
-    html += '<tr><td>Qarza ki payment ('+esc(st.loanRate)+'%)</td><td class="blu">'+money(c.loanPay)+'</td></tr>';
+    html += '<tr><td>Sadqa ('+esc(c.charityRate)+'%)</td><td class="gld">'+money(c.charity)+'</td></tr>';
+    html += '<tr><td>Qarza ki payment ('+esc(c.loanRate)+'%)</td><td class="blu">'+money(c.loanPay)+'</td></tr>';
     html += '<tr><td>'+esc(st.partnerA)+' ka hissa</td><td class="pos">'+money(c.each)+'</td></tr>';
     html += '<tr><td>'+esc(st.partnerB)+' ka hissa</td><td class="pos">'+money(c.each)+'</td></tr>';
     if(c.abbu) html += '<tr><td>Abbu ka liya</td><td class="neg">'+money(c.abbu)+'</td></tr>';
@@ -1075,17 +1092,28 @@ function viewMonth(){
   html += '<tr><td>Is mahine ka ticket profit (kamai mein shamil)</td><td class="'+(c.ticketProfit>=0?"pos":"neg")+'">'+money(c.ticketProfit)+'</td></tr>';
   html += (c.abbu ? '<tr><td>Abbu ka liya (profit se minus)</td><td class="neg">'+money(c.abbu)+'</td></tr>' : '');
   html += (c.commission ? '<tr><td>Waseem commission (profit se minus)</td><td class="neg">'+money(c.commission)+'</td></tr>' : '');
-  html += '<tr><td>Sadqa ('+S.settings.charityRate+'%)</td><td class="gld">'+money(c.charity)+'</td></tr>';
-  html += '<tr><td>Qarza ki payment ('+S.settings.loanRate+'% sadqa ke baad)</td><td class="blu">'+money(c.loanPay)+'</td></tr>';
+  html += '<tr><td>Sadqa ('+c.charityRate+'%)</td><td class="gld">'+money(c.charity)+'</td></tr>';
+  html += '<tr><td>Qarza ki payment ('+c.loanRate+'% sadqa ke baad)</td><td class="blu">'+money(c.loanPay)+'</td></tr>';
   html += '<tr><td>'+esc(st.partnerA)+' ka hissa (baqi ka aadha)</td><td class="pos">'+money(c.each)+'</td></tr>';
   html += '<tr><td>'+esc(st.partnerB)+' ka hissa (baqi ka aadha)</td><td class="pos">'+money(c.each)+'</td></tr>';
   html += '</table>';
   if(c.applied){
     var ai = c.appliedInfo||{};
     html += '<div class="ok-msg">✓ Ye mahina apply ho chuka hai ('+(ai.date||"")+'). Qarza '+money(ai.loan||0)+' kam hui, har partner ko '+money(ai.each||0)+' mil gaya, sadqa '+money(ai.charity||0)+' hua.</div>';
-    html += '<div class="hint">Ghalti ho to pehle is mahine ki kamai/kharcha theek karein, phir Settings mein "reset" karein ya mujhe (AI) batayein.</div>';
+    html += '<div class="hint">Ghalti ho to pehle is mahine ki kamai/kharcha theek karein, phir neeche "Taqseem dobara" se naye nisab par phir se baant dein.</div>';
   } else {
     html += '<div class="hint">Mahina khatam hone par (naya mahina shuru hote hi) profit ka hisaab khud baant diya jayega — sadqa, qarza aur partners ka hissa.</div>';
+  }
+  html += '</div>';
+
+  // Is mahine ke nisab (%) — per-month override
+  html += '<div class="card"><h2>Is mahine ka nisab (taqseem ke %)</h2>';
+  html += '<div class="hint" style="margin-top:0;">Khali chhodne par Settings wale nisab lagenge (sadqa '+st.charityRate+'%, qarza '+st.loanRate+'%). Kuch mahinon mein alag taqseem ho (mas: <b>50% qarza, 25%-25% partners</b>) to yahan <b>Sadqa %</b> aur <b>Qarza %</b> likh dein — baqi jo bachega aadha-aadha partners ko.</div>';
+  html += '<div class="row"><div><label>Sadqa %</label><input id="mCharity" type="number" min="0" max="100" step="0.5" inputmode="decimal" placeholder="'+esc(st.charityRate)+'" value="'+(m.charityRate===undefined||m.charityRate===null?"":esc(m.charityRate))+'"></div>'
+        + '<div><label>Qarza %</label><input id="mLoan" type="number" min="0" max="100" step="1" inputmode="decimal" placeholder="'+esc(st.loanRate)+'" value="'+(m.loanRate===undefined||m.loanRate===null?"":esc(m.loanRate))+'"></div></div>';
+  html += '<button class="btn small primary" id="saveMRates" style="margin-top:8px; width:100%;">Is mahine ka nisab save karein</button>';
+  if(c.applied){
+    html += '<button class="btn small" id="reapplyMonthBtn" style="margin-top:8px; width:100%; background:var(--gold); color:#fff;">Taqseem dobara karein (naye nisab ke saath)</button>';
   }
   html += '</div>';
 
@@ -1641,6 +1669,32 @@ function bind(){
     S.months[to].expenses = (S.months[to].expenses||[]).concat(mv);
     S.months[from].expenses = [];
     save(); selectedMonth = to; render();
+  };
+
+  var saveMR = document.getElementById("saveMRates");
+  if(saveMR) saveMR.onclick = function(){
+    var mid = selectedMonth; if(!mid || !S.months[mid]) return;
+    var cv = (document.getElementById("mCharity")||{}).value;
+    var lv = (document.getElementById("mLoan")||{}).value;
+    if(cv === "" || cv === null) delete S.months[mid].charityRate;
+    else { var cn = Number(cv); if(isNaN(cn) || cn < 0) cn = S.settings.charityRate; S.months[mid].charityRate = cn; }
+    if(lv === "" || lv === null) delete S.months[mid].loanRate;
+    else { var ln = Number(lv); if(isNaN(ln) || ln < 0) ln = S.settings.loanRate; S.months[mid].loanRate = ln; }
+    save(); render();
+    alert(monthLabel(mid)+" ke nisab save ho gaye — hisaab ab unhi ke mutabiq banta hai.");
+  };
+
+  var reApplyBtn = document.getElementById("reapplyMonthBtn");
+  if(reApplyBtn) reApplyBtn.onclick = function(){
+    var mid = selectedMonth; if(!mid) return;
+    if(!confirm(monthLabel(mid)+" ki taqseem naye nisab ke saath dobara hogi.\n\nPurani qarza katra wapas judegi aur naye hisaab se dobara kat jayegi. Partners ka hissa bhi naye nisab se banega. Jari rakhein?")) return;
+    if(reapplyMonth(mid)){
+      render();
+      alert("Taqseem dobara ho gayi — sadqa, qarza aur partners ke hissab update ho gaye.");
+    } else {
+      render();
+      alert("Dobara taqseem nahi ho saki — is mahine ka munafa ab 0 ya kam hai (nisab waisa hi rehta hai).");
+    }
   };
 
   function addItem(type){
