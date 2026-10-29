@@ -14,20 +14,36 @@
     --line:#e5e7eb; --radius:14px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  :root{ --header-h:64px; }
   body{margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:16px;}
-  header{background:#0f172a; color:#fff; padding:14px 16px; position:sticky; top:0; z-index:10;}
-  header h1{margin:0; font-size:19px; font-weight:700;}
-  header .tag{font-size:12px; color:#94a3b8; margin-top:2px;}
-  .lang-btn{position:absolute; top:14px; right:95px; border:1px solid #475569; background:#1e293b; color:#fff; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
-  .hints-btn{position:absolute; top:14px; right:14px; border:1px solid #475569; background:#1e293b; color:#94a3b8; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
-  .ver{font-size:11px; color:#94a3b8; font-weight:400; margin-left:6px;}
+
+  /* ---------- Header ---------- */
+  header{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); color:#fff; padding:10px 14px; min-height:var(--header-h); display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:40; box-shadow:0 2px 12px rgba(15,23,42,.18);}
+  header .brand{display:flex; align-items:center; gap:10px; min-width:0;}
+  header h1{margin:0; font-size:17px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  header .tag{font-size:11.5px; color:#94a3b8; margin-top:1px;}
+  .ver{font-size:11px; color:#cbd5e1; font-weight:700; margin-left:6px; background:#1e293b; border:1px solid #334155; padding:1px 7px; border-radius:999px;}
+  .hints-btn{margin-left:auto; flex:0 0 auto; border:1px solid #475569; background:#1e293b; color:#94a3b8; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
+  #menuBtn{display:none; align-items:center; justify-content:center; flex:0 0 auto; width:38px; height:38px; border:1px solid #475569; background:#1e293b; color:#fff; border-radius:10px; font-size:18px; line-height:1; cursor:pointer;}
   body.no-hints .hint:not(.hint-status){display:none;}
-  .ver{font-size:11px; color:#94a3b8; font-weight:600; margin-left:6px;}
-  nav{display:flex; overflow-x:auto; gap:6px; padding:10px 12px; background:#0f172a;}
-  nav::-webkit-scrollbar{display:none;}
-  nav button{flex:0 0 auto; border:none; background:#1e293b; color:#cbd5e1; padding:8px 14px; border-radius:999px; font-size:14px; font-weight:600;}
-  nav button.active{background:#fff; color:#0f172a;}
-  main{padding:14px 14px 90px; max-width:640px; margin:0 auto;}
+
+  /* ---------- Shell + Sidebar ---------- */
+  .shell{display:flex; align-items:flex-start;}
+  nav#tabs{width:240px; flex:0 0 240px; position:sticky; top:var(--header-h); height:calc(100vh - var(--header-h)); overflow-y:auto; background:#0f172a; padding:12px 10px 26px; z-index:20;}
+  nav#tabs::-webkit-scrollbar{width:8px;}
+  nav#tabs::-webkit-scrollbar-thumb{background:#1e293b; border-radius:8px;}
+  .nav-head{display:none; align-items:center; padding:2px 10px 10px; color:#64748b; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;}
+  nav#tabs #navClose{display:none; margin-left:auto; border:none; background:#1e293b; color:#cbd5e1; width:28px; height:28px; border-radius:8px; font-size:13px; cursor:pointer;}
+  .nav-group{margin-bottom:14px;}
+  .nav-group-title{padding:8px 12px 6px; font-size:10.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#64748b;}
+  nav#tabs button{display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:none; background:transparent; color:#cbd5e1; padding:10px 12px; border-radius:10px; font-size:14.5px; font-weight:600; cursor:pointer; margin-bottom:2px; transition:background .15s,color .15s;}
+  nav#tabs button:hover{background:#1e293b; color:#fff;}
+  nav#tabs button.active{background:#1e293b; color:#fff; box-shadow:inset 3px 0 0 var(--gold);}
+  nav#tabs button .ic{width:20px; flex:0 0 20px; text-align:center; font-size:15px;}
+  nav#tabs button .lbl{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #navBackdrop{display:none;}
+
+  main{flex:1; min-width:0; padding:16px 16px 90px; max-width:820px; margin:0 auto;}
   .card{background:var(--card); border-radius:var(--radius); padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .card h2{margin:0 0 10px; font-size:16px;}
   .row{display:flex; gap:10px; flex-wrap:wrap;}
@@ -59,34 +75,82 @@
   .monthbar{display:flex; gap:8px; align-items:center; margin-bottom:12px;}
   .monthbar select{flex:1;}
   .ok-msg{background:var(--green-bg); color:var(--green); border-radius:10px; padding:10px; font-size:14px; font-weight:600; margin-top:10px;}
+
+  /* ---------- Polish ---------- */
+  .card{box-shadow:0 1px 2px rgba(16,24,40,.04), 0 3px 10px rgba(16,24,40,.05); border:1px solid #eef1f6;}
+  .stat{background:linear-gradient(180deg,#f8fafc,#f1f5f9); border:1px solid #edf1f7;}
+  .stat .v{letter-spacing:-.01em;}
+  th{font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;}
+  tr:last-child td{border-bottom:none;}
+  .btn:active{transform:translateY(1px);}
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 860px){
+    #menuBtn{display:inline-flex;}
+    header h1{font-size:15.5px;}
+    header .tag{display:none;}
+    .shell{display:block;}
+    nav#tabs{position:fixed; left:0; top:0; width:274px; height:100vh; flex:none; transform:translateX(-104%); transition:transform .25s ease; box-shadow:0 12px 40px rgba(15,23,42,.35); z-index:60; padding-top:14px;}
+    .nav-head{display:flex;}
+    body.nav-open nav#tabs{transform:translateX(0);}
+    nav#tabs #navClose{display:block;}
+    #navBackdrop{display:block; position:fixed; inset:0; background:rgba(15,23,42,.5); opacity:0; pointer-events:none; transition:opacity .2s; z-index:55;}
+    body.nav-open #navBackdrop{opacity:1; pointer-events:auto;}
+    main{padding:14px 14px 90px; max-width:none;}
+  }
 </style>
 </head>
 <body>
 <header>
-  <div style="display:flex; align-items:center; gap:10px; padding-right:170px;">
-    <img src="logo.png" alt="AB Travels" style="width:44px; height:44px; border-radius:10px; object-fit:cover; flex:0 0 auto;" onerror="this.style.display='none'">
-    <h1>Travel Office Hisab <span class="ver">v1.14</span></h1>
+  <button id="menuBtn" aria-label="Menu">☰</button>
+  <div class="brand">
+    <img src="logo.png" alt="AB Travels" style="width:42px; height:42px; border-radius:10px; object-fit:cover; flex:0 0 auto;" onerror="this.style.display='none'">
+    <div style="min-width:0;">
+      <h1>Travel Office Hisab <span class="ver" id="verBadge">v1.15</span></h1>
+      <div class="tag">AB Travels</div>
+    </div>
   </div>
   <button id="hintsBtn" class="hints-btn">Hints: ON</button>
 </header>
-<nav id="tabs">
-  <button data-tab="dash" class="active">Khulasa</button>
-  <button data-tab="month">Mahana Hisab</button>
-  <button data-tab="tickets">Tickets</button>
-  <button data-tab="pA" id="tabPA">Umair</button>
-  <button data-tab="pB" id="tabPB">Sarmad</button>
-  <button data-tab="abbu">Abbu</button>
-  <button data-tab="waseem">Waseem</button>
-  <button data-tab="qarza">Qarza</button>
-  <button data-tab="bakaya">Bakaya Payments</button>
-  <button data-tab="settings">Settings</button>
-</nav>
-<main id="app"></main>
+
+<div class="shell">
+  <nav id="tabs">
+    <div class="nav-head"><span>Menu</span><button id="navClose" aria-label="Close">✕</button></div>
+
+    <div class="nav-group" id="navMain">
+      <div class="nav-group-title">Main</div>
+      <button data-tab="dash" class="active"><span class="ic">📊</span><span class="lbl">Summary</span></button>
+      <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
+      <button data-tab="tickets"><span class="ic">🎫</span><span class="lbl">Tickets</span></button>
+      <button data-tab="qarza"><span class="ic">🏦</span><span class="lbl">Loan</span></button>
+      <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Partners</div>
+      <button data-tab="pA" id="tabPA"><span class="ic">👤</span><span class="lbl">Umair</span></button>
+      <button data-tab="pB" id="tabPB"><span class="ic">👤</span><span class="lbl">Sarmad</span></button>
+      <button data-tab="abbu"><span class="ic">👨</span><span class="lbl">Father</span></button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Staff</div>
+      <button data-tab="waseem"><span class="ic">🧑‍💼</span><span class="lbl">Waseem</span></button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">App</div>
+      <button data-tab="settings"><span class="ic">⚙️</span><span class="lbl">Settings</span></button>
+    </div>
+  </nav>
+  <div id="navBackdrop"></div>
+  <main id="app"></main>
+</div>
 
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.14";
+var APP_VER = "1.15";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Spreadsheet nahi khuli (File ID check karein): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail (File ID check karein): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -931,12 +995,25 @@ function downloadReport(){
 
 /* ================= TABS ================= */
 var currentTab = "dash";
+function closeNav(){ document.body.classList.remove("nav-open"); }
+function openNav(){ document.body.classList.add("nav-open"); }
 document.getElementById("tabs").addEventListener("click", function(e){
   var b = e.target.closest("button"); if(!b) return;
+  if(b.id === "navClose"){ closeNav(); return; }
   currentTab = b.getAttribute("data-tab");
-  document.querySelectorAll("#tabs button").forEach(function(x){ x.classList.toggle("active", x===b); });
+  document.querySelectorAll("#tabs button[data-tab]").forEach(function(x){ x.classList.toggle("active", x===b); });
+  closeNav();
   render();
 });
+(function(){
+  var mb = document.getElementById("menuBtn");
+  if(mb) mb.onclick = function(){ document.body.classList.contains("nav-open") ? closeNav() : openNav(); };
+  var nc = document.getElementById("navClose");
+  if(nc) nc.onclick = closeNav;
+  var bd = document.getElementById("navBackdrop");
+  if(bd) bd.onclick = closeNav;
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape") closeNav(); });
+}());
 
 function render(){
   var app = document.getElementById("app");
@@ -950,13 +1027,15 @@ function render(){
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
   else app.innerHTML = viewSettings();
   bind();
-  var t1 = document.getElementById("tabPA"), t2 = document.getElementById("tabPB");
+  var t1 = document.querySelector("#tabPA .lbl"), t2 = document.querySelector("#tabPB .lbl");
   if(t1) t1.textContent = S.settings.partnerA;
   if(t2) t2.textContent = S.settings.partnerB;
   ["dash","month","tickets","bakaya","settings","abbu","waseem","qarza"].forEach(function(k){
-    var el = document.querySelector('#tabs [data-tab="'+k+'"]');
+    var el = document.querySelector('#tabs [data-tab="'+k+'"] .lbl');
     if(el) el.textContent = T(k);
   });
+  var vb = document.getElementById("verBadge");
+  if(vb) vb.textContent = "v"+APP_VER;
   document.body.classList.toggle("no-hints", S.settings.hints === false);
   var hb = document.getElementById("hintsBtn");
   if(hb){
@@ -2378,10 +2457,11 @@ if(hintsB) hintsB.onclick = function(){
   function addTab(){
     var nav = document.getElementById("tabs");
     if(!nav || nav.querySelector('[data-tab="lookup"]')) return;
+    var grp = document.getElementById("navMain") || nav;
     var b = document.createElement("button");
     b.setAttribute("data-tab","lookup");
-    b.textContent = "PNR Lookup";
-    nav.appendChild(b);
+    b.innerHTML = '<span class="ic">🔎</span><span class="lbl">PNR Lookup</span>';
+    grp.appendChild(b);
   }
 
   // render ko wrap karein — jab lookup tab ho to apna view dikhayein
