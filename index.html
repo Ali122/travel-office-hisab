@@ -65,7 +65,7 @@
 <header>
   <div style="display:flex; align-items:center; gap:10px; padding-right:170px;">
     <img src="logo.png" alt="AB Travels" style="width:44px; height:44px; border-radius:10px; object-fit:cover; flex:0 0 auto;" onerror="this.style.display='none'">
-    <h1>Travel Office Hisab <span class="ver">v1.9</span></h1>
+    <h1>Travel Office Hisab <span class="ver">v1.10</span></h1>
   </div>
   <button id="hintsBtn" class="hints-btn">Hints: ON</button>
 </header>
@@ -86,7 +86,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.9";
+var APP_VER = "1.10";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Spreadsheet nahi khuli (File ID check karein): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail (File ID check karein): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -540,26 +540,33 @@ function extractFileId(v){
 function importUrl(){
   return sheetUrl(S.settings.syncUrl, true);
 }
-function importFromSheet(){
-  var url = importUrl();
-  if(!url){ alert("Pehle sync setup karein aur sync URL daalein."); return; }
+function importFromSheet(opts){
+  opts = opts || {};
+  var quiet = !!opts.batch;
+  var url;
+  if(opts.fileId === undefined) url = importUrl();
+  else if(opts.fileId) url = withQuery(S.settings.syncUrl, extractFileId(opts.fileId), true);
+  else url = withQuery(S.settings.syncUrl, "", true);
+  if(!url){ alert("Pehle sync setup karein aur sync URL daalein."); if(opts.done) opts.done(null, "Sync URL khali tha."); return; }
   setSyncStatus("Sheet se purana data aa raha hai…");
-  var wantId = selectedSheetId();
+  var wantId = opts.fileId ? extractFileId(opts.fileId) : (opts.fileId === "" ? "" : selectedSheetId());
   fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(j){
       if(!j || j.ok === false){
         setSyncStatus("✗ "+((j && j.err) || "Sheet ne sahi jawab nahi diya"), true);
-        alert("Sheet se data nahi mila.\n\n"+((j && j.err) || "Apps Script ne sahi jawab nahi diya."));
+        if(!quiet) alert("Sheet se data nahi mila.\n\n"+((j && j.err) || "Apps Script ne sahi jawab nahi diya."));
+        if(opts.done) opts.done(null, "data nahi mila ("+(((j && j.err) || "jawab nahi diya")+""));
         return;
       }
       var warn = ssidWarning(j, wantId);
       if(warn){
         setSyncStatus("✗ "+warn, true);
-        alert("⚠ "+warn+"\n\nAbhi jo file khuli: "+((j.debug && j.debug.spreadsheet) || "?" )+"\nAap ne File ID di: "+(wantId || "(khali)"));
+        if(!quiet) alert("⚠ "+warn+"\n\nAbhi jo file khuli: "+((j.debug && j.debug.spreadsheet) || "?" )+"\nAap ne File ID di: "+(wantId || "(khali)"));
+        if(opts.done) opts.done(null, "File ID / deployment masla");
         return;
       }
-      var nT = 0, nE = 0, nSkip = 0, nSkipE = 0, nP = 0, nC = 0, nDup = 0;
+      var nT = 0, nE = 0, nSkip = 0, nSkipE = 0, nP = 0, nC = 0, nDup = 0, nFlagged = 0, nDupE = 0;
       var monthTally = {}, offMonth = [];
       function tallyAdd(mid, kind, amt, sample){
         if(!mid) return;
@@ -567,6 +574,25 @@ function importFromSheet(){
         t.n++; t.total += Number(amt)||0;
         if(!t.sample) t.sample = kind + ": " + String(sample||"").slice(0,40);
         if(midDefault && mid !== midDefault) offMonth.push(mid);
+      }
+      // Kharcha add karne wala helper — duplicate ko poora skip nahi karta,
+      // balke ek copy "shayad double-entry" ke mark ke saath add karta hai (safai ke liye)
+      function addExpenseItem(mid, desc, amt, kind, sample){
+        if(!mid) return;
+        if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
+        var arr = S.months[mid].expenses;
+        var dup = arr.some(function(x){ return x.desc===desc && Number(x.amount)===amt; });
+        if(dup){
+          var flagged = arr.some(function(x){ return x.desc===desc && Number(x.amount)===amt && x.doubleEntry; });
+          if(flagged){ nDupE++; return; } // dobara import par pehle se marked hai — dobara nahi
+          arr.push({ id:uid(), desc:desc, amount:amt, doubleEntry:true });
+          nFlagged++;
+          tallyAdd(mid, kind + " (shayad double)", amt, desc);
+          return;
+        }
+        arr.push({ id:uid(), desc:desc, amount:amt });
+        nE++;
+        tallyAdd(mid, kind, amt, sample);
       }
       var midDefault = "", midSrc = "";
       (function(){
@@ -581,19 +607,31 @@ function importFromSheet(){
           if(mo >= 1 && mo <= 12 && yr >= 2000 && yr <= 2100) midDefault = yr+"-"+String(mo).padStart(2,"0");
         }
       })();
-      if(midDefault){
-        var existE = (S.months[midDefault] && (S.months[midDefault].expenses||[]).length) || 0;
-        var cmsg = "File ke naam se mahina pehchana gaya: "+monthLabel(midDefault)+"\n\n"
-          + "Is file ke saare kharche (Daily Expenses) BHI isi mahine ("+monthLabel(midDefault)+") mein jayenge — sheet ki date ignore hogi."
-          + (existE ? "\n\nNote: is mahine mein pehle se "+existE+" kharcha maujood hai." : "")
-          + "\n\nTheek hai? (Cancel karne par aap khud mahina likh sakte hain)";
-        if(confirm(cmsg)){
+      if(opts.mid){
+        midDefault = opts.mid;
+        midSrc = " (aap ki di hui list se)";
+      } else if(midDefault){
+        if(quiet){
           midSrc = " (file ke naam se)";
         } else {
-          midDefault = "";
+          var existE = (S.months[midDefault] && (S.months[midDefault].expenses||[]).length) || 0;
+          var cmsg = "File ke naam se mahina pehchana gaya: "+monthLabel(midDefault)+"\n\n"
+            + "Is file ke saare kharche (Daily Expenses) BHI isi mahine ("+monthLabel(midDefault)+") mein jayenge — sheet ki date ignore hogi."
+            + (existE ? "\n\nNote: is mahine mein pehle se "+existE+" kharcha maujood hai." : "")
+            + "\n\nTheek hai? (Cancel karne par aap khud mahina likh sakte hain)";
+          if(confirm(cmsg)){
+            midSrc = " (file ke naam se)";
+          } else {
+            midDefault = "";
+          }
         }
       }
       if(!midDefault){
+        if(quiet){
+          setSyncStatus("✗ Ek file ka mahina pehchana nahi gaya", true);
+          if(opts.done) opts.done(null, "mahina pehchana nahi gaya (file ke naam mein mahine ka naam daalein)");
+          return;
+        }
         var ans = prompt("Ye data kis mahine ka hai? Format: 2026-09\n\nKharche bhi isi mahine mein jayenge (sheet ki date ignore hogi).", "");
         if(!ans) return;
         var m2 = String(ans).trim().match(/^(\d{4})-(\d{1,2})$/);
@@ -646,11 +684,7 @@ function importFromSheet(){
         if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
         var det = String(findKey(e, "detail")||"").trim();
         var desc = (String(findKey(e, "expense")||"").trim() + (det ? " — "+det : "")) || "Kharcha";
-        var dup = S.months[mid].expenses.some(function(x){ return x.desc===desc && Number(x.amount)===amt; });
-        if(dup) return;
-        S.months[mid].expenses.push({ id:uid(), desc:desc, amount:amt });
-        nE++;
-        tallyAdd(mid, "Kharcha", amt, String(findKey(e, "date")) + " — " + desc);
+        addExpenseItem(mid, desc, amt, "Kharcha", String(findKey(e, "date")) + " — " + desc);
       });
       // Monthly Summary ke kharche (B2:B6 — aap ka formula)
       (j.summary||[]).forEach(function(s){
@@ -661,11 +695,7 @@ function importFromSheet(){
         var mid = midDefault;
         if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
         var desc = (String(s.label||"").trim() || "Monthly item") + " (Summary)";
-        var dup = S.months[mid].expenses.some(function(x){ return x.desc===desc && Number(x.amount)===amt; });
-        if(dup) return;
-        S.months[mid].expenses.push({ id:uid(), desc:desc, amount:amt });
-        nE++;
-        tallyAdd(mid, "Summary", amt, desc);
+        addExpenseItem(mid, desc, amt, "Summary", desc);
       });
       // PARTNERS tab — kis partner ne kitna liya (Umair/Sarmad/Abbu ke column)
       (j.partnersRows||[]).forEach(function(p){
@@ -714,6 +744,11 @@ function importFromSheet(){
       }).join("<br>") || "—";
       var tallyTxt = tallyKeys.map(function(k){ var t=monthTally[k]; return monthLabel(k)+": "+t.n+" kharcha, "+money(t.total); }).join("\n");
       var offTxt = offUniq.length ? "\n\n⚠ Doosre mahine ki rows bhi mili: " + offUniq.map(monthLabel).join(", ") : "";
+      // is mahine ka File ID yaad rakhein — one-click dobara import isi liye
+      if(midDefault){
+        S.settings.fileIds = S.settings.fileIds || {};
+        S.settings.fileIds[midDefault] = wantId || "";
+      }
       ticketFilter = midDefault || "all"; // import ke baad tickets bhi usi mahine ke dikhein
       selectedMonth = midDefault || null;
       saveNow(); autoDistribute(); render();
@@ -729,9 +764,14 @@ function importFromSheet(){
         if(nE===0 && nEs2>0) h2 += "<br><b>Pehla kharcha (jo add nahi hua):</b><br>"+kvHtml(j.expenses[0]);
         rep2.innerHTML = h2;
       }
-      alert("Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+(nDup ? " (duplicate chhore gaye: "+nDup+")" : "")+"\nKharche add hue: "+nE+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+(tallyTxt ? "\n\nKharche kis mahine mein gaye:\n"+tallyTxt : "")+offTxt+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : "")));
+            var sumMsg = "Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+(nDup ? " (duplicate chhore gaye: "+nDup+")" : "")+"\nKharche add hue: "+nE+(nFlagged ? "\n⚠ Shayad double-entry: "+nFlagged+" (Monthly Accounts mein ⚠ nishan ke saath — theek lage to ✓ se mark hata dein, ghalat ho to ✕ se delete)" : "")+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+(tallyTxt ? "\n\nKharche kis mahine mein gaye:\n"+tallyTxt : "")+offTxt+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : ""));
+      if(quiet){
+        if(opts.done) opts.done(midDefault, monthLabel(midDefault)+": tickets +"+nT+", kharche +"+nE+(nFlagged ? ", ⚠ double-entry "+nFlagged : "")+(nDupE ? " (pehle se maujood the: "+nDupE+")" : "")+", nikasi +"+nP);
+      } else {
+        alert(sumMsg);
+      }
     })
-    .catch(function(){ setSyncStatus("Sheet se data nahi mila (URL/internet check karein)", true); alert("Sheet se data nahi mila. Sync URL aur internet check karein."); });
+    .catch(function(){ setSyncStatus("Sheet se data nahi mila (URL/internet check karein)", true); if(!quiet) alert("Sheet se data nahi mila. Sync URL aur internet check karein."); if(opts.done) opts.done(null, "data nahi mila (internet/URL)"); });
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function money(n){
@@ -1085,7 +1125,7 @@ function viewMonth(){
   if((m.expenses||[]).length){
     html += '<table><tr><th>Tafseel</th><th>Raqam</th><th></th></tr>';
     m.expenses.forEach(function(x,i){
-      html += '<tr><td>'+esc(x.desc)+'</td><td class="neg">'+money(x.amount)+'</td><td><button class="del" data-type="expense" data-i="'+i+'">✕</button></td></tr>';
+      html += '<tr><td>'+esc(x.desc)+(x.doubleEntry?' <span class="pill pending">⚠ shayad double-entry</span>':'')+'</td><td class="neg">'+money(x.amount)+'</td><td>'+(x.doubleEntry?'<button class="del" data-unflag="'+i+'" style="background:var(--green-bg); color:var(--green); margin-right:4px;" title="Theek hai — mark hata dein (kharcha rahega)">✓</button>':'')+'<button class="del" data-type="expense" data-i="'+i+'">✕</button></td></tr>';
     });
     html += '</table>';
   } else html += '<div class="empty">Is mahine koi kharcha add nahi kiya.</div>';
@@ -1589,6 +1629,8 @@ function viewSettings(){
         + '<span class="hint hint-status" id="syncStatus" style="flex:2; margin-top:0;"></span>'
         + '</div>';
   html += '<button class="btn small green" id="importSheet" style="margin-top:10px; width:100%;">Google Sheet ka purana data import karein (tickets + kharche + qarza)</button>';
+  html += '<textarea id="batchIds" rows="3" placeholder="Ikhtiyari: File IDs ek line mein paste karein (khali chhod dein to app ki yaad-shuda list chalegi)" style="margin-top:8px; width:100%; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px;"></textarea>';
+  html += '<button class="btn small green" id="importAll" style="margin-top:8px; width:100%;">Saari files dobara import karein (one-click — purane rows skip, naye double-entry marked)</button>';
   html += '<button class="btn small primary" id="copyShare" style="margin-top:8px; width:100%;">'+esc(T("copyshare"))+'</button>';
   html += '<div id="syncReport" class="hint" style="margin-top:10px; line-height:1.7; word-break:break-word; background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px;"></div>';
   html += '<div class="hint">Sync fail ho to: (1) deployment mein <b>Who has access: Anyone</b> hona chahiye, (2) URL ka aakhir <b>/exec</b> par khatam hona chahiye (…/dev nahi), (3) URL dobara copy kar ke daalein. "Test karein" button se pata chal jayega kya masla hai.</div>';
@@ -1722,6 +1764,14 @@ function bind(){
       var i = Number(b.getAttribute("data-i"));
       S.months[selectedMonth][type].splice(i,1);
       save(); render();
+    };
+  });
+  // "shayad double-entry" ka mark hata dein (kharcha waisa hi rahega)
+  app.querySelectorAll(".del[data-unflag]").forEach(function(b){
+    b.onclick = function(){
+      var i = Number(b.getAttribute("data-unflag"));
+      var m = S.months[selectedMonth];
+      if(m && m.expenses[i]){ delete m.expenses[i].doubleEntry; save(); render(); }
     };
   });
 
@@ -2031,6 +2081,43 @@ function bind(){
     if(iid) S.settings.importId = iid.value.trim();
     saveLocal();
     importFromSheet();
+  };
+  var impAll = document.getElementById("importAll");
+  if(impAll) impAll.onclick = function(){
+    var u = document.getElementById("setSyncUrl"), iid = document.getElementById("setImportId");
+    if(u) S.settings.syncUrl = u.value.trim();
+    if(iid) S.settings.importId = iid.value.trim();
+    saveLocal();
+    if(!S.settings.syncUrl){ alert("Pehle Sync URL daalein."); return; }
+    var ta = document.getElementById("batchIds");
+    var list = [];
+    if(ta && String(ta.value).trim()){
+      String(ta.value).split(/\n+/).forEach(function(line){
+        var t = String(line).trim(); if(!t) return;
+        var fid = extractFileId(t) || t;
+        list.push({ fileId: fid });
+      });
+    }
+    if(!list.length){
+      var map = S.settings.fileIds || {};
+      Object.keys(map).sort().forEach(function(mid){ list.push({ mid: mid, fileId: map[mid] || "" }); });
+    }
+    if(!list.length){ alert("Import ki hui koi file maujood nahi. Pehle kisi file ka import karein, ya File IDs upar wale khanay mein paste karein."); return; }
+    if(!confirm(list.length+" files dobara import hongi.\n\nPehle se maujood rows skip hongi (duplicate nahi banega), aur shayad double-entry wale kharche ⚠ nishan ke saath marked honge.\n\nJari rakhein?")) return;
+    setSyncStatus("Sab files dobara import ho rahi hain…");
+    var results = [], k = 0;
+    (function next(){
+      if(k >= list.length){
+        render();
+        alert("Sab files ka dobara import mukammal!\n\n"+results.join("\n"));
+        return;
+      }
+      var it = list[k++];
+      importFromSheet({ mid: it.mid, fileId: it.fileId, batch: true, done: function(mid, msg){
+        results.push(mid ? ("✓ "+msg) : ("⚠ "+(msg || "ek file import nahi ho saki")));
+        next();
+      }});
+    })();
   };
   var cg = document.getElementById("copyGas");
   if(cg) cg.onclick = function(){
