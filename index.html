@@ -111,7 +111,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" style="width:42px; height:42px; border-radius:10px; object-fit:cover; flex:0 0 auto;" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>Travel Office Hisab <span class="ver" id="verBadge">v1.15</span></h1>
+      <h1>Travel Office Hisab <span class="ver" id="verBadge">v1.17</span></h1>
       <div class="tag">AB Travels</div>
     </div>
   </div>
@@ -155,7 +155,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.16";
+var APP_VER = "1.17";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -971,39 +971,82 @@ function reportMonthList(){
 }
 function reportRows(mid){
   var all = (mid === "all");
-  var keep = function(m){ return all || m === mid; };
+  var mids = all ? reportMonthList() : [mid];
   var rows = [];
-  rows.push(["Month","Date","Type","Client / Details","Cost","Sale","Profit","Amount","Status","Note"].map(csvVal).join(","));
-  Object.keys(S.months||{}).sort().forEach(function(m){
-    if(!keep(m)) return;
-    var mm = S.months[m] || {};
-    (mm.incomes||[]).forEach(function(x){ rows.push([m,"","Income",x.desc,"","","",x.amount,"",""].map(csvVal).join(",")); });
-    (mm.expenses||[]).forEach(function(x){ rows.push([m,"","Expense",x.desc,"","","",x.amount,"",(x.fixId?"fixed monthly":"")].map(csvVal).join(",")); });
-  });
-  S.tickets.slice().sort(function(a,b){ return (a.date||"").localeCompare(b.date||""); }).forEach(function(t){
-    var m = String(t.date||"").slice(0,7); if(!keep(m)) return;
-    rows.push([m,t.date,"Ticket",(t.client||"")+(t.detail?" - "+t.detail:""),t.cost,t.sale,(Number(t.sale)||0)-(Number(t.cost)||0),"",(t.paid===false?"Unpaid":"Paid"),(t.commission?"Waseem commission: "+t.commission:"")].map(csvVal).join(","));
-  });
-  S.draws.slice().sort(function(a,b){ return (a.date||"").localeCompare(b.date||""); }).forEach(function(d){
-    var m = String(d.date||"").slice(0,7); if(!keep(m)) return;
-    var k = (d.partner==="ABBU" ? "Father (Owner) withdrawal" : ("Withdrawal (" + (d.partner==="A"?S.settings.partnerA:S.settings.partnerB) + ")"));
-    rows.push([m,d.date,k,(d.note||""),"","","",d.amount,"",""].map(csvVal).join(","));
-  });
-  (S.waseem||[]).forEach(function(w){
-    var m = String(w.date||"").slice(0,7); if(!keep(m)) return;
-    rows.push([m,w.date,(w.kind==="commission"?"Waseem commission paid":"Waseem salary paid"),(w.note||""),"","","",w.amount,"",""].map(csvVal).join(","));
-  });
-  (S.charityPaid||[]).forEach(function(x){
-    var m = String(x.date||"").slice(0,7); if(!keep(m)) return;
-    rows.push([m,x.date,"Charity paid",(x.note||""),"","","",x.amount,"",""].map(csvVal).join(","));
-  });
-  rows.push(["","","","","","","","","",""].map(csvVal).join(","));
-  rows.push(["=== MONTH SUMMARY ===","","","","","","","","",""].map(csvVal).join(","));
-  rows.push(["Month","","Total income","Total expenses","Net profit","Charity","Loan payment","Partners share (each)","Father (Owner)","Waseem commission"].map(csvVal).join(","));
-  reportMonthList().forEach(function(m){
-    if(!keep(m)) return;
+  var period = all
+    ? (mids.length ? (monthLabel(mids[0]) + " to " + monthLabel(mids[mids.length-1])) : "—")
+    : monthLabel(mid);
+  rows.push(["AB Travels (Travel Office Hisab) — " + (all ? "ANNUAL ACCOUNTS LEDGER" : "MONTHLY ACCOUNTS LEDGER")].map(csvVal).join(","));
+  rows.push(["Period: " + period].map(csvVal).join(","));
+  rows.push(["Generated: " + today()].map(csvVal).join(","));
+  rows.push([""].map(csvVal).join(","));
+
+  function sec(t){ rows.push(["=== " + t + " ==="].map(csvVal).join(",")); }
+  function blank(){ rows.push([""].map(csvVal).join(",")); }
+  function line(arr){ rows.push(arr.map(csvVal).join(",")); }
+
+  // ---- Profit & Loss summary ----
+  var grand = { income:0, expenses:0, net:0, charity:0, loan:0, each:0, abbu:0, comm:0 };
+  sec("PROFIT & LOSS SUMMARY");
+  line(["Month","Total Income","Total Expenses","Net Profit","Charity","Loan Payment","Partner A Share","Partner B Share","Father (Owner)","Waseem Commission","Status"]);
+  mids.forEach(function(m){
     var c = monthCalc(m);
-    rows.push([m,"",c.income,c.expenses,c.net,c.charity,c.loanPay,c.each,c.abbu,c.commission].map(csvVal).join(","));
+    grand.income += c.income; grand.expenses += c.expenses; grand.net += c.net;
+    grand.charity += c.charity; grand.loan += c.loanPay; grand.each += c.each;
+    grand.abbu += c.abbu; grand.comm += c.commission;
+    line([monthLabel(m), c.income, c.expenses, c.net, c.charity, c.loanPay, c.each, c.each, c.abbu, c.commission,
+      (c.applied ? "Applied" : (c.net <= 0 ? "Loss - no split" : "Pending"))]);
+  });
+  line(["TOTAL", grand.income, grand.expenses, grand.net, grand.charity, grand.loan, grand.each, grand.each, grand.abbu, grand.comm, ""]);
+  blank();
+
+  // ---- Detail sections per month ----
+  mids.forEach(function(m){
+    var mm = S.months[m] || {};
+    var inc = (mm.incomes||[]), exp = (mm.expenses||[]);
+    var tc = 0, ts = 0;
+    var tk = (S.tickets||[]).filter(function(t){ return String(t.date||"").slice(0,7) === m; });
+    tk.forEach(function(t){ tc += Number(t.cost)||0; ts += Number(t.sale)||0; });
+    var dw = [];
+    (S.draws||[]).forEach(function(d){ if(String(d.date||"").slice(0,7) === m) dw.push({ date:d.date, label:(d.partner==="ABBU" ? "Father (Owner) withdrawal" : ("Withdrawal (" + (d.partner==="A" ? S.settings.partnerA : S.settings.partnerB) + ")")), note:d.note||"", amount:d.amount }); });
+    (S.waseem||[]).forEach(function(w){ if(String(w.date||"").slice(0,7) === m) dw.push({ date:w.date, label:(w.kind==="commission" ? "Waseem commission paid" : "Waseem salary paid"), note:w.note||"", amount:w.amount }); });
+    (S.charityPaid||[]).forEach(function(x){ if(String(x.date||"").slice(0,7) === m) dw.push({ date:x.date, label:"Charity (sadqa) paid", note:x.note||"", amount:x.amount }); });
+    if(!((inc.length||exp.length||tk.length||dw.length))) return;
+
+    if(inc.length || exp.length){
+      sec(monthLabel(m) + " — INCOME");
+      line(["","Description","Amount"]);
+      var si = 0;
+      inc.forEach(function(x){ si += Number(x.amount)||0; line(["", x.desc, x.amount]); });
+      line(["","TOTAL INCOME", si]);
+      blank();
+      sec(monthLabel(m) + " — EXPENSES");
+      line(["","Description","Amount"]);
+      var se = 0;
+      exp.forEach(function(x){ se += Number(x.amount)||0; line(["", x.desc + (x.doubleEntry ? " (possible duplicate)" : ""), x.amount]); });
+      line(["","TOTAL EXPENSES", se]);
+      blank();
+    }
+
+    if(tk.length){
+      sec(monthLabel(m) + " — TICKET / UMRAH SALES");
+      line(["Date","Client","Details","Cost","Sale","Profit","Payment","Note"]);
+      tk.forEach(function(t){
+        line([t.date, t.client||"", t.detail||"", t.cost, t.sale, (Number(t.sale)||0)-(Number(t.cost)||0),
+          (t.paid === false ? "Unpaid" : "Paid"), (t.commission ? "Waseem commission: " + t.commission : "")]);
+      });
+      line(["","TOTAL","","", tc, ts, ts - tc, ""]);
+      blank();
+    }
+
+    if(dw.length){
+      sec(monthLabel(m) + " — WITHDRAWALS & OTHER PAYMENTS");
+      line(["Date","Description","Note","Amount"]);
+      var sw = 0;
+      dw.forEach(function(d){ sw += Number(d.amount)||0; line([d.date, d.label, d.note, d.amount]); });
+      line(["","TOTAL","", sw]);
+      blank();
+    }
   });
   return rows;
 }
@@ -1791,6 +1834,7 @@ function viewSettings(){
   html += '</select>';
   html += '<button class="btn small primary" id="repBtn" style="margin-top:8px; width:100%;">Download Excel report (selected month)</button>';
   html += '<button class="btn small" id="repAllBtn" style="margin-top:8px; width:100%; background:var(--green); color:#fff;">Download each month separately (one file per month)</button>';
+  html += '<div class="hint">Report ab organized ledger ki shakal mein hai: shuru mein Profit &amp; Loss summary, phir har mahine ke alag sections (Income, Expenses, Ticket/Umrah Sales, Withdrawals) sab totals ke saath — tax lawyer ko direct bhejne ke liye tayyar.</div>';
   html += '<label style="margin-top:14px;">'+esc(T("imlbl"))+'</label><input type="file" id="importData" accept=".json">';
   html += '<div class="hint">Data is saved on this device and in your Google Sheet. Take a backup every month.</div>';
   html += '</div>';
