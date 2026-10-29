@@ -65,7 +65,7 @@
 <header>
   <div style="display:flex; align-items:center; gap:10px; padding-right:170px;">
     <img src="logo.png" alt="AB Travels" style="width:44px; height:44px; border-radius:10px; object-fit:cover; flex:0 0 auto;" onerror="this.style.display='none'">
-    <h1>Travel Office Hisab <span class="ver">v1.11</span></h1>
+    <h1>Travel Office Hisab <span class="ver">v1.12</span></h1>
   </div>
   <button id="hintsBtn" class="hints-btn">Hints: ON</button>
 </header>
@@ -86,7 +86,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.11";
+var APP_VER = "1.12";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Spreadsheet nahi khuli (File ID check karein): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail (File ID check karein): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write fail: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -665,14 +665,27 @@ function importFromSheet(opts){
         // TOTAL / grand total / bilkul khali rows skip karein
         if(/^(total|grand|sum)/i.test(name) || (!name && !String(findKey(b, "service")||"").trim())){ nSkip++; return; }
         if(!(cost>0 || sale>0)){ nSkip++; return; }
-        // Duplicate check: client + cost + sale kisi bhi mahine mein pehle se ho to dobara na aaye
+        // Duplicate check: client + cost + sale kisi bhi mahine mein pehle se ho to dobara na aaye —
+        // magar shayad double-entry hai to ek copy mark ke saath chhod dein
         var dup = S.tickets.some(function(t){
           return String(t.client||"").trim().toLowerCase() === String(name||"Client").trim().toLowerCase()
               && Number(t.cost) === cost && Number(t.sale) === sale;
         });
-        if(dup){ nDup++; return; }
-        S.tickets.push({ id:uid(), date:d, client:name || "Client",
-          detail:String(findKey(b, "service")||findKey(b, "remarks")||"").trim(), cost:cost, sale:sale });
+        var detail = String(findKey(b, "service")||findKey(b, "remarks")||"").trim();
+        function mkTicket(doubleFlag){
+          S.tickets.push({ id:uid(), date:d, client:name || "Client", detail:detail, cost:cost, sale:sale, doubleEntry:doubleFlag || undefined });
+        }
+        if(dup){
+          var midT_ = String(d).slice(0,7);
+          var alreadyFlagged = S.tickets.some(function(t){
+            return String(t.client||"").trim().toLowerCase() === String(name||"Client").trim().toLowerCase()
+                && Number(t.cost) === cost && Number(t.sale) === sale
+                && t.doubleEntry && String(t.date||"").slice(0,7) === midT_;
+          });
+          if(alreadyFlagged){ nDup++; return; } // dobara import par pehle se marked hai
+          mkTicket(true); nFlagged++; return;
+        }
+        mkTicket(false);
         nT++;
       });
       (j.expenses||[]).forEach(function(e){
@@ -764,7 +777,7 @@ function importFromSheet(opts){
         if(nE===0 && nEs2>0) h2 += "<br><b>Pehla kharcha (jo add nahi hua):</b><br>"+kvHtml(j.expenses[0]);
         rep2.innerHTML = h2;
       }
-            var sumMsg = "Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+(nDup ? " (duplicate chhore gaye: "+nDup+")" : "")+"\nKharche add hue: "+nE+(nFlagged ? "\n⚠ Shayad double-entry: "+nFlagged+" (Monthly Accounts mein ⚠ nishan ke saath — theek lage to ✓ se mark hata dein, ghalat ho to ✕ se delete)" : "")+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+(tallyTxt ? "\n\nKharche kis mahine mein gaye:\n"+tallyTxt : "")+offTxt+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : ""));
+            var sumMsg = "Import mukammal!\nMahina: "+midDefault+midSrc+"\n\nSheet se rows mile: tickets "+((j.bookings||[]).length)+", kharche "+((j.expenses||[]).length)+"\nTickets add hue: "+nT+(nDup ? " (duplicate chhore gaye: "+nDup+")" : "")+"\nKharche add hue: "+nE+(nFlagged ? "\n⚠ Shayad double-entry: "+nFlagged+" (Tickets/Monthly Accounts mein ⚠ nishan ke saath — theek lage to ✓ se mark hata dein, ghalat ho to ✕ se delete)" : "")+"\nPartner nikasiyan add hui: "+nP+((nC>0)?"\nSadqa di hui (entries): "+nC:"")+((nSkip||nSkipE)?"\nChhore gaye rows (date ya raqam na milne ki wajah se): "+(nSkip+nSkipE):"")+qMsg+(tallyTxt ? "\n\nKharche kis mahine mein gaye:\n"+tallyTxt : "")+offTxt+"\n\nZaroori check: 2-3 tickets apni sheet se mila kar dekhein ke cost/sale aur quantity ka hisaab theek aaya hai (agar sheet mein cost/sale per-unit hain to quantity se multiply kiya gaya hai). Ghalt lage to batayein, ek setting se theek ho jayega." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nSheet se rows hi nahi mile — ya to headers pehchane nahi gaye, ya tab khali hai. Pehle 'Test karein' button dabayein — us mein file ka naam aur tabs nazar aayenge. Agar ghalat file ho to us file ka File ID daal kar dobara import karein. Phir bhi na mile to Daily Bookings ke pehle 5-6 rows ka screenshot bhejein." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows milin lekin add nahi hui — date/naam/raqam pehchana nahi gaya. Pehli row ke column headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] aur values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — ye mujhe bhejein." : ""));
       if(quiet){
         if(opts.done) opts.done(midDefault, monthLabel(midDefault)+": tickets +"+nT+", kharche +"+nE+(nFlagged ? ", ⚠ double-entry "+nFlagged : "")+(nDupE ? " (pehle se maujood the: "+nDupE+")" : "")+", nikasi +"+nP);
       } else {
@@ -1233,12 +1246,13 @@ function viewTickets(){
     sorted.forEach(function(t){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
       html += '<tr><td>'+esc(t.date)+'</td>'
-            + '<td><b>'+esc(t.client)+'</b>'+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
+            + '<td><b>'+esc(t.client)+'</b>'+(t.doubleEntry?' <span class="pill pending">⚠ shayad double-entry</span>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
             + '<td>'+money(t.cost)+'</td><td>'+money(t.sale)+'</td>'
             + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
             + '<td>'+(t.paid === false
                   ? '<button class="btn small tk-toggle" data-id="'+t.id+'" style="margin:0 4px 0 0; padding:5px 9px; background:var(--gold); color:#fff;">'+esc(T("unpaid"))+'</button>'
                   : '<span class="pill done">'+esc(T("paidp"))+'</span>')
+                +(t.doubleEntry?'<button class="del" data-unflagTk="'+t.id+'" style="background:var(--green-bg); color:var(--green); margin-right:4px;" title="Theek hai — mark hata dein (ticket rahega)">✓</button>':'')
                 +'<button class="del" data-type="ticket" data-id="'+t.id+'">✕</button>'
                 +'<button class="del tk-datedit" data-id="'+t.id+'" title="Tareekh theek karein" style="background:var(--muted); color:#fff; margin-left:4px;">📅</button></td></tr>';
     });
@@ -1772,6 +1786,14 @@ function bind(){
       var i = Number(b.getAttribute("data-unflag"));
       var m = S.months[selectedMonth];
       if(m && m.expenses[i]){ delete m.expenses[i].doubleEntry; save(); render(); }
+    };
+  });
+  // ticket ka "shayad double-entry" mark hata dein
+  app.querySelectorAll(".del[data-unflagTk]").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-unflagTk");
+      var t = (S.tickets||[]).filter(function(x){ return x.id === id; })[0];
+      if(t){ delete t.doubleEntry; save(); render(); }
     };
   });
 
