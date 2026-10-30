@@ -104,6 +104,10 @@
     .ayat-head .ar{font-size:13px;}
     .ayat-head .tr{font-size:9px;}
     .hints-btn{order:3;}
+    /* Invoice form — mobile par fields ek column mein */
+    .inv-form .row{flex-direction:column; align-items:stretch;}
+    .inv-form .row > *{min-width:100%;}
+    .inv-form .row > .inv-arrow{display:none;}
     .shell{display:block;}
     nav#tabs{position:fixed; left:0; top:0; width:274px; height:100vh; flex:none; transform:translateX(-104%); transition:transform .25s ease; box-shadow:0 12px 40px rgba(15,23,42,.35); z-index:60; padding-top:14px;}
     .nav-head{display:flex;}
@@ -170,7 +174,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.35";
+var APP_VER = "1.36";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1277,6 +1281,9 @@ function invHtml(d, bw){
   var warnBg    = bw ? "#fff" : "#fef2f2";
   var warnBrd   = bw ? "2px solid #000" : "1px solid #fca5a5";
   var warnTx    = bw ? "#000" : "#b91c1c";
+  var tmpBg     = bw ? "#fff" : "#fffbeb";
+  var tmpBrd    = bw ? "2px solid #000" : "1.5px solid #f59e0b";
+  var tmpTx     = bw ? "#000" : "#92400e";
   var h = '<div id="invPrint" style="max-width:640px; margin:0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; position:relative;">'
     + '<div style="background:'+bannerBg+'; border-bottom:'+bannerBr+'; padding:14px 18px; display:flex; align-items:center; gap:12px;">'
     + '<img src="'+logo+'" alt="AB Travels" style="width:46px; height:46px; border-radius:50%; object-fit:cover; border:'+logoBrd+'; flex:0 0 auto; background:#fff;">'
@@ -1327,6 +1334,7 @@ function invHtml(d, bw){
      + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">CHECKED-IN BAG</div><div style="font-weight:800; font-size:15px; margin-top:4px;">🧳 '+esc(bag)+'</div></div>'
      + '</div>';
   if(d.nr) h += '<div style="margin-top:12px; background:'+warnBg+'; border:'+warnBrd+'; color:'+warnTx+'; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund and change charges depend solely on the airline&rsquo;s policy</div>';
+  if(d.tmp) h += '<div style="margin-top:12px; background:'+tmpBg+'; border:'+tmpBrd+'; color:'+tmpTx+'; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:800; text-align:center;">⏳ TEMPORARY BOOKING ONLY — this is a temporary booking only and can be cancelled any time.</div>';
   h += '<div style="margin-top:12px; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; background:#f8fafc;">'
      + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:6px;">TRAVEL GUIDELINES</div>'
      + '<ul style="margin:0 0 0 16px; padding:0; font-size:11.3px; line-height:1.5; color:#334155;">'
@@ -1350,7 +1358,7 @@ function viewInvoice(){
               + INV_AIRLINES.map(function(a){ return '<option value="'+esc(a.c)+'">'+esc(a.n)+' ('+esc(a.c)+')</option>'; }).join("")
               + '<option value="other">Other / none</option>';
   var html = "";
-  html += '<div class="card"><h2>Invoice / Ticket — for the client</h2>';
+  html += '<div class="card inv-form"><h2>Invoice / Ticket — for the client</h2>';
   html += '<div class="row"><div><label>Trip type</label><select id="invTrip"><option value="one">One-way</option><option value="round">Round trip (return flight)</option></select></div>'
         + '<div><label>Airline</label><select id="invAir">'+airOpts+'</select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>PNR / Booking ref</label><input id="invPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px; font-weight:700;"></div>'
@@ -1369,7 +1377,7 @@ function viewInvoice(){
         + '<div class="retseat" style="grid-column:1/-1; display:none;"><label>Return seats (optional — same order, one per line)</label><textarea id="invRetSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="14C&#10;14D&#10;16A"></textarea></div>'
         + '<div style="grid-column:1/-1;"><div class="hint">Names, NIC/Passport and seats match line by line (first line = first passenger). Press Enter for a new line. Any seat left empty is hidden on the invoice.</div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
-        + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
+        + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Departure date</label><input type="date" id="invDate" value="'+today()+'"></div>'
         + '<div><label>Departure time</label><input type="time" id="invTime"></div>'
@@ -1377,7 +1385,7 @@ function viewInvoice(){
   html += '<div id="invRetWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🔁 Return flight</div>'
         + '<div class="row"><div><label>From (airport)</label><input id="invRetFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
-        + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
+        + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invRetTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
         + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="date" id="invRetDate"></div>'
         + '<div><label>Return time</label><input type="time" id="invRetTime"></div>'
@@ -1387,6 +1395,7 @@ function viewInvoice(){
   html += '<div class="row" style="margin-top:8px; align-items:center;">'
         + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invNR" style="width:auto"'+(st.invNR?' checked':'')+'> Non-refundable (adds the NON-REFUNDABLE stamp)</label>'
         + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invMeal" style="width:auto"> Meal included (show on invoice)</label>'
+        + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invTmp" style="width:auto"> Temporary booking (adds the &ldquo;temporary booking only&rdquo; notice)</label>'
         + '</div>';
   html += '<div class="hint" id="nrHint" style="margin-top:2px;"></div>';
   html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
@@ -2490,6 +2499,7 @@ function bind(){
       hand: Number((document.getElementById("invHand")||{}).value) || 0,
       bag: Number((document.getElementById("invBag")||{}).value) || 0,
       nr: !!((document.getElementById("invNR")||{}).checked),
+      tmp: !!((document.getElementById("invTmp")||{}).checked),
       meal: !!((document.getElementById("invMeal")||{}).checked),
       seat: ((document.getElementById("invSeat1")||{}).value||"").trim().toUpperCase(),
       paxSeats: (function(){
