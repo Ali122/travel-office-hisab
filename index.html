@@ -170,7 +170,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.29";
+var APP_VER = "1.30";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1220,6 +1220,15 @@ function invRow(k, v){
   if(!v) return "";
   return '<tr><td style="padding:7px 4px; color:#64748b; width:40%; border-bottom:1px solid #f3f4f6;">'+esc(k)+'</td><td style="padding:7px 4px; font-weight:700; border-bottom:1px solid #f3f4f6;">'+esc(v)+'</td></tr>';
 }
+function invTimeTxt(t){
+  if(!t) return "";
+  var h = +t.slice(0,2), m = t.slice(3,5);
+  var ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return h + ":" + m + " " + ap;
+}
+var INV_NR_ALWAYS = ["9P","G9"];
+function invAlwaysNR(code){ return INV_NR_ALWAYS.indexOf(String(code||"").toUpperCase()) >= 0; }
 function invFlightBlock(leg, title){
   if(!leg || !leg.from || !leg.to) return "";
   var air = leg.air ? invAirline(leg.air) : null;
@@ -1238,7 +1247,11 @@ function invFlightBlock(leg, title){
      + '</div>';
   h += '<div style="text-align:right; font-size:12.5px;">'
      + (leg.dateTxt ? '<div style="font-weight:700;">'+esc(leg.dateTxt)+'</div>' : '')
-     + (leg.timeTxt ? '<div style="color:#64748b;">'+esc(leg.timeTxt)+'</div>' : '')
+     + ((leg.timeTxt || leg.arrTxt) ? '<div style="color:#64748b;">'
+        + (leg.timeTxt ? esc(leg.timeTxt) : '')
+        + (leg.arrTxt ? (leg.timeTxt ? ' <span style="color:#94a3b8;">&rarr;</span> ' : 'Arr ') + esc(leg.arrTxt) : '')
+        + '</div>' : '')
+     + (leg.meal ? '<div style="margin-top:5px; display:inline-block; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:999px; padding:2px 9px; font-size:10.5px; font-weight:800;">&#127869; Meal included</div>' : '')
      + '</div></div></div>';
   return h;
 }
@@ -1255,9 +1268,9 @@ function invHtml(d){
     + '</div></div>'
     + (d.nr ? '<div style="position:absolute; top:64px; right:-38px; transform:rotate(35deg); background:#dc2626; color:#fff; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
     + '<div style="padding:18px;">'
-    + '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">'
+    + '<div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">'
     + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">BOOKING CONFIRMATION</div>'
-    + (d.trip === "round" ? '<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800;">Round Trip</span>' : '<span style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800;">One-way</span>')
+    + (d.trip === "round" ? '<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800;">Round Trip</span>' : '')
     + '</div>'
     + '<div style="text-align:center; margin-top:8px;"><span style="display:inline-block; background:#eff6ff; border:1.5px dashed #2563eb; border-radius:10px; padding:6px 18px; font-weight:800; font-size:22px; letter-spacing:3px; color:#2563eb;">'+esc(d.pnr)+'</span></div>'
     + invFlightBlock(d.out, "OUTBOUND FLIGHT")
@@ -1269,15 +1282,19 @@ function invHtml(d){
     h += '<table style="width:100%; border-collapse:collapse; font-size:13.5px;">'
        + invRow("Passenger", d.name)
        + invRowAlways("NIC / Passport", d.nic)
+       + (d.seat ? invRow("Seat", d.seat) : "")
        + invRowAlways("Ticket number", d.tkNo)
        + '</table>';
   } else {
-    var names = (d.paxNames||[]), nics = (d.paxNics||[]);
-    var n = Math.max(names.length, nics.length);
+    var names = (d.paxNames||[]), nics = (d.paxNics||[]), seats = (d.paxSeats||[]);
+    var n = Math.max(names.length, nics.length, seats.length);
     h += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
     for(var i = 0; i < n; i++){
-      var nm = names[i]||"—", idn = nics[i]||"—";
-      h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6;"><b>'+esc(String(i+1)+". "+nm)+'</b><div style="font-size:11.5px; color:#64748b;">NIC/Passport: '+esc(idn)+'</div></td></tr>';
+      var nm = names[i]||"—", idn = nics[i]||"—", stn = seats[i]||"";
+      h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6; text-align:left; white-space:normal;"><b>'+esc(nm)+'</b>'
+         + '<div style="font-size:11.5px; color:#64748b;">'+esc(idn)+'</div>'
+         + (stn ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">Seat '+esc(stn)+'</div>' : '')
+         + '</td></tr>';
     }
     h += '</table>';
     if(!n) h += '<div class="hint" style="margin:0;">Passenger details missing — please fill the form.</div>';
@@ -1289,16 +1306,16 @@ function invHtml(d){
      + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">HAND CARRY</div><div style="font-weight:800; font-size:15px; margin-top:4px;">✈ '+esc(d.hand)+' kg</div></div>'
      + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">CHECKED-IN BAG</div><div style="font-weight:800; font-size:15px; margin-top:4px;">🧳 '+esc(bag)+'</div></div>'
      + '</div>';
-  if(d.nr) h += '<div style="margin-top:12px; background:#fef2f2; border:1px solid #fca5a5; color:#b91c1c; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund or changes may incur airline fees</div>';
+  if(d.nr) h += '<div style="margin-top:12px; background:#fef2f2; border:1px solid #fca5a5; color:#b91c1c; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund and change charges depend solely on the airline&rsquo;s policy</div>';
   h += '<div style="margin-top:12px; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; background:#f8fafc;">'
      + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:6px;">TRAVEL GUIDELINES</div>'
      + '<ul style="margin:0 0 0 16px; padding:0; font-size:11.3px; line-height:1.5; color:#334155;">'
-     + '<li>Your e-ticket on the phone is enough; a printout is optional.</li>'
      + '<li>Carry your original passport and valid visa (international) or original CNIC (domestic).</li>'
-     + '<li>Arrive at the airport at least <b>3 hours</b> before international and <b>2 hours</b> before domestic departure.</li>'
+     + '<li>Arrive at the airport at least <b>4 hours</b> before international and <b>2 hours</b> before domestic departure.</li>'
      + '<li>Check-in closes about <b>60&ndash;90 minutes</b> before departure (international flights may close earlier).</li>'
      + '<li>Passport should normally be valid for at least <b>6 months</b> beyond the travel date.</li>'
      + '<li>Keep your ticket and documents ready at check-in, immigration and boarding; follow airline baggage rules.</li>'
+     + '<li>Refund and change charges depend solely on the airline&rsquo;s policy.</li>'
      + '</ul></div>';
   h += '</div>';
   h += '<div style="background:#f8fafc; border-top:1px solid #e5e7eb; padding:10px 18px; text-align:center; font-size:12px; color:#475569;">'
@@ -1320,26 +1337,34 @@ function viewInvoice(){
         + '<div><label>Number of passengers</label><input type="number" id="invPax" min="1" value="'+invPaxCount+'" inputmode="numeric"></div></div>';
   html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label>Client name</label><input id="invClient" placeholder="Passenger name" autocomplete="off"></div>'
         + '<div><label>Ticket number</label><input id="invTk" placeholder="Ticket number" autocomplete="off"></div></div>';
-  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invNicRow"><div><label>NIC / Passport</label><input id="invNic1" placeholder="NIC ya Passport number" autocomplete="off"></div></div>';
+  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invNicRow"><div><label>NIC / Passport</label><input id="invNic1" placeholder="NIC or Passport number" autocomplete="off"></div>'
+        + '<div><label>Seat (optional)</label><input id="invSeat1" placeholder="e.g. 12A" autocomplete="off" style="text-transform:uppercase;"></div></div>';
   html += '<div class="grid2" id="invPaxListRow" style="margin-top:8px;'+(invPaxCount>1?'':' display:none;')+'">'
         + '<div><label>Passengers (one name per line — press Enter)</label><textarea id="invPaxNames" rows="'+Math.max(3, invPaxCount)+'" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed"></textarea></div>'
         + '<div><label>NIC / Passport (same order — one per line)</label><textarea id="invNicMulti" rows="'+Math.max(3, invPaxCount)+'" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9"></textarea></div>'
-        + '<div style="grid-column:1/-1;"><div class="hint">Names and NIC/Passport match line by line (first name = first NIC). Press Enter for a new line.</div></div></div>';
+        + '<div style="grid-column:1/-1;"><label>Seats (optional — same order, one per line)</label><textarea id="invSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="12A&#10;12B&#10;14C"></textarea></div>'
+        + '<div style="grid-column:1/-1;"><div class="hint">Names, NIC/Passport and seats match line by line (first line = first passenger). Press Enter for a new line. Leave seats empty to hide them on the invoice.</div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Departure date</label><input type="date" id="invDate" value="'+today()+'"></div>'
-        + '<div><label>Time</label><input type="time" id="invTime"></div></div>';
+        + '<div><label>Departure time</label><input type="time" id="invTime"></div>'
+        + '<div><label>Arrival time (optional)</label><input type="time" id="invArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>';
   html += '<div id="invRetWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🔁 Return flight</div>'
         + '<div class="row"><div><label>From (airport)</label><input id="invRetFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invRetTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
         + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="date" id="invRetDate"></div>'
-        + '<div><label>Return time</label><input type="time" id="invRetTime"></div></div></div>';
+        + '<div><label>Return time</label><input type="time" id="invRetTime"></div>'
+        + '<div><label>Arrival time (optional)</label><input type="time" id="invRetArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
         + '<div><label>Checked-in bag (kg)</label><input type="number" id="invBag" min="0" value="0" inputmode="decimal"><div class="hint">0 = None (default)</div></div></div>';
-  html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="invNR" style="width:auto"'+(st.invNR?' checked':'')+'> Non-refundable (adds the NON-REFUNDABLE stamp)</label>';
+  html += '<div class="row" style="margin-top:8px; align-items:center;">'
+        + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invNR" style="width:auto"'+(st.invNR?' checked':'')+'> Non-refundable (adds the NON-REFUNDABLE stamp)</label>'
+        + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invMeal" style="width:auto"> Meal included (show on invoice)</label>'
+        + '</div>';
+  html += '<div class="hint" id="nrHint" style="margin-top:2px;"></div>';
   html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
   html += '<button class="btn" id="invPrintBtn" style="display:none; background:var(--gold); color:#fff;">🖨 Print / Save as PDF (A4)</button>';
   html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
@@ -2403,6 +2428,15 @@ function bind(){
       hand: Number((document.getElementById("invHand")||{}).value) || 0,
       bag: Number((document.getElementById("invBag")||{}).value) || 0,
       nr: !!((document.getElementById("invNR")||{}).checked),
+      meal: !!((document.getElementById("invMeal")||{}).checked),
+      seat: ((document.getElementById("invSeat1")||{}).value||"").trim().toUpperCase(),
+      paxSeats: (function(){
+        var a = String(((document.getElementById("invSeats")||{}).value||"")).replace(/\r/g, "").split("\n").map(function(x){ return x.trim().toUpperCase(); });
+        while(a.length && !a[a.length-1]) a.pop();
+        return a;
+      })(),
+      arr: ((document.getElementById("invArr")||{}).value||""),
+      retArr: ((document.getElementById("invRetArr")||{}).value||""),
       trip: ((document.getElementById("invTrip")||{}).value||"one")
     };
     // Multi-passenger form: use the first passenger line when the single client box is hidden
@@ -2412,31 +2446,26 @@ function bind(){
     if(!d.from || !d.to){ alert("Please enter both From and To airports."); return; }
     var dt = new Date(d.date + "T00:00:00");
     d.dateTxt = d.date ? dt.toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric" }) : "";
-    if(d.time){
-      var h = +d.time.slice(0,2), m = d.time.slice(3,5);
-      var ap = h >= 12 ? "PM" : "AM";
-      h = h % 12 || 12;
-      d.timeTxt = h + ":" + m + " " + ap;
-    } else { d.timeTxt = ""; }
-    d.out = { from:d.from, to:d.to, date:d.date, time:d.time, dateTxt:d.dateTxt, timeTxt:d.timeTxt, air:d.air };
+    d.timeTxt = invTimeTxt(d.time);
+    d.arrTxt = invTimeTxt(d.arr);
+    if(invAlwaysNR(d.air)) d.nr = true;
+    d.out = { from:d.from, to:d.to, date:d.date, time:d.time, dateTxt:d.dateTxt, timeTxt:d.timeTxt, arrTxt:d.arrTxt, meal:d.meal, air:d.air };
     if(d.trip === "round"){
       d.ret = {
         from: ((document.getElementById("invRetFrom")||{}).value||"").trim().toUpperCase(),
         to: ((document.getElementById("invRetTo")||{}).value||"").trim().toUpperCase(),
         date: ((document.getElementById("invRetDate")||{}).value||""),
         time: ((document.getElementById("invRetTime")||{}).value||""),
+        arr: d.retArr,
+        meal: d.meal,
         air: d.air
       };
       if(d.ret.date){
         var rt = new Date(d.ret.date + "T00:00:00");
         d.ret.dateTxt = rt.toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric" });
       }
-      if(d.ret.time){
-        var rh = +d.ret.time.slice(0,2), rm = d.ret.time.slice(3,5);
-        var rap = rh >= 12 ? "PM" : "AM";
-        rh = rh % 12 || 12;
-        d.ret.timeTxt = rh + ":" + rm + " " + rap;
-      }
+      d.ret.timeTxt = invTimeTxt(d.ret.time);
+      d.ret.arrTxt = invTimeTxt(d.retArr);
       if(!d.ret.from || !d.ret.to){ alert("Please enter the return airports too (or choose One-way)."); return; }
     } else { d.ret = null; }
     var out = document.getElementById("invOut");
@@ -2444,6 +2473,23 @@ function bind(){
     var pb = document.getElementById("invPrintBtn");
     if(pb) pb.style.display = "block";
   };
+  var invAirSel = document.getElementById("invAir");
+  if(invAirSel){
+    var applyNR = function(){
+      var nr = document.getElementById("invNR"), hint = document.getElementById("nrHint");
+      var isNR = invAlwaysNR(invAirSel.value);
+      if(nr){
+        if(isNR){ nr.checked = true; nr.disabled = true; nr.setAttribute("data-auto", "1"); }
+        else {
+          nr.disabled = false;
+          if(nr.getAttribute("data-auto") === "1"){ nr.checked = false; nr.removeAttribute("data-auto"); }
+        }
+      }
+      if(hint) hint.textContent = isNR ? "This airline's tickets are always non-refundable — the stamp is applied automatically." : "";
+    };
+    invAirSel.onchange = applyNR;
+    applyNR();
+  }
   var tripEl = document.getElementById("invTrip");
   if(tripEl) tripEl.onchange = function(){
     var w = document.getElementById("invRetWrap");
