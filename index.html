@@ -50,7 +50,8 @@
   .row > *{flex:1; min-width:120px;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px; font-weight:600;}
-  input,select{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:#fff;}
+  input,select,textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:#fff;}
+  textarea{resize:vertical; min-height:76px; line-height:1.5;}
   input:focus,select:focus{outline:2px solid var(--blue); border-color:var(--blue);}
   .btn{display:inline-block; border:none; border-radius:10px; padding:11px 16px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:10px;}
   .btn.primary{background:var(--blue); color:#fff;}
@@ -169,7 +170,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.27";
+var APP_VER = "1.28";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1306,10 +1307,14 @@ function viewInvoice(){
   html += '<div class="row"><div><label>Trip type</label><select id="invTrip"><option value="one">One-way</option><option value="round">Round trip (return flight)</option></select></div>'
         + '<div><label>Airline</label><select id="invAir">'+airOpts+'</select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>PNR / Booking ref</label><input id="invPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px; font-weight:700;"></div>'
-        + '<div><label>Number of passengers</label><input type="number" id="invPax" min="1" value="1" inputmode="numeric"></div></div>';
-  html += '<div class="row" style="margin-top:8px;"><div><label>Client name</label><input id="invClient" placeholder="Passenger ka naam" autocomplete="off"></div>'
-        + '<div id="invTkRow"><label>Ticket number</label><input id="invTk" placeholder="Ticket number (1 passenger par)" autocomplete="off"></div></div>';
-  html += '<div class="row" id="invPaxListRow" style="margin-top:8px; display:none;"><div><label>Passengers (naam — har line par ek, Enter dabayein)</label><textarea id="invPaxNames" rows="3" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed"></textarea></div><div><label>NIC / Passport (usi tarteeb se — har line par ek)</label><textarea id="invPaxNics" rows="3" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9"></textarea><div class="hint">Naam aur NIC/Passport line-by-line match honge (pehli line ka naam = pehli line ka NIC).</div></div></div>';
+        + '<div><label>Number of passengers</label><input type="number" id="invPax" min="1" value="'+invPaxCount+'" inputmode="numeric"></div></div>';
+  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label>Client name</label><input id="invClient" placeholder="Passenger ka naam" autocomplete="off"></div>'
+        + '<div><label>Ticket number</label><input id="invTk" placeholder="Ticket number" autocomplete="off"></div></div>';
+  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invNicRow"><div><label>NIC / Passport</label><input id="invNic1" placeholder="NIC ya Passport number" autocomplete="off"></div></div>';
+  html += '<div class="grid2" id="invPaxListRow" style="margin-top:8px;'+(invPaxCount>1?'':' display:none;')+'">'
+        + '<div><label>Passengers (naam — har line par ek, Enter dabayein)</label><textarea id="invPaxNames" rows="'+Math.max(3, invPaxCount)+'" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed"></textarea></div>'
+        + '<div><label>NIC / Passport (usi tarteeb se — har line par ek)</label><textarea id="invNicMulti" rows="'+Math.max(3, invPaxCount)+'" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9"></textarea></div>'
+        + '<div style="grid-column:1/-1;"><div class="hint">Naam aur NIC/Passport line-by-line match honge (pehli line ka naam = pehli line ka NIC). Enter dabane par nayi line banti hai.</div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
@@ -1350,6 +1355,7 @@ function printInvoice(){
 
 /* ================= TABS ================= */
 var currentTab = "tickets";
+var invPaxCount = 1;
 function closeNav(){ document.body.classList.remove("nav-open"); }
 function openNav(){ document.body.classList.add("nav-open"); }
 document.getElementById("tabs").addEventListener("click", function(e){
@@ -2374,13 +2380,12 @@ function bind(){
     var d = {
       pnr: ((document.getElementById("invPnr")||{}).value||"").trim().toUpperCase(),
       name: ((document.getElementById("invClient")||{}).value||"").trim(),
-      nic: ((document.getElementById("invNic")||{}).value||"").trim(),
+      nic: ((document.getElementById("invNic1")||{}).value||"").trim(),
       air: ((document.getElementById("invAir")||{}).value||""),
       pax: Math.max(1, Number((document.getElementById("invPax")||{}).value) || 1),
       tkNo: ((document.getElementById("invTk")||{}).value||"").trim(),
-      paxList: ((document.getElementById("invPaxList")||{}).value||""),
       paxNames: String(((document.getElementById("invPaxNames")||{}).value||"")).split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean),
-      paxNics: String(((document.getElementById("invPaxNics")||{}).value||"")).split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean),
+      paxNics: String(((document.getElementById("invNicMulti")||{}).value||"")).split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean),
       from: ((document.getElementById("invFrom")||{}).value||"").trim().toUpperCase(),
       to: ((document.getElementById("invTo")||{}).value||"").trim().toUpperCase(),
       date: ((document.getElementById("invDate")||{}).value||""),
@@ -2439,11 +2444,8 @@ function bind(){
   };
   var paxEl = document.getElementById("invPax");
   if(paxEl) paxEl.oninput = function(){
-    var n = Math.max(1, Number(this.value) || 1);
-    var tkRow = document.getElementById("invTkRow");
-    var listRow = document.getElementById("invPaxListRow");
-    if(tkRow) tkRow.style.display = (n > 1) ? "none" : "";
-    if(listRow) listRow.style.display = (n > 1) ? "" : "none";
+    invPaxCount = Math.max(1, Number(this.value) || 1);
+    render();
   };
   // Airports — country/city/code se dhoondein (internet se list)
   ["invFrom","invTo","invRetFrom","invRetTo"].forEach(function(id){ bindAirportField(id); });
