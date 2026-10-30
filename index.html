@@ -170,7 +170,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.28";
+var APP_VER = "1.29";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1280,7 +1280,7 @@ function invHtml(d){
       h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6;"><b>'+esc(String(i+1)+". "+nm)+'</b><div style="font-size:11.5px; color:#64748b;">NIC/Passport: '+esc(idn)+'</div></td></tr>';
     }
     h += '</table>';
-    if(!n) h += '<div class="hint" style="margin:0;">Passenger details missing — form mein likhein.</div>';
+    if(!n) h += '<div class="hint" style="margin:0;">Passenger details missing — please fill the form.</div>';
   }
   h += '</div>';
   // Baggage
@@ -1289,7 +1289,17 @@ function invHtml(d){
      + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">HAND CARRY</div><div style="font-weight:800; font-size:15px; margin-top:4px;">✈ '+esc(d.hand)+' kg</div></div>'
      + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">CHECKED-IN BAG</div><div style="font-weight:800; font-size:15px; margin-top:4px;">🧳 '+esc(bag)+'</div></div>'
      + '</div>';
-  if(d.nr) h += '<div style="margin-top:12px; background:#fef2f2; border:1px solid #fca5a5; color:#b91c1c; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — is ticket ke refund/changes par fees lag sakti hai</div>';
+  if(d.nr) h += '<div style="margin-top:12px; background:#fef2f2; border:1px solid #fca5a5; color:#b91c1c; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund or changes may incur airline fees</div>';
+  h += '<div style="margin-top:12px; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; background:#f8fafc;">'
+     + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:6px;">TRAVEL GUIDELINES</div>'
+     + '<ul style="margin:0 0 0 16px; padding:0; font-size:11.3px; line-height:1.5; color:#334155;">'
+     + '<li>Your e-ticket on the phone is enough; a printout is optional.</li>'
+     + '<li>Carry your original passport and valid visa (international) or original CNIC (domestic).</li>'
+     + '<li>Arrive at the airport at least <b>3 hours</b> before international and <b>2 hours</b> before domestic departure.</li>'
+     + '<li>Check-in closes about <b>60&ndash;90 minutes</b> before departure (international flights may close earlier).</li>'
+     + '<li>Passport should normally be valid for at least <b>6 months</b> beyond the travel date.</li>'
+     + '<li>Keep your ticket and documents ready at check-in, immigration and boarding; follow airline baggage rules.</li>'
+     + '</ul></div>';
   h += '</div>';
   h += '<div style="background:#f8fafc; border-top:1px solid #e5e7eb; padding:10px 18px; text-align:center; font-size:12px; color:#475569;">'
      + '<b>AB Travels</b> — Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd<br>'
@@ -1299,22 +1309,22 @@ function invHtml(d){
 }
 function viewInvoice(){
   var st = S.settings;
-  var airOpts = '<option value="">— Airline chunein (logo + naam) —</option>'
+  var airOpts = '<option value="">— Select airline (logo + name) —</option>'
               + INV_AIRLINES.map(function(a){ return '<option value="'+esc(a.c)+'">'+esc(a.n)+' ('+esc(a.c)+')</option>'; }).join("")
               + '<option value="other">Other / none</option>';
   var html = "";
-  html += '<div class="card"><h2>Invoice / Ticket — client ke liye</h2>';
+  html += '<div class="card"><h2>Invoice / Ticket — for the client</h2>';
   html += '<div class="row"><div><label>Trip type</label><select id="invTrip"><option value="one">One-way</option><option value="round">Round trip (return flight)</option></select></div>'
         + '<div><label>Airline</label><select id="invAir">'+airOpts+'</select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>PNR / Booking ref</label><input id="invPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px; font-weight:700;"></div>'
         + '<div><label>Number of passengers</label><input type="number" id="invPax" min="1" value="'+invPaxCount+'" inputmode="numeric"></div></div>';
-  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label>Client name</label><input id="invClient" placeholder="Passenger ka naam" autocomplete="off"></div>'
+  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label>Client name</label><input id="invClient" placeholder="Passenger name" autocomplete="off"></div>'
         + '<div><label>Ticket number</label><input id="invTk" placeholder="Ticket number" autocomplete="off"></div></div>';
   html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invNicRow"><div><label>NIC / Passport</label><input id="invNic1" placeholder="NIC ya Passport number" autocomplete="off"></div></div>';
   html += '<div class="grid2" id="invPaxListRow" style="margin-top:8px;'+(invPaxCount>1?'':' display:none;')+'">'
-        + '<div><label>Passengers (naam — har line par ek, Enter dabayein)</label><textarea id="invPaxNames" rows="'+Math.max(3, invPaxCount)+'" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed"></textarea></div>'
-        + '<div><label>NIC / Passport (usi tarteeb se — har line par ek)</label><textarea id="invNicMulti" rows="'+Math.max(3, invPaxCount)+'" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9"></textarea></div>'
-        + '<div style="grid-column:1/-1;"><div class="hint">Naam aur NIC/Passport line-by-line match honge (pehli line ka naam = pehli line ka NIC). Enter dabane par nayi line banti hai.</div></div></div>';
+        + '<div><label>Passengers (one name per line — press Enter)</label><textarea id="invPaxNames" rows="'+Math.max(3, invPaxCount)+'" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed"></textarea></div>'
+        + '<div><label>NIC / Passport (same order — one per line)</label><textarea id="invNicMulti" rows="'+Math.max(3, invPaxCount)+'" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9"></textarea></div>'
+        + '<div style="grid-column:1/-1;"><div class="hint">Names and NIC/Passport match line by line (first name = first NIC). Press Enter for a new line.</div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
@@ -1329,17 +1339,17 @@ function viewInvoice(){
         + '<div><label>Return time</label><input type="time" id="invRetTime"></div></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
         + '<div><label>Checked-in bag (kg)</label><input type="number" id="invBag" min="0" value="0" inputmode="decimal"><div class="hint">0 = None (default)</div></div></div>';
-  html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="invNR" style="width:auto"'+(st.invNR?' checked':'')+'> Non-refundable (NON-REFUNDABLE stamp lag jayega)</label>';
+  html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="invNR" style="width:auto"'+(st.invNR?' checked':'')+'> Non-refundable (adds the NON-REFUNDABLE stamp)</label>';
   html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
   html += '<button class="btn" id="invPrintBtn" style="display:none; background:var(--gold); color:#fff;">🖨 Print / Save as PDF (A4)</button>';
-  html += '<div class="hint">Client ko bhejne ke liye: Generate karein, phir Print / Save as PDF — print A4 page size par hota hai. Non-refundable stamp Settings > Invoice se default bhi ban sakte hain.</div>';
+  html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
   html += '</div>';
   html += '<div id="invOut"></div>';
   return html;
 }
 function printInvoice(){
   var el = document.getElementById("invPrint");
-  if(!el){ alert("Pehle Generate Invoice dabayein."); return; }
+  if(!el){ alert("Press Generate Invoice first."); return; }
   var pnr = ((document.getElementById("invPnr")||{}).value||"").toUpperCase();
   var f = document.createElement("iframe");
   f.style.cssText = "position:fixed; right:0; bottom:0; width:0; height:0; border:0;";
@@ -2395,8 +2405,11 @@ function bind(){
       nr: !!((document.getElementById("invNR")||{}).checked),
       trip: ((document.getElementById("invTrip")||{}).value||"one")
     };
-    if(!d.pnr || !d.name){ alert("PNR aur client name dono zaroori hain."); return; }
-    if(!d.from || !d.to){ alert("From aur To airports dono likhein."); return; }
+    // Multi-passenger form: use the first passenger line when the single client box is hidden
+    if(!d.name && d.paxNames.length) d.name = d.paxNames[0];
+    if(!d.nic && d.paxNics.length) d.nic = d.paxNics[0];
+    if(!d.pnr || !d.name){ alert("PNR and passenger name are both required."); return; }
+    if(!d.from || !d.to){ alert("Please enter both From and To airports."); return; }
     var dt = new Date(d.date + "T00:00:00");
     d.dateTxt = d.date ? dt.toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric" }) : "";
     if(d.time){
@@ -2424,7 +2437,7 @@ function bind(){
         rh = rh % 12 || 12;
         d.ret.timeTxt = rh + ":" + rm + " " + rap;
       }
-      if(!d.ret.from || !d.ret.to){ alert("Return flight ke airports bhi likhein (ya One-way chunein)."); return; }
+      if(!d.ret.from || !d.ret.to){ alert("Please enter the return airports too (or choose One-way)."); return; }
     } else { d.ret = null; }
     var out = document.getElementById("invOut");
     if(out){ out.innerHTML = invHtml(d); out.scrollIntoView({behavior:"smooth", block:"start"}); }
