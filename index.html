@@ -170,7 +170,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.30";
+var APP_VER = "1.31";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1282,18 +1282,20 @@ function invHtml(d){
     h += '<table style="width:100%; border-collapse:collapse; font-size:13.5px;">'
        + invRow("Passenger", d.name)
        + invRowAlways("NIC / Passport", d.nic)
-       + (d.seat ? invRow("Seat", d.seat) : "")
+       + (d.seat ? invRow("Outbound seat", d.seat) : "")
+       + (d.retSeat ? invRow("Return seat", d.retSeat) : "")
        + invRowAlways("Ticket number", d.tkNo)
        + '</table>';
   } else {
-    var names = (d.paxNames||[]), nics = (d.paxNics||[]), seats = (d.paxSeats||[]);
-    var n = Math.max(names.length, nics.length, seats.length);
+    var names = (d.paxNames||[]), nics = (d.paxNics||[]), seats = (d.paxSeats||[]), rseats = (d.paxRetSeats||[]);
+    var n = Math.max(names.length, nics.length, seats.length, rseats.length);
     h += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
     for(var i = 0; i < n; i++){
-      var nm = names[i]||"—", idn = nics[i]||"—", stn = seats[i]||"";
+      var nm = names[i]||"—", idn = nics[i]||"—", stn = seats[i]||"", rst = rseats[i]||"";
       h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6; text-align:left; white-space:normal;"><b>'+esc(nm)+'</b>'
          + '<div style="font-size:11.5px; color:#64748b;">'+esc(idn)+'</div>'
-         + (stn ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">Seat '+esc(stn)+'</div>' : '')
+         + (stn ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">Outbound seat '+esc(stn)+'</div>' : '')
+         + (rst ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">Return seat '+esc(rst)+'</div>' : '')
          + '</td></tr>';
     }
     h += '</table>';
@@ -1338,12 +1340,16 @@ function viewInvoice(){
   html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label>Client name</label><input id="invClient" placeholder="Passenger name" autocomplete="off"></div>'
         + '<div><label>Ticket number</label><input id="invTk" placeholder="Ticket number" autocomplete="off"></div></div>';
   html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invNicRow"><div><label>NIC / Passport</label><input id="invNic1" placeholder="NIC or Passport number" autocomplete="off"></div>'
-        + '<div><label>Seat (optional)</label><input id="invSeat1" placeholder="e.g. 12A" autocomplete="off" style="text-transform:uppercase;"></div></div>';
+        + '<div><label>Outbound seat (optional)</label><input id="invSeat1" placeholder="e.g. 12A" autocomplete="off" style="text-transform:uppercase;"></div></div>';
+  if(invPaxCount <= 1){
+    html += '<div class="row retseat" style="margin-top:8px; display:none;"><div><label>Return seat (optional)</label><input id="invRetSeat1" placeholder="e.g. 14C" autocomplete="off" style="text-transform:uppercase;"></div></div>';
+  }
   html += '<div class="grid2" id="invPaxListRow" style="margin-top:8px;'+(invPaxCount>1?'':' display:none;')+'">'
         + '<div><label>Passengers (one name per line — press Enter)</label><textarea id="invPaxNames" rows="'+Math.max(3, invPaxCount)+'" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed"></textarea></div>'
         + '<div><label>NIC / Passport (same order — one per line)</label><textarea id="invNicMulti" rows="'+Math.max(3, invPaxCount)+'" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9"></textarea></div>'
-        + '<div style="grid-column:1/-1;"><label>Seats (optional — same order, one per line)</label><textarea id="invSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="12A&#10;12B&#10;14C"></textarea></div>'
-        + '<div style="grid-column:1/-1;"><div class="hint">Names, NIC/Passport and seats match line by line (first line = first passenger). Press Enter for a new line. Leave seats empty to hide them on the invoice.</div></div></div>';
+        + '<div style="grid-column:1/-1;"><label>Outbound seats (optional — same order, one per line)</label><textarea id="invSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="12A&#10;12B&#10;14C"></textarea></div>'
+        + '<div class="retseat" style="grid-column:1/-1; display:none;"><label>Return seats (optional — same order, one per line)</label><textarea id="invRetSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="14C&#10;14D&#10;16A"></textarea></div>'
+        + '<div style="grid-column:1/-1;"><div class="hint">Names, NIC/Passport and seats match line by line (first line = first passenger). Press Enter for a new line. Any seat left empty is hidden on the invoice.</div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
@@ -2437,8 +2443,16 @@ function bind(){
       })(),
       arr: ((document.getElementById("invArr")||{}).value||""),
       retArr: ((document.getElementById("invRetArr")||{}).value||""),
+      retSeat: ((document.getElementById("invRetSeat1")||{}).value||"").trim().toUpperCase(),
+      paxRetSeats: (function(){
+        var a = String(((document.getElementById("invRetSeats")||{}).value||"")).replace(/\r/g, "").split("\n").map(function(x){ return x.trim().toUpperCase(); });
+        while(a.length && !a[a.length-1]) a.pop();
+        return a;
+      })(),
       trip: ((document.getElementById("invTrip")||{}).value||"one")
     };
+    // One-way: ignore any stale return-seat values
+    if(d.trip !== "round"){ d.retSeat = ""; d.paxRetSeats = []; }
     // Multi-passenger form: use the first passenger line when the single client box is hidden
     if(!d.name && d.paxNames.length) d.name = d.paxNames[0];
     if(!d.nic && d.paxNics.length) d.nic = d.paxNics[0];
@@ -2494,6 +2508,8 @@ function bind(){
   if(tripEl) tripEl.onchange = function(){
     var w = document.getElementById("invRetWrap");
     if(w) w.style.display = (this.value === "round") ? "block" : "none";
+    var isRound = this.value === "round";
+    [].forEach.call(document.querySelectorAll(".retseat"), function(x){ x.style.display = isRound ? "" : "none"; });
     if(this.value === "round"){
       var rf = document.getElementById("invRetFrom"), rt2 = document.getElementById("invRetTo");
       var f0 = (document.getElementById("invFrom")||{}).value||"", t0 = (document.getElementById("invTo")||{}).value||"";
