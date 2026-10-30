@@ -169,7 +169,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.24";
+var APP_VER = "1.25";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1047,7 +1047,7 @@ function reportRows(mid){
       sec(monthLabel(m) + " — TICKET / UMRAH SALES");
       line(["Date","Kind","Client","Details","Cost","Sale","Profit","Payment","Note"]);
       tk.forEach(function(t){
-        line([t.date, (t.kind || "Ticket"), t.client||"", t.detail||"", t.cost, t.sale, (Number(t.sale)||0)-(Number(t.cost)||0),
+        line([t.date, (t.kind || "Ticket"), t.client||"", ((t.nic ? "NIC/Passport: " + t.nic : "") + (t.detail ? (t.nic ? " — " : "") + t.detail : "")), t.cost, t.sale, (Number(t.sale)||0)-(Number(t.cost)||0),
           (t.paid === false ? "Unpaid" : "Paid"), (t.commission ? "Waseem commission: " + t.commission : "")]);
       });
       line(["","TOTAL","","", tc, ts, ts - tc, "",""]);
@@ -1111,43 +1111,71 @@ function invAirLogo(code){
   return "https://images.kiwi.com/airlines/64/" + encodeURIComponent(code) + ".png";
 }
 /* Airports — internet se fetch (country/city/code search), localStorage cache */
+var AB_COUNTRY_NAMES = { PK:"Pakistan", AE:"UAE", SA:"Saudi Arabia", QA:"Qatar", BH:"Bahrain", KW:"Kuwait", OM:"Oman", TR:"Turkey", US:"USA", GB:"UK", IN:"India", BD:"Bangladesh", LK:"Sri Lanka", NP:"Nepal", MY:"Malaysia", SG:"Singapore", TH:"Thailand", ID:"Indonesia", PH:"Philippines", CN:"China", JP:"Japan", KR:"South Korea", VN:"Vietnam", EG:"Egypt", JO:"Jordan", LB:"Lebanon", IQ:"Iraq", IR:"Iran", AF:"Afghanistan", UZ:"Uzbekistan", KZ:"Kazakhstan", AZ:"Azerbaijan", GE:"Georgia", ET:"Ethiopia", KE:"Kenya", NG:"Nigeria", ZA:"South Africa", MA:"Morocco", TN:"Tunisia", DZ:"Algeria", LY:"Libya", SD:"Sudan", CA:"Canada", AU:"Australia", NZ:"New Zealand", DE:"Germany", FR:"France", IT:"Italy", ES:"Spain", NL:"Netherlands", BE:"Belgium", CH:"Switzerland", AT:"Austria", SE:"Sweden", NO:"Norway", DK:"Denmark", FI:"Finland", PL:"Poland", UA:"Ukraine", RU:"Russia", GR:"Greece", PT:"Portugal", IE:"Ireland", HU:"Hungary", CZ:"Czechia", RO:"Romania", IL:"Israel", MV:"Maldives", MM:"Myanmar", KH:"Cambodia", MN:"Mongolia" };
+var AB_AIRPORTS_MEM = null;
+function countryName(cc){
+  return AB_COUNTRY_NAMES[cc] || cc;
+}
 function airportsCache(cb, force){
+  if(AB_AIRPORTS_MEM && AB_AIRPORTS_MEM.length && !force){ cb(AB_AIRPORTS_MEM); return; }
   var cached = null;
   try{ cached = JSON.parse(localStorage.getItem("ab_airports") || "null"); }catch(e){}
   if(!force && cached && cached.list && cached.list.length){
-    cb(cached.list);
+    AB_AIRPORTS_MEM = cached.list;
+    cb(AB_AIRPORTS_MEM);
     if(Date.now() - cached.ts > 7*86400000) airportsCache(function(){}, true); // background refresh
     return;
   }
-  fetch("https://raw.githubusercontent.com/david-mega/airports/master/airports.json")
+  fetch("https://raw.githubusercontent.com/mwgg/Airports/master/airports.json")
     .then(function(r){ return r.json(); })
     .then(function(j){
-      var list = (j||[]).filter(function(a){ return a && a.iata && a.name; }).map(function(a){
-        return { iata:String(a.iata).toUpperCase(), name:String(a.name||""), city:String(a.cityEn||a.city||""), country:String(a.countryEn||a.country||"") };
+      var list = [];
+      Object.keys(j||{}).forEach(function(k){
+        var a = j[k];
+        if(a && a.iata && a.name) list.push({
+          iata:String(a.iata).toUpperCase(),
+          name:String(a.name||""),
+          city:String(a.city||""),
+          country:countryName(String(a.country||""))
+        });
       });
       try{ localStorage.setItem("ab_airports", JSON.stringify({ ts:Date.now(), list:list })); }catch(e){}
+      AB_AIRPORTS_MEM = list;
       cb(list);
     })
-    .catch(function(){ cb([]); });
+    .catch(function(){ cb(AB_AIRPORTS_MEM || []); });
 }
 function airportName(iata){
-  try{
-    var cached = JSON.parse(localStorage.getItem("ab_airports") || "null");
-    if(!cached || !cached.list) return "";
-    var a = cached.list.filter(function(x){ return x.iata === iata; })[0];
-    return a ? (a.name + " (" + a.city + ")") : "";
-  }catch(e){ return ""; }
+  var list = AB_AIRPORTS_MEM;
+  if(!list){
+    try{
+      var cached = JSON.parse(localStorage.getItem("ab_airports") || "null");
+      if(cached && cached.list) list = AB_AIRPORTS_MEM = cached.list;
+    }catch(e){}
+  }
+  if(!list) return "";
+  var a = list.filter(function(x){ return x.iata === iata; })[0];
+  return a ? (a.name + " (" + a.city + ", " + a.country + ")") : "";
 }
 function bindAirportField(inputId){
   var inp = document.getElementById(inputId);
   if(!inp) return;
   var drop = null;
   function closeDrop(){ if(drop){ drop.remove(); drop = null; } }
+  function showInfo(a){
+    var info = inp.parentNode.querySelector(".airport-info");
+    if(info) info.textContent = a ? (a.iata + " — " + a.name + " (" + a.city + ", " + a.country + ")") : "";
+  }
+  function pick(a){
+    inp.value = a.iata;
+    showInfo(a);
+    closeDrop();
+  }
   function openDrop(list, q){
     closeDrop();
     var qn = String(q||"").trim().toLowerCase();
+    if(!qn) return;
     var matches = list.filter(function(a){
-      if(!qn) return false;
       return a.iata === qn.toUpperCase()
         || a.country.toLowerCase().indexOf(qn) >= 0
         || a.city.toLowerCase().indexOf(qn) >= 0
@@ -1160,10 +1188,7 @@ function bindAirportField(inputId){
       var row = document.createElement("div");
       row.style.cssText = "padding:8px 10px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:13px;";
       row.innerHTML = "<b>"+esc(a.iata)+"</b> — "+esc(a.name)+" <span style='color:#94a3b8;'>("+esc(a.city)+", "+esc(a.country)+")</span>";
-      row.onmousedown = function(){
-        inp.value = a.iata;
-        closeDrop();
-      };
+      row.onmousedown = function(){ pick(a); };
       drop.appendChild(row);
     });
     inp.parentNode.appendChild(drop);
@@ -1171,14 +1196,18 @@ function bindAirportField(inputId){
   inp.addEventListener("focus", function(){
     var self = this;
     airportsCache(function(list){
-      if(list && list.length) openDrop(list, self.value);
-      else if(drop === null && !list){
-        // internet fail — chhota message
+      if(list && list.length){ openDrop(list, self.value); }
+      else {
+        drop = document.createElement("div");
+        drop.style.cssText = "padding:8px 10px; font-size:12px; color:#64748b;";
+        drop.textContent = "Airports load ho rahi hain… (internet)";
+        inp.parentNode.appendChild(drop);
       }
     });
   });
   inp.addEventListener("input", function(){
     var self = this;
+    if(drop){ var info = self.parentNode.querySelector(".airport-info"); if(info) info.textContent = ""; }
     airportsCache(function(list){ openDrop(list, self.value); });
   });
   inp.addEventListener("blur", function(){ setTimeout(closeDrop, 200); });
@@ -1281,16 +1310,16 @@ function viewInvoice(){
   html += '<div class="row" style="margin-top:8px;"><div><label>Client name</label><input id="invClient" placeholder="Passenger ka naam" autocomplete="off"></div>'
         + '<div id="invTkRow"><label>Ticket number</label><input id="invTk" placeholder="Ticket number (1 passenger par)" autocomplete="off"></div></div>';
   html += '<div class="row" id="invPaxListRow" style="margin-top:8px; display:none;"><div><label>Passengers ki detail</label><textarea id="invPaxList" rows="3" placeholder="Har line par ek passenger:\nAli Khan - 42101-1234567-1\nSana Khan - AB1234567"></textarea><div class="hint">Har line: Naam - NIC/Passport</div></div></div>';
-  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"></div>'
+  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
-        + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"></div></div>';
+        + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Departure date</label><input type="date" id="invDate" value="'+today()+'"></div>'
         + '<div><label>Time</label><input type="time" id="invTime"></div></div>';
   html += '<div id="invRetWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🔁 Return flight</div>'
-        + '<div class="row"><div><label>From (airport)</label><input id="invRetFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"></div>'
+        + '<div class="row"><div><label>From (airport)</label><input id="invRetFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
-        + '<div><label>To (airport)</label><input id="invRetTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"></div></div>'
+        + '<div><label>To (airport)</label><input id="invRetTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
         + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="date" id="invRetDate"></div>'
         + '<div><label>Return time</label><input type="time" id="invRetTime"></div></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
@@ -1623,7 +1652,7 @@ function viewTickets(){
   html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
   html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
-  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Client name</label><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div><div><label>NIC / Passport</label><input id="tkNic" placeholder="NIC ya Passport number" autocomplete="off"></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
   html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
   html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("payment"))+'</label><select id="tkPaid"><option value="paid">'+esc(T("paidopt"))+'</option><option value="unpaid">'+esc(T("unpaidopt"))+'</option></select><input id="tkComm" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("commph"))+'" value="0"></div>';
@@ -1663,9 +1692,9 @@ function viewTickets(){
     html += '<div class="card"><h2>'+esc(T("tkhist"))+'</h2><table id="tkList"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
     sorted.forEach(function(t){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
-      var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket")).toLowerCase();
+      var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.nic||"") + " " + (t.kind||"Ticket")).toLowerCase();
       html += '<tr data-search="'+esc(hay)+'"><td>'+esc(t.date)+'</td>'
-            + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
+            + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.nic?'<div style="font-size:12px; color:var(--muted);">NIC/Passport: '+esc(t.nic)+'</div>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
             + '<td>'+money(t.cost)+'</td><td>'+money(t.sale)+'</td>'
             + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
             + '<td>'+(t.paid === false
@@ -2318,6 +2347,7 @@ function bind(){
     var kind = (document.getElementById("tkKind")||{}).value || "Ticket";
     var tkDate = document.getElementById("tkDate").value || today();
     S.tickets.push({ id:uid(), date:tkDate, client:client, kind:kind,
+                     nic:((document.getElementById("tkNic")||{}).value||"").trim(),
                      detail:((document.getElementById("tkDetail")||{}).value||"").trim(), cost:cost, sale:sale,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
