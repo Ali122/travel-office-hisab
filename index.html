@@ -103,13 +103,18 @@
     body.nav-open #navBackdrop{opacity:1; pointer-events:auto;}
     main{padding:14px 14px 90px; max-width:none;}
   }
+
+  /* ---------- Ayat bar (sticky, har section ke top par) ---------- */
+  .ayat-bar{position:sticky; top:var(--header-h); z-index:9; background:linear-gradient(135deg,#fffbeb,#fef3c7); border-bottom:1px solid #fde68a; text-align:center; padding:8px 14px;}
+  .ayat-bar .ar{font-size:19px; line-height:1.85; color:#78350f; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px;}
+  .ayat-bar .tr{font-size:11px; color:#92400e; margin-top:4px; line-height:1.5;}
 </style>
 </head>
 <body>
 <header>
   <button id="menuBtn" aria-label="Menu">☰</button>
   <div class="brand">
-    <img src="logo.png" alt="AB Travels" style="width:42px; height:42px; border-radius:10px; object-fit:cover; flex:0 0 auto;" onerror="this.style.display='none'">
+    <img src="logo.png" alt="AB Travels" style="width:42px; height:42px; border-radius:50%; object-fit:cover; flex:0 0 auto; border:2px solid rgba(255,255,255,.35);" onerror="this.style.display='none'">
     <div style="min-width:0;">
       <h1>Travel Office Hisab <span class="ver" id="verBadge">v1.17</span></h1>
       <div class="tag">AB Travels</div>
@@ -118,15 +123,20 @@
   <button id="hintsBtn" class="hints-btn">Hints: ON</button>
 </header>
 
+<div class="ayat-bar" dir="rtl">
+  <div class="ar" lang="ar">وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا ۞ وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ</div>
+  <div class="tr" dir="ltr">&ldquo;And whoever fears Allah &mdash; He will make for him a way out, and provide for him from where he does not expect.&rdquo; &mdash; At-Talaq 65:2&ndash;3</div>
+</div>
+
 <div class="shell">
   <nav id="tabs">
     <div class="nav-head"><span>Menu</span><button id="navClose" aria-label="Close">✕</button></div>
 
     <div class="nav-group" id="navMain">
       <div class="nav-group-title">Main</div>
-      <button data-tab="dash" class="active"><span class="ic">📊</span><span class="lbl">Summary</span></button>
+      <button data-tab="dash"><span class="ic">📊</span><span class="lbl">Summary</span></button>
       <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
-      <button data-tab="tickets"><span class="ic">🎫</span><span class="lbl">Sales</span></button>
+      <button data-tab="tickets" class="active"><span class="ic">🎫</span><span class="lbl">Sales</span></button>
       <button data-tab="qarza"><span class="ic">🏦</span><span class="lbl">Loan</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
     </div>
@@ -155,7 +165,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.18";
+var APP_VER = "1.19";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -187,12 +197,12 @@ var TXT = {
     tkhul:"Ticket khulasa", kulcost:"Kul cost", kulsale:"Kul sale",
     kulprofit:"Kul profit (mahana kamai mein shamil)",
     cleartk:"Saari tickets delete karein (dobara import ke liye)",
-    newtk:"Naya ticket add karein", tareekh:"Tareekh",
+    newtk:"Naya sale add karein", tareekh:"Tareekh",
     clientph:"Client ka naam", detailph:"Mas: Umrah ticket, airline",
     costph:"Cost price (Rs)", saleph:"Sale price (Rs)",
     profit:"Profit: ", payment:"Payment",
     paidopt:"Paid (paisa mil gaya)", unpaidopt:"Unpaid (bakaya mein jayega)",
-    commph:"Waseem commission (Rs)", savetk:"Ticket save karein",
+    commph:"Waseem commission (Rs)", savetk:"Sale save karein",
     tkhint:"Ticket ka profit automatically usi mahine ki kamai mein jud jata hai — Mahana Hisab mein nazar aayega.",
     tkhist:"Sales / Umrah history", thdate:"Tareekh", thcl:"Client / tafseel",
     wscomm:"Waseem commission: ", unpaid:"Unpaid", paidp:"Paid",
@@ -255,12 +265,12 @@ var TXT = {
     tkhul:"Ticket Summary", kulcost:"Total cost", kulsale:"Total sale",
     kulprofit:"Total profit (added to monthly income)",
     cleartk:"Delete all tickets (for re-import)",
-    newtk:"Add New Ticket", tareekh:"Date",
+    newtk:"Add New Sale", tareekh:"Date",
     clientph:"Client name", detailph:"e.g. Umrah ticket, airline",
     costph:"Cost price (Rs)", saleph:"Sale price (Rs)",
     profit:"Profit: ", payment:"Payment",
     paidopt:"Paid (money received)", unpaidopt:"Unpaid (goes to pending)",
-    commph:"Waseem commission (Rs)", savetk:"Save Ticket",
+    commph:"Waseem commission (Rs)", savetk:"Save Sale",
     tkhint:"Ticket profit is added to that month's income automatically — visible in Monthly Accounts.",
     tkhist:"Sales / Umrah history", thdate:"Date", thcl:"Client / Details",
     wscomm:"Waseem commission: ", unpaid:"Unpaid", paidp:"Paid",
@@ -1073,7 +1083,7 @@ function downloadReportEach(){
 }
 
 /* ================= TABS ================= */
-var currentTab = "dash";
+var currentTab = "tickets";
 function closeNav(){ document.body.classList.remove("nav-open"); }
 function openNav(){ document.body.classList.add("nav-open"); }
 document.getElementById("tabs").addEventListener("click", function(e){
@@ -1169,7 +1179,7 @@ function ayatCard(){
 function viewDash(){
   var pb = partnerBalances(), t = totals(), st = S.settings;
   var mf = monthFilterCard("DASH", "View the overall summary or a single month. <b>All months</b> shows everything.");
-  var html = ayatCard() + mf.html;
+  var html = mf.html;
   var lb = st.lastBackup, daysSince = lb ? Math.floor((new Date() - new Date(lb)) / 86400000) : null;
   if(!lb || daysSince > 35){
     html += '<div class="card" style="border:2px solid var(--gold);"><h2>'+esc(T("bkremind"))+'</h2>';
@@ -1371,6 +1381,18 @@ function viewTickets(){
 
   var html = "";
 
+  // Add New Sale — sab se oper
+  html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
+  html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
+  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkDetail" placeholder="'+esc(T("detailph"))+'"></div>';
+  html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
+  html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
+  html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("payment"))+'</label><select id="tkPaid"><option value="paid">'+esc(T("paidopt"))+'</option><option value="unpaid">'+esc(T("unpaidopt"))+'</option></select><input id="tkComm" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("commph"))+'" value="0"></div>';
+  html += '<button class="btn green" id="addTicket">'+esc(T("savetk"))+'</button>';
+  html += '<div class="hint">'+esc(T("tkhint"))+'</div>';
+  html += '</div>';
+
   // Sab se oper: mahina chunne wala filter
   if(all.length){
     var opts = '<option value="all"'+(ticketFilter==="all"?" selected":"")+'>All months — '+all.length+' tickets</option>';
@@ -1397,17 +1419,6 @@ function viewTickets(){
         + '</div>';
   html += '<div class="hint" style="margin-top:8px;">'+list.length+' tickets '+(ticketFilter==="all" ? "in the full record" : "in "+esc(monthLabel(ticketFilter)))+'</div>';
   html += '<button class="btn small" id="clearTickets" style="margin-top:10px; width:100%; background:var(--red); color:#fff;">'+esc(T("cleartk"))+'</button></div>';
-
-  html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
-  html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
-  html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
-  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkDetail" placeholder="'+esc(T("detailph"))+'"></div>';
-  html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
-  html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
-  html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("payment"))+'</label><select id="tkPaid"><option value="paid">'+esc(T("paidopt"))+'</option><option value="unpaid">'+esc(T("unpaidopt"))+'</option></select><input id="tkComm" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("commph"))+'" value="0"></div>';
-  html += '<button class="btn green" id="addTicket">'+esc(T("savetk"))+'</button>';
-  html += '<div class="hint">'+esc(T("tkhint"))+'</div>';
-  html += '</div>';
 
   if(list.length){
     var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
