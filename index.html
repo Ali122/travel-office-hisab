@@ -169,7 +169,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.26";
+var APP_VER = "1.27";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1271,15 +1271,15 @@ function invHtml(d){
        + invRowAlways("Ticket number", d.tkNo)
        + '</table>';
   } else {
-    var lines = String(d.paxList||"").split(/\n+/).filter(function(x){ return x.trim(); });
+    var names = (d.paxNames||[]), nics = (d.paxNics||[]);
+    var n = Math.max(names.length, nics.length);
     h += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
-    lines.forEach(function(l, i){
-      var parts = String(l).split(/\s*[-–—]\s*/);
-      var nm = parts[0]||"", idn = parts.slice(1).join(" - ");
-      h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6;"><b>'+esc(String(i+1)+". "+nm)+'</b><div style="font-size:11.5px; color:#64748b;">NIC/Passport: '+esc(idn||"—")+'</div></td></tr>';
-    });
+    for(var i = 0; i < n; i++){
+      var nm = names[i]||"—", idn = nics[i]||"—";
+      h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6;"><b>'+esc(String(i+1)+". "+nm)+'</b><div style="font-size:11.5px; color:#64748b;">NIC/Passport: '+esc(idn)+'</div></td></tr>';
+    }
     h += '</table>';
-    if(!lines.length) h += '<div class="hint" style="margin:0;">Passenger details missing — form mein likhein.</div>';
+    if(!n) h += '<div class="hint" style="margin:0;">Passenger details missing — form mein likhein.</div>';
   }
   h += '</div>';
   // Baggage
@@ -1309,7 +1309,7 @@ function viewInvoice(){
         + '<div><label>Number of passengers</label><input type="number" id="invPax" min="1" value="1" inputmode="numeric"></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Client name</label><input id="invClient" placeholder="Passenger ka naam" autocomplete="off"></div>'
         + '<div id="invTkRow"><label>Ticket number</label><input id="invTk" placeholder="Ticket number (1 passenger par)" autocomplete="off"></div></div>';
-  html += '<div class="row" id="invPaxListRow" style="margin-top:8px; display:none;"><div><label>Passengers ki detail</label><textarea id="invPaxList" rows="3" placeholder="Har line par ek passenger:\nAli Khan - 42101-1234567-1\nSana Khan - AB1234567"></textarea><div class="hint">Har line: Naam - NIC/Passport</div></div></div>';
+  html += '<div class="row" id="invPaxListRow" style="margin-top:8px; display:none;"><div><label>Passengers (naam — har line par ek, Enter dabayein)</label><textarea id="invPaxNames" rows="3" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed"></textarea></div><div><label>NIC / Passport (usi tarteeb se — har line par ek)</label><textarea id="invPaxNics" rows="3" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9"></textarea><div class="hint">Naam aur NIC/Passport line-by-line match honge (pehli line ka naam = pehli line ka NIC).</div></div></div>';
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
@@ -2379,6 +2379,8 @@ function bind(){
       pax: Math.max(1, Number((document.getElementById("invPax")||{}).value) || 1),
       tkNo: ((document.getElementById("invTk")||{}).value||"").trim(),
       paxList: ((document.getElementById("invPaxList")||{}).value||""),
+      paxNames: String(((document.getElementById("invPaxNames")||{}).value||"")).split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean),
+      paxNics: String(((document.getElementById("invPaxNics")||{}).value||"")).split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean),
       from: ((document.getElementById("invFrom")||{}).value||"").trim().toUpperCase(),
       to: ((document.getElementById("invTo")||{}).value||"").trim().toUpperCase(),
       date: ((document.getElementById("invDate")||{}).value||""),
