@@ -140,6 +140,7 @@
       <button data-tab="dash"><span class="ic">📊</span><span class="lbl">Summary</span></button>
       <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
       <button data-tab="tickets" class="active"><span class="ic">🎫</span><span class="lbl">Sales</span></button>
+      <button data-tab="invoice"><span class="ic">🧾</span><span class="lbl">Invoice</span></button>
       <button data-tab="qarza"><span class="ic">🏦</span><span class="lbl">Loan</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
     </div>
@@ -168,13 +169,13 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.21";
+var APP_VER = "1.22";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
   ur: {
-    dash:"Khulasa", month:"Mahana Hisab", tickets:"Sales", bakaya:"Bakaya Payments", settings:"Settings",
+    dash:"Khulasa", month:"Mahana Hisab", tickets:"Sales", invoice:"Invoice", bakaya:"Bakaya Payments", settings:"Settings",
     abbu:"Abbu", waseem:"Waseem",
     todaysum:"Aaj ka khulasa", loanbaqi:"Qarza baqi (loan)", kaq:" ka baqaya", clbak:"Bakaya payments (clients)",
     kulsadqa:"Kul sadqa diya gaya: ", kulqarza:" • Kul qarza utara: ", appm:" • Apply kiye gaye mahine: ",
@@ -242,7 +243,7 @@ var TXT = {
     bkremind:"Backup yaad-dihani", bknow:"Abhi backup download karein"
   },
   en: {
-    dash:"Summary", month:"Monthly Accounts", tickets:"Sales", bakaya:"Pending Payments", settings:"Settings",
+    dash:"Summary", month:"Monthly Accounts", tickets:"Sales", invoice:"Invoice", bakaya:"Pending Payments", settings:"Settings",
     abbu:"Father", waseem:"Waseem",
     todaysum:"Today's Summary", loanbaqi:"Loan remaining", kaq:"'s balance", clbak:"Client payments pending",
     kulsadqa:"Total charity given: ", kulqarza:" • Total loan paid: ", appm:" • Months applied: ",
@@ -317,6 +318,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"en", hints:true, lastBackup:"",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false,
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
       { id:"fix-rent", label:"Office rent", amount:70000, on:true },
@@ -1085,6 +1087,77 @@ function downloadReportEach(){
   });
 }
 
+/* ================= CLIENT INVOICE / TICKET ================= */
+function invRow(k, v){
+  if(!v) return "";
+  return '<tr><td style="padding:7px 4px; color:#64748b; width:40%; border-bottom:1px solid #f3f4f6;">'+esc(k)+'</td><td style="padding:7px 4px; font-weight:700; border-bottom:1px solid #f3f4f6;">'+esc(v)+'</td></tr>';
+}
+function invHtml(d){
+  var logo = "";
+  try{ logo = new URL("logo.png", location.href).href; }catch(e){ logo = "logo.png"; }
+  var p1 = S.settings.invPhone1 || "0310-3311199", p2 = S.settings.invPhone2 || "0314-3178560";
+  return '<div id="invPrint" style="max-width:520px; margin:0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; position:relative;">'
+    + '<div style="background:linear-gradient(135deg,#0f172a,#1e293b); padding:14px 18px; display:flex; align-items:center; gap:12px;">'
+    + '<img src="'+logo+'" alt="AB Travels" style="width:46px; height:46px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.35); flex:0 0 auto; background:#fff;">'
+    + '<div style="flex:1; min-width:0;">'
+    + '<div style="color:#fff; font-weight:800; font-size:18px;">AB Travels</div>'
+    + '<div style="color:#94a3b8; font-size:10.5px; margin-top:2px;">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>'
+    + '</div></div>'
+    + (d.nr ? '<div style="position:absolute; top:64px; right:-38px; transform:rotate(35deg); background:#dc2626; color:#fff; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
+    + '<div style="padding:18px;">'
+    + '<div style="text-align:center; font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">BOOKING CONFIRMATION</div>'
+    + '<div style="text-align:center; margin-top:6px;"><span style="display:inline-block; background:#eff6ff; border:1.5px dashed #2563eb; border-radius:10px; padding:6px 18px; font-weight:800; font-size:22px; letter-spacing:3px; color:#2563eb;">'+esc(d.pnr)+'</span></div>'
+    + '<table style="width:100%; border-collapse:collapse; margin-top:14px; font-size:13.5px;">'
+    + invRow("Passenger", d.name)
+    + invRow("NIC / Passport", d.nic)
+    + invRow("From", d.from)
+    + invRow("To", d.to)
+    + invRow("Date", d.dateTxt)
+    + invRow("Time", d.timeTxt)
+    + '</table>'
+    + (d.nr ? '<div style="margin-top:12px; background:#fef2f2; border:1px solid #fca5a5; color:#b91c1c; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — is ticket ke refund/changes par fees lag sakti hai</div>' : '')
+    + '</div>'
+    + '<div style="background:#f8fafc; border-top:1px solid #e5e7eb; padding:10px 18px; text-align:center; font-size:12px; color:#475569;">'
+    + '<b>AB Travels</b> — Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd<br>'
+    + '📞 '+esc(p1)+' &nbsp;•&nbsp; 📞 '+esc(p2)
+    + '</div></div>';
+}
+function viewInvoice(){
+  var st = S.settings;
+  var html = "";
+  html += '<div class="card"><h2>Invoice / Ticket — client ke liye</h2>';
+  html += '<div class="row"><div><label>Client name</label><input id="invClient" placeholder="Passenger ka naam" autocomplete="off"></div>'
+        + '<div><label>NIC / Passport</label><input id="invNic" placeholder="NIC ya Passport number" autocomplete="off"></div></div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>PNR / Booking ref</label><input id="invPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px; font-weight:700;"></div></div>';
+  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="KHI" style="text-transform:uppercase;" autocomplete="off"></div>'
+        + '<div style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
+        + '<div><label>To (airport)</label><input id="invTo" placeholder="DXB" style="text-transform:uppercase;" autocomplete="off"></div></div>';
+  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Flight date</label><input type="date" id="invDate" value="'+today()+'"></div>'
+        + '<div><label>Time</label><input type="time" id="invTime"></div></div>';
+  html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="invNR" style="width:auto"'+(st.invNR?' checked':'')+'> Non-refundable (NON-REFUNDABLE stamp lag jayega)</label>';
+  html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
+  html += '<button class="btn" id="invPrintBtn" style="display:none; background:var(--gold); color:#fff;">🖨 Print / Save as PDF</button>';
+  html += '<div class="hint">Client ko bhejne ke liye: Generate karein, phir Print / Save as PDF (browser ke print mein "Save as PDF" bhi hota hai). Non-refundable stamp Settings > Invoice se default bhi ban sakte hain.</div>';
+  html += '</div>';
+  html += '<div id="invOut"></div>';
+  return html;
+}
+function printInvoice(){
+  var el = document.getElementById("invPrint");
+  if(!el){ alert("Pehle Generate Invoice dabayein."); return; }
+  var pnr = ((document.getElementById("invPnr")||{}).value||"").toUpperCase();
+  var f = document.createElement("iframe");
+  f.style.cssText = "position:fixed; right:0; bottom:0; width:0; height:0; border:0;";
+  document.body.appendChild(f);
+  var doc = f.contentWindow.document;
+  doc.open();
+  doc.write('<html><head><title>Booking '+esc(pnr||"")+'</title></head><body style="margin:0; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;">'+el.outerHTML+'</body></html>');
+  doc.close();
+  f.contentWindow.focus();
+  f.contentWindow.print();
+  setTimeout(function(){ document.body.removeChild(f); }, 800);
+}
+
 /* ================= TABS ================= */
 var currentTab = "tickets";
 function closeNav(){ document.body.classList.remove("nav-open"); }
@@ -1116,13 +1189,14 @@ function render(){
   else if(currentTab==="abbu") app.innerHTML = viewAbbu();
   else if(currentTab==="waseem") app.innerHTML = viewWaseem();
   else if(currentTab==="qarza") app.innerHTML = viewQarza();
+  else if(currentTab==="invoice") app.innerHTML = viewInvoice();
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
   else app.innerHTML = viewSettings();
   bind();
   var t1 = document.querySelector("#tabPA .lbl"), t2 = document.querySelector("#tabPB .lbl");
   if(t1) t1.textContent = S.settings.partnerA;
   if(t2) t2.textContent = S.settings.partnerB;
-  ["dash","month","tickets","bakaya","settings","waseem","qarza"].forEach(function(k){
+  ["dash","month","tickets","invoice","bakaya","settings","waseem","qarza"].forEach(function(k){
     var el = document.querySelector('#tabs [data-tab="'+k+'"] .lbl');
     if(el) el.textContent = T(k);
   });
@@ -1859,6 +1933,14 @@ function viewSettings(){
   html += '<div class="hint">Data is saved on this device and in your Google Sheet. Take a backup every month.</div>';
   html += '</div>';
 
+  html += '<div class="card"><h2>Invoice / Ticket settings</h2>';
+  html += '<div class="row"><div><label>Phone 1</label><input id="setInvPhone1" value="'+esc(st.invPhone1||"0310-3311199")+'" inputmode="tel"></div>'
+        + '<div><label>Phone 2</label><input id="setInvPhone2" value="'+esc(st.invPhone2||"0314-3178560")+'" inputmode="tel"></div></div>';
+  html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="setInvNR" style="width:auto"'+(st.invNR?' checked':'')+'> NON-REFUNDABLE stamp default on</label>';
+  html += '<button class="btn primary" id="saveInvSet">Save invoice settings</button>';
+  html += '<div class="hint">Ye numbers aur company ka naam client wale invoice par chapte hain (Invoice tab).</div>';
+  html += '</div>';
+
   html += '<div class="card"><h2>'+esc(T("reseth"))+'</h2>';
   html += '<button class="btn" id="resetAll" style="background:var(--red); color:#fff;">'+esc(T("resetbtn"))+'</button>';
   html += '</div>';
@@ -2094,6 +2176,46 @@ function bind(){
       if(ok) shown++;
     });
     if(cnt) cnt.textContent = q ? (shown + " result(s) for '" + this.value.trim() + "'") : "";
+  };
+  // Invoice generator
+  var gi = document.getElementById("genInv");
+  if(gi) gi.onclick = function(){
+    var d = {
+      pnr: ((document.getElementById("invPnr")||{}).value||"").trim().toUpperCase(),
+      name: ((document.getElementById("invClient")||{}).value||"").trim(),
+      nic: ((document.getElementById("invNic")||{}).value||"").trim(),
+      from: ((document.getElementById("invFrom")||{}).value||"").trim().toUpperCase(),
+      to: ((document.getElementById("invTo")||{}).value||"").trim().toUpperCase(),
+      date: ((document.getElementById("invDate")||{}).value||""),
+      time: ((document.getElementById("invTime")||{}).value||""),
+      nr: !!((document.getElementById("invNR")||{}).checked)
+    };
+    if(!d.pnr || !d.name){ alert("PNR aur client name dono zaroori hain."); return; }
+    if(d.date){
+      var dt = new Date(d.date + "T00:00:00");
+      d.dateTxt = dt.toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric" });
+    }
+    if(d.time){
+      var h = +d.time.slice(0,2), m = d.time.slice(3,5);
+      var ap = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      d.timeTxt = h + ":" + m + " " + ap;
+    }
+    var out = document.getElementById("invOut");
+    if(out){ out.innerHTML = invHtml(d); out.scrollIntoView({behavior:"smooth", block:"start"}); }
+    var pb = document.getElementById("invPrintBtn");
+    if(pb) pb.style.display = "block";
+  };
+  var ipb = document.getElementById("invPrintBtn");
+  if(ipb) ipb.onclick = printInvoice;
+  // Invoice settings save
+  var sis = document.getElementById("saveInvSet");
+  if(sis) sis.onclick = function(){
+    S.settings.invPhone1 = ((document.getElementById("setInvPhone1")||{}).value||"").trim() || "0310-3311199";
+    S.settings.invPhone2 = ((document.getElementById("setInvPhone2")||{}).value||"").trim() || "0314-3178560";
+    S.settings.invNR = !!((document.getElementById("setInvNR")||{}).checked);
+    save(); render();
+    alert("Invoice settings save ho gayi.");
   };
   app.querySelectorAll(".del[data-type='ticket']").forEach(function(b){
     b.onclick = function(){
