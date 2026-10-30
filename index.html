@@ -170,7 +170,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.31";
+var APP_VER = "1.32";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1282,7 +1282,7 @@ function invHtml(d){
     h += '<table style="width:100%; border-collapse:collapse; font-size:13.5px;">'
        + invRow("Passenger", d.name)
        + invRowAlways("NIC / Passport", d.nic)
-       + (d.seat ? invRow("Outbound seat", d.seat) : "")
+       + (d.seat ? invRow(d.trip === "round" ? "Outbound seat" : "Seat", d.seat) : "")
        + (d.retSeat ? invRow("Return seat", d.retSeat) : "")
        + invRowAlways("Ticket number", d.tkNo)
        + '</table>';
@@ -1294,7 +1294,7 @@ function invHtml(d){
       var nm = names[i]||"—", idn = nics[i]||"—", stn = seats[i]||"", rst = rseats[i]||"";
       h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6; text-align:left; white-space:normal;"><b>'+esc(nm)+'</b>'
          + '<div style="font-size:11.5px; color:#64748b;">'+esc(idn)+'</div>'
-         + (stn ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">Outbound seat '+esc(stn)+'</div>' : '')
+         + (stn ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">'+(d.trip === "round" ? "Outbound seat " : "Seat ")+esc(stn)+'</div>' : '')
          + (rst ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">Return seat '+esc(rst)+'</div>' : '')
          + '</td></tr>';
     }
@@ -1383,20 +1383,36 @@ function printInvoice(){
   if(!el){ alert("Press Generate Invoice first."); return; }
   var pnr = ((document.getElementById("invPnr")||{}).value||"").toUpperCase();
   var f = document.createElement("iframe");
-  f.style.cssText = "position:fixed; right:0; bottom:0; width:0; height:0; border:0;";
+  f.style.cssText = "position:fixed; left:-10000px; top:0; width:703px; height:1200px; border:0;";
   document.body.appendChild(f);
   var doc = f.contentWindow.document;
   doc.open();
   doc.write('<html><head><title>Booking '+esc(pnr||"")+'</title><style>@page{size:A4 portrait; margin:12mm;} body{margin:0; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;}</style></head><body>'+el.outerHTML+'</body></html>');
   doc.close();
+  // Auto-fit: shrink just enough so the invoice always prints on one A4 page
+  try{
+    var pg = doc.getElementById("invPrint");
+    if(pg){
+      var avail = 1020, z = 1;
+      pg.style.width = "100%";
+      for(var k = 0; k < 5; k++){
+        var hh = pg.getBoundingClientRect().height;
+        if(hh <= avail || z <= 0.55) break;
+        z = Math.max(0.55, z * (avail / hh));
+        pg.style.zoom = z.toFixed(3);
+        pg.style.width = (100 / z).toFixed(2) + "%";
+      }
+    }
+  }catch(e){}
   f.contentWindow.focus();
   f.contentWindow.print();
-  setTimeout(function(){ document.body.removeChild(f); }, 800);
+  setTimeout(function(){ if(f.parentNode) f.parentNode.removeChild(f); }, 800);
 }
 
 /* ================= TABS ================= */
 var currentTab = "tickets";
 var invPaxCount = 1;
+var invCache = {};
 function closeNav(){ document.body.classList.remove("nav-open"); }
 function openNav(){ document.body.classList.add("nav-open"); }
 document.getElementById("tabs").addEventListener("click", function(e){
@@ -2519,8 +2535,26 @@ function bind(){
   };
   var paxEl = document.getElementById("invPax");
   if(paxEl) paxEl.oninput = function(){
+    // Keep whatever the user already typed when the form re-renders
+    var card = this.closest(".card");
+    if(card) [].forEach.call(card.querySelectorAll("input, select, textarea"), function(x){
+      if(!x.id) return;
+      invCache[x.id] = (x.type === "checkbox") ? x.checked : x.value;
+    });
     invPaxCount = Math.max(1, Number(this.value) || 1);
     render();
+    Object.keys(invCache).forEach(function(id){
+      var x = document.getElementById(id);
+      if(!x) return;
+      if(x.type === "checkbox") x.checked = invCache[id];
+      else x.value = invCache[id];
+    });
+    var tr2 = document.getElementById("invTrip");
+    if(tr2) tr2.dispatchEvent(new Event("change"));
+    var ar2 = document.getElementById("invAir");
+    if(ar2) ar2.dispatchEvent(new Event("change"));
+    var px = document.getElementById("invPax");
+    if(px){ try{ px.focus({preventScroll:true}); px.setSelectionRange(px.value.length, px.value.length); }catch(e){ px.focus(); } }
   };
   // Airports — country/city/code se dhoondein (internet se list)
   ["invFrom","invTo","invRetFrom","invRetTo"].forEach(function(id){ bindAirportField(id); });
