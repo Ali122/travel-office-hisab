@@ -126,7 +126,7 @@
       <div class="nav-group-title">Main</div>
       <button data-tab="dash" class="active"><span class="ic">📊</span><span class="lbl">Summary</span></button>
       <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
-      <button data-tab="tickets"><span class="ic">🎫</span><span class="lbl">Tickets</span></button>
+      <button data-tab="tickets"><span class="ic">🎫</span><span class="lbl">Sales</span></button>
       <button data-tab="qarza"><span class="ic">🏦</span><span class="lbl">Loan</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
     </div>
@@ -155,13 +155,13 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.17";
+var APP_VER = "1.18";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
   ur: {
-    dash:"Khulasa", month:"Mahana Hisab", tickets:"Tickets", bakaya:"Bakaya Payments", settings:"Settings",
+    dash:"Khulasa", month:"Mahana Hisab", tickets:"Sales", bakaya:"Bakaya Payments", settings:"Settings",
     abbu:"Abbu", waseem:"Waseem",
     todaysum:"Aaj ka khulasa", loanbaqi:"Qarza baqi (loan)", kaq:" ka baqaya", clbak:"Bakaya payments (clients)",
     kulsadqa:"Kul sadqa diya gaya: ", kulqarza:" • Kul qarza utara: ", appm:" • Apply kiye gaye mahine: ",
@@ -194,7 +194,7 @@ var TXT = {
     paidopt:"Paid (paisa mil gaya)", unpaidopt:"Unpaid (bakaya mein jayega)",
     commph:"Waseem commission (Rs)", savetk:"Ticket save karein",
     tkhint:"Ticket ka profit automatically usi mahine ki kamai mein jud jata hai — Mahana Hisab mein nazar aayega.",
-    tkhist:"Ticket history", thdate:"Tareekh", thcl:"Client / tafseel",
+    tkhist:"Sales / Umrah history", thdate:"Tareekh", thcl:"Client / tafseel",
     wscomm:"Waseem commission: ", unpaid:"Unpaid", paidp:"Paid",
     emptytk:"Abhi koi ticket add nahi hua.",
     markpaid:"✓ Paid mark karein", ublbl:"Unpaid ticket",
@@ -229,7 +229,7 @@ var TXT = {
     bkremind:"Backup yaad-dihani", bknow:"Abhi backup download karein"
   },
   en: {
-    dash:"Summary", month:"Monthly Accounts", tickets:"Tickets", bakaya:"Pending Payments", settings:"Settings",
+    dash:"Summary", month:"Monthly Accounts", tickets:"Sales", bakaya:"Pending Payments", settings:"Settings",
     abbu:"Father", waseem:"Waseem",
     todaysum:"Today's Summary", loanbaqi:"Loan remaining", kaq:"'s balance", clbak:"Client payments pending",
     kulsadqa:"Total charity given: ", kulqarza:" • Total loan paid: ", appm:" • Months applied: ",
@@ -262,7 +262,7 @@ var TXT = {
     paidopt:"Paid (money received)", unpaidopt:"Unpaid (goes to pending)",
     commph:"Waseem commission (Rs)", savetk:"Save Ticket",
     tkhint:"Ticket profit is added to that month's income automatically — visible in Monthly Accounts.",
-    tkhist:"Ticket History", thdate:"Date", thcl:"Client / Details",
+    tkhist:"Sales / Umrah history", thdate:"Date", thcl:"Client / Details",
     wscomm:"Waseem commission: ", unpaid:"Unpaid", paidp:"Paid",
     emptytk:"No tickets yet.",
     markpaid:"✓ Mark as Paid", ublbl:"Unpaid ticket", ublbl2:"Unpaid ticket", apnahissa:"own share", ubnote:"These unpaid tickets count toward total pending. Marking them paid removes them from here. (Unpaid ticket profit still counts in that month's income.)",
@@ -1030,12 +1030,12 @@ function reportRows(mid){
 
     if(tk.length){
       sec(monthLabel(m) + " — TICKET / UMRAH SALES");
-      line(["Date","Client","Details","Cost","Sale","Profit","Payment","Note"]);
+      line(["Date","Kind","Client","Details","Cost","Sale","Profit","Payment","Note"]);
       tk.forEach(function(t){
-        line([t.date, t.client||"", t.detail||"", t.cost, t.sale, (Number(t.sale)||0)-(Number(t.cost)||0),
+        line([t.date, (t.kind || "Ticket"), t.client||"", t.detail||"", t.cost, t.sale, (Number(t.sale)||0)-(Number(t.cost)||0),
           (t.paid === false ? "Unpaid" : "Paid"), (t.commission ? "Waseem commission: " + t.commission : "")]);
       });
-      line(["","TOTAL","","", tc, ts, ts - tc, ""]);
+      line(["","TOTAL","","", tc, ts, ts - tc, "",""]);
       blank();
     }
 
@@ -1383,6 +1383,10 @@ function viewTickets(){
           + '<div class="hint">Pick a month to see only that month&rsquo;s tickets and profit. <b>All months</b> shows the complete record.</div></div>';
   }
 
+  html += '<div class="card" style="padding-bottom:10px;"><label>Search by client name</label>'
+        + '<input id="tkSearch" placeholder="Client ka naam likhein — uski sari tickets/umrah nikal ayengi" autocomplete="off">'
+        + '<div class="hint" id="tkSearchCount"></div></div>';
+
   var tc=0, ts=0;
   list.forEach(function(t){ tc += Number(t.cost)||0; ts += Number(t.sale)||0; });
   var tp = ts - tc;
@@ -1396,6 +1400,7 @@ function viewTickets(){
 
   html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
   html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkDetail" placeholder="'+esc(T("detailph"))+'"></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
   html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
@@ -1406,11 +1411,12 @@ function viewTickets(){
 
   if(list.length){
     var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
-    html += '<div class="card"><h2>'+esc(T("tkhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
+    html += '<div class="card"><h2>'+esc(T("tkhist"))+'</h2><table id="tkList"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
     sorted.forEach(function(t){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
-      html += '<tr><td>'+esc(t.date)+'</td>'
-            + '<td><b>'+esc(t.client)+'</b>'+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
+      var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket")).toLowerCase();
+      html += '<tr data-search="'+esc(hay)+'"><td>'+esc(t.date)+'</td>'
+            + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
             + '<td>'+money(t.cost)+'</td><td>'+money(t.sale)+'</td>'
             + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
             + '<td>'+(t.paid === false
@@ -2052,13 +2058,28 @@ function bind(){
     var cost = Number(document.getElementById("tkCost").value) || 0;
     var sale = Number(document.getElementById("tkSale").value) || 0;
     if(!client || !(sale>0 || cost>0)){ alert("Client name and at least one amount (cost or sale) are required."); return; }
+    var kind = (document.getElementById("tkKind")||{}).value || "Ticket";
     var tkDate = document.getElementById("tkDate").value || today();
-    S.tickets.push({ id:uid(), date:tkDate, client:client,
+    S.tickets.push({ id:uid(), date:tkDate, client:client, kind:kind,
                      detail:document.getElementById("tkDetail").value.trim(), cost:cost, sale:sale,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
+  };
+  // Sales search — client ke naam se tickets/umrah dhoondein
+  var tks = document.getElementById("tkSearch");
+  if(tks) tks.oninput = function(){
+    var q = this.value.trim().toLowerCase();
+    var cnt = document.getElementById("tkSearchCount");
+    var shown = 0;
+    document.querySelectorAll("#tkList tr[data-search]").forEach(function(r){
+      var hay = r.getAttribute("data-search") || "";
+      var ok = !q || hay.indexOf(q) >= 0;
+      r.style.display = ok ? "" : "none";
+      if(ok) shown++;
+    });
+    if(cnt) cnt.textContent = q ? (shown + " result(s) for '" + this.value.trim() + "'") : "";
   };
   app.querySelectorAll(".del[data-type='ticket']").forEach(function(b){
     b.onclick = function(){
