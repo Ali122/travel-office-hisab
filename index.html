@@ -89,11 +89,16 @@
   .ayat .ar{font-size:25px; line-height:1.95; color:#78350f; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px;}
   .ayat .tr{font-size:12.5px; color:#92400e; margin-top:8px; line-height:1.6;}
 
+  /* ---------- Ayat header center ---------- */
+  .ayat-head{flex:1; text-align:center; min-width:0; font-size:17px; line-height:1.7; color:#fcd34d; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
   /* ---------- Mobile ---------- */
   @media (max-width: 860px){
     #menuBtn{display:inline-flex;}
+    header{flex-wrap:wrap; row-gap:2px; padding-bottom:8px;}
     header h1{font-size:15.5px;}
-    header .tag{display:none;}
+    .ayat-head{order:2; flex:0 0 100%; font-size:12.5px; white-space:normal; line-height:1.6; padding:2px 0;}
+    .hints-btn{order:3;}
     .shell{display:block;}
     nav#tabs{position:fixed; left:0; top:0; width:274px; height:100vh; flex:none; transform:translateX(-104%); transition:transform .25s ease; box-shadow:0 12px 40px rgba(15,23,42,.35); z-index:60; padding-top:14px;}
     .nav-head{display:flex;}
@@ -103,11 +108,6 @@
     body.nav-open #navBackdrop{opacity:1; pointer-events:auto;}
     main{padding:14px 14px 90px; max-width:none;}
   }
-
-  /* ---------- Ayat bar (sticky, har section ke top par) ---------- */
-  .ayat-bar{position:sticky; top:var(--header-h); z-index:9; background:linear-gradient(135deg,#fffbeb,#fef3c7); border-bottom:1px solid #fde68a; text-align:center; padding:8px 14px;}
-  .ayat-bar .ar{font-size:19px; line-height:1.85; color:#78350f; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px;}
-  .ayat-bar .tr{font-size:11px; color:#92400e; margin-top:4px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -116,17 +116,13 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" style="width:42px; height:42px; border-radius:50%; object-fit:cover; flex:0 0 auto; border:2px solid rgba(255,255,255,.35);" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>Travel Office Hisab <span class="ver" id="verBadge">v1.17</span></h1>
-      <div class="tag">AB Travels</div>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.20</span></h1>
+      <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (pvt) Ltd</div>
     </div>
   </div>
+  <div class="ayat-head" dir="rtl" lang="ar">وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا ۞ وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ</div>
   <button id="hintsBtn" class="hints-btn">Hints: ON</button>
 </header>
-
-<div class="ayat-bar" dir="rtl">
-  <div class="ar" lang="ar">وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا ۞ وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ</div>
-  <div class="tr" dir="ltr">&ldquo;And whoever fears Allah &mdash; He will make for him a way out, and provide for him from where he does not expect.&rdquo; &mdash; At-Talaq 65:2&ndash;3</div>
-</div>
 
 <div class="shell">
   <nav id="tabs">
@@ -165,7 +161,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.19";
+var APP_VER = "1.20";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1385,7 +1381,7 @@ function viewTickets(){
   html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
   html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
-  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkDetail" placeholder="'+esc(T("detailph"))+'"></div>';
+  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
   html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
   html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("payment"))+'</label><select id="tkPaid"><option value="paid">'+esc(T("paidopt"))+'</option><option value="unpaid">'+esc(T("unpaidopt"))+'</option></select><input id="tkComm" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("commph"))+'" value="0"></div>';
@@ -2072,7 +2068,7 @@ function bind(){
     var kind = (document.getElementById("tkKind")||{}).value || "Ticket";
     var tkDate = document.getElementById("tkDate").value || today();
     S.tickets.push({ id:uid(), date:tkDate, client:client, kind:kind,
-                     detail:document.getElementById("tkDetail").value.trim(), cost:cost, sale:sale,
+                     detail:((document.getElementById("tkDetail")||{}).value||"").trim(), cost:cost, sale:sale,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
