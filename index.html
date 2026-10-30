@@ -170,7 +170,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.32";
+var APP_VER = "1.33";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -319,7 +319,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"en", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false,
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:false,
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
       { id:"fix-rent", label:"Office rent", amount:70000, on:true },
@@ -1255,24 +1255,42 @@ function invFlightBlock(leg, title){
      + '</div></div></div>';
   return h;
 }
-function invHtml(d){
+function invHtml(d, bw){
   var logo = "";
   try{ logo = new URL("logo.png", location.href).href; }catch(e){ logo = "logo.png"; }
   var p1 = S.settings.invPhone1 || "0310-3311199", p2 = S.settings.invPhone2 || "0314-3178560";
+  // B&W printer-friendly palette: white background, dark text, no ink-heavy fills
+  var bannerBg  = bw ? "#fff" : "linear-gradient(135deg,#0f172a,#1e293b)";
+  var bannerBr  = bw ? "2px solid #111" : "none";
+  var bannerTtl = bw ? "#111" : "#fff";
+  var bannerSub = bw ? "#444" : "#94a3b8";
+  var logoBrd   = bw ? "2px solid #999" : "2px solid rgba(255,255,255,.35)";
+  var stampBg   = bw ? "#fff" : "#dc2626";
+  var stampTx   = bw ? "#000" : "#fff";
+  var stampBrd  = bw ? "3px solid #000" : "none";
+  var pnrBg     = bw ? "#fff" : "#eff6ff";
+  var pnrBrd    = bw ? "2px dashed #000" : "1.5px dashed #2563eb";
+  var pnrTx     = bw ? "#000" : "#2563eb";
+  var tripBg    = bw ? "#fff" : "#ecfdf5";
+  var tripBrd   = bw ? "1.5px solid #000" : "1px solid #a7f3d0";
+  var tripTx    = bw ? "#000" : "#059669";
+  var warnBg    = bw ? "#fff" : "#fef2f2";
+  var warnBrd   = bw ? "2px solid #000" : "1px solid #fca5a5";
+  var warnTx    = bw ? "#000" : "#b91c1c";
   var h = '<div id="invPrint" style="max-width:640px; margin:0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; position:relative;">'
-    + '<div style="background:linear-gradient(135deg,#0f172a,#1e293b); padding:14px 18px; display:flex; align-items:center; gap:12px;">'
-    + '<img src="'+logo+'" alt="AB Travels" style="width:46px; height:46px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.35); flex:0 0 auto; background:#fff;">'
+    + '<div style="background:'+bannerBg+'; border-bottom:'+bannerBr+'; padding:14px 18px; display:flex; align-items:center; gap:12px;">'
+    + '<img src="'+logo+'" alt="AB Travels" style="width:46px; height:46px; border-radius:50%; object-fit:cover; border:'+logoBrd+'; flex:0 0 auto; background:#fff;">'
     + '<div style="flex:1; min-width:0;">'
-    + '<div style="color:#fff; font-weight:800; font-size:18px;">AB Travels</div>'
-    + '<div style="color:#94a3b8; font-size:10.5px; margin-top:2px;">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>'
+    + '<div style="color:'+bannerTtl+'; font-weight:800; font-size:18px;">AB Travels</div>'
+    + '<div style="color:'+bannerSub+'; font-size:10.5px; margin-top:2px;">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>'
     + '</div></div>'
-    + (d.nr ? '<div style="position:absolute; top:64px; right:-38px; transform:rotate(35deg); background:#dc2626; color:#fff; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
+    + (d.nr ? '<div style="position:absolute; top:64px; right:-38px; transform:rotate(35deg); background:'+stampBg+'; border:'+stampBrd+'; color:'+stampTx+'; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
     + '<div style="padding:18px;">'
     + '<div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">'
     + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">BOOKING CONFIRMATION</div>'
-    + (d.trip === "round" ? '<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800;">Round Trip</span>' : '')
+    + (d.trip === "round" ? '<span style="background:'+tripBg+'; color:'+tripTx+'; border:'+tripBrd+'; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800;">Round Trip</span>' : '')
     + '</div>'
-    + '<div style="text-align:center; margin-top:8px;"><span style="display:inline-block; background:#eff6ff; border:1.5px dashed #2563eb; border-radius:10px; padding:6px 18px; font-weight:800; font-size:22px; letter-spacing:3px; color:#2563eb;">'+esc(d.pnr)+'</span></div>'
+    + '<div style="text-align:center; margin-top:8px;"><span style="display:inline-block; background:'+pnrBg+'; border:'+pnrBrd+'; border-radius:10px; padding:6px 18px; font-weight:800; font-size:22px; letter-spacing:3px; color:'+pnrTx+';">'+esc(d.pnr)+'</span></div>'
     + invFlightBlock(d.out, "OUTBOUND FLIGHT")
     + invFlightBlock(d.ret, "RETURN FLIGHT");
   // Passengers
@@ -1308,7 +1326,7 @@ function invHtml(d){
      + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">HAND CARRY</div><div style="font-weight:800; font-size:15px; margin-top:4px;">✈ '+esc(d.hand)+' kg</div></div>'
      + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">CHECKED-IN BAG</div><div style="font-weight:800; font-size:15px; margin-top:4px;">🧳 '+esc(bag)+'</div></div>'
      + '</div>';
-  if(d.nr) h += '<div style="margin-top:12px; background:#fef2f2; border:1px solid #fca5a5; color:#b91c1c; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund and change charges depend solely on the airline&rsquo;s policy</div>';
+  if(d.nr) h += '<div style="margin-top:12px; background:'+warnBg+'; border:'+warnBrd+'; color:'+warnTx+'; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund and change charges depend solely on the airline&rsquo;s policy</div>';
   h += '<div style="margin-top:12px; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; background:#f8fafc;">'
      + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:6px;">TRAVEL GUIDELINES</div>'
      + '<ul style="margin:0 0 0 16px; padding:0; font-size:11.3px; line-height:1.5; color:#334155;">'
@@ -1379,15 +1397,17 @@ function viewInvoice(){
   return html;
 }
 function printInvoice(){
-  var el = document.getElementById("invPrint");
-  if(!el){ alert("Press Generate Invoice first."); return; }
+  if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
   var pnr = ((document.getElementById("invPnr")||{}).value||"").toUpperCase();
+  // Black & White printer style (Settings > Invoice): ink bachane ke liye plain print
+  var html = (S.settings.invBW && lastInv) ? invHtml(lastInv, true) : (document.getElementById("invPrint")||"").outerHTML;
+  if(!html){ alert("Press Generate Invoice first."); return; }
   var f = document.createElement("iframe");
   f.style.cssText = "position:fixed; left:-10000px; top:0; width:703px; height:1200px; border:0;";
   document.body.appendChild(f);
   var doc = f.contentWindow.document;
   doc.open();
-  doc.write('<html><head><title>Booking '+esc(pnr||"")+'</title><style>@page{size:A4 portrait; margin:12mm;} body{margin:0; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;}</style></head><body>'+el.outerHTML+'</body></html>');
+  doc.write('<html><head><title>Booking '+esc(pnr||"")+'</title><style>@page{size:A4 portrait; margin:12mm;} body{margin:0; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;}</style></head><body>'+html+'</body></html>');
   doc.close();
   // Auto-fit: shrink just enough so the invoice always prints on one A4 page
   try{
@@ -1412,6 +1432,7 @@ function printInvoice(){
 /* ================= TABS ================= */
 var currentTab = "tickets";
 var invPaxCount = 1;
+var lastInv = null;
 var invCache = {};
 function closeNav(){ document.body.classList.remove("nav-open"); }
 function openNav(){ document.body.classList.add("nav-open"); }
@@ -2190,8 +2211,9 @@ function viewSettings(){
   html += '<div class="row"><div><label>Phone 1</label><input id="setInvPhone1" value="'+esc(st.invPhone1||"0310-3311199")+'" inputmode="tel"></div>'
         + '<div><label>Phone 2</label><input id="setInvPhone2" value="'+esc(st.invPhone2||"0314-3178560")+'" inputmode="tel"></div></div>';
   html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="setInvNR" style="width:auto"'+(st.invNR?' checked':'')+'> NON-REFUNDABLE stamp default on</label>';
+  html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="setInvBW" style="width:auto"'+(st.invBW?' checked':'')+'> Black &amp; White printer style (B&amp;W printer ke liye — sirf print par)</label>';
   html += '<button class="btn primary" id="saveInvSet">Save invoice settings</button>';
-  html += '<div class="hint">Ye numbers aur company ka naam client wale invoice par chapte hain (Invoice tab).</div>';
+  html += '<div class="hint">Ye numbers aur company ka naam client wale invoice par chapte hain (Invoice tab). B&amp;W style on ho to print par safed background aur kale nishan bante hain — screen par invoice waise hi colorful dikhta hai.</div>';
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("reseth"))+'</h2>';
@@ -2498,6 +2520,7 @@ function bind(){
       d.ret.arrTxt = invTimeTxt(d.retArr);
       if(!d.ret.from || !d.ret.to){ alert("Please enter the return airports too (or choose One-way)."); return; }
     } else { d.ret = null; }
+    lastInv = d;
     var out = document.getElementById("invOut");
     if(out){ out.innerHTML = invHtml(d); out.scrollIntoView({behavior:"smooth", block:"start"}); }
     var pb = document.getElementById("invPrintBtn");
@@ -2566,6 +2589,7 @@ function bind(){
     S.settings.invPhone1 = ((document.getElementById("setInvPhone1")||{}).value||"").trim() || "0310-3311199";
     S.settings.invPhone2 = ((document.getElementById("setInvPhone2")||{}).value||"").trim() || "0314-3178560";
     S.settings.invNR = !!((document.getElementById("setInvNR")||{}).checked);
+    S.settings.invBW = !!((document.getElementById("setInvBW")||{}).checked);
     save(); render();
     alert("Invoice settings save ho gayi.");
   };
