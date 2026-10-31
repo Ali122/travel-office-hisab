@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ur">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -220,79 +220,11 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.53";
+var APP_VER = "1.54";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
-  ur: {
-    dash:"Khulasa", month:"Mahana Hisab", tickets:"Sales", exp:"Expenses", invoice:"Invoice", bakaya:"Bakaya Payments", settings:"Settings",
-    abbu:"Abbu", waseem:"Waseem",
-    todaysum:"Aaj ka khulasa", loanbaqi:"Qarza baqi (loan)", kaq:" ka baqaya", clbak:"Bakaya payments (clients)",
-    kulsadqa:"Kul sadqa diya gaya: ", kulqarza:" • Kul qarza utara: ", appm:" • Apply kiye gaye mahine: ",
-    abbuliya:" • Abbu ne liya: ", wsbaqi:" • Waseem ko commission baqi: ", chbaqi:" • Sadqa baqi: ", chbani:" • Sadqa bani: ", chdi:" • Sadqa di: ", chled:"Sadqa (charity) — di hui", chempty:"Abhi koi sadqa di nahi gayi.",
-    qarzah:"Qarza Tracker", qzbaqi:"Baqi qarza", qzpaid:"Kul qarza paid", qzadd:"Qarza payment record karein (balance kam hogi)", qznote:"Note (mas: September ki qarza)", qzhist:"Qarza payment history", qarza:"Qarza",
-    pmah:"Pichhli mahine", thm:"Mahina", thk:"Kamai", thkh:"Kharcha", ths:"Status",
-    apdone:"Apply ho gaya", append:"Pending", aploss:"Loss — taqseem nahi hui",
-    nomonth:"Abhi koi mahina add nahi hua. 'Mahana Hisab' se pehla mahina shuru karein.",
-    newmonth:"Naya mahina", kulkam:"Kul kamai", kulkh:"Kul kharcha",
-    tkpl:"Ticket profit (is mahine, kamai mein shamil)",
-    kamai:"Kamai (Income)",
-    incomehint:"Tickets / Umrah ka profit is mahine ki kamai mein khud judta hai — ye option sirf doosri kamai (commission waghera) ke liye hai.",
-    indesc:"Doosri kamai (mas: agency commission)", jamak:"Jama karein",
-    kharcha:"Kharcha (Expenses)",
-    fixbtn:"Mahana fix kharche jama karein / settings ke mutabiq teek karein (rent, tanker, bijli...)",
-    bijbtn:"Bijli ka bill record karein (KE website khulegi) — raqam + last date",
-    exdesc:"Kharcha (mas: rent, bijli)", hisaab:"Hisaab (Automatically)",
-    sadgi:"Saadgi (saaf munafa = kamai − kharcha)",
-    tkpl2:"Is mahine ka ticket profit (kamai mein shamil)",
-    abbl:"Abbu ka liya (profit se minus)", wsml:"Waseem commission (profit se minus)",
-    pahissa:" ka hissa (baqi ka aadha)",
-    applybtn:"Qarza utaro aur partners ko hissa dein",
-    tkhul:"Ticket khulasa", kulcost:"Kul cost", kulsale:"Kul sale",
-    kulprofit:"Kul profit (mahana kamai mein shamil)",
-    cleartk:"Saari tickets delete karein (dobara import ke liye)",
-    newtk:"Naya sale add karein", tareekh:"Tareekh",
-    clientph:"Client ka naam", detailph:"Mas: Umrah ticket, airline",
-    costph:"Cost price (Rs)", saleph:"Sale price (Rs)",
-    profit:"Profit: ", payment:"Payment",
-    paidopt:"Paid", unpaidopt:"Unpaid (bakaya mein jayega)",
-    commph:"Waseem commission (Rs)", savetk:"Sale save karein",
-    tkhint:"Ticket ka profit automatically usi mahine ki kamai mein jud jata hai — Mahana Hisab mein nazar aayega.",
-    tkhist:"Sales / Umrah history", thdate:"Tareekh", thcl:"Client / tafseel",
-    wscomm:"Waseem commission: ", unpaid:"Unpaid", paidp:"Paid",
-    emptytk:"Abhi koi ticket add nahi hua.",
-    markpaid:"✓ Paid mark karein", ublbl:"Unpaid ticket",
-    bana:"Bana (share)", liya:"Liya", bakayalbl:"Bakaya (bana − liya)",
-    nikrec:"Nikasi record karein (paise le gaye)", raqamph:"Raqam (Rs)",
-    noteph:"Wajah / note (mas: mobile ki qist)", savek:"Save karein",
-    nikhist:"Nikasi history", thw:"Wajah", raqamh:"Raqam",
-    emptynik:"Abhi koi nikasi nahi hui.",
-    kulliya:"Kul liya", abbu:"Abbu",
-    abbuyhint:"Abbu ke liye huye paise us mahine ke profit se minus hote hain — sadqa/qarza/partners ka hisaab is ke baad banta hai.",
-    abbunik:"Abbu ka nikasi record karein", abbuhist:"Abbu ki nikasi history",
-    wsh2:"Waseem (staff)", wsbana:"Commission bana (tickets)", wsdiya:"Commission diya",
-    wsbaq2:"Commission bakaya", saldi:"Salary di (kul)", payrec:"Payment record karein",
-    kcomm:"Commission di", ksal:"Salary di",
-    wsnote:"Note (mas: ticket NOMAN ki commission)", payhist:"Payment history", thkism:"Kism",
-    emptyws:"Abhi koi payment record nahi hui.",
-    newcl:"Naya client entry (payment lena hai)", cliname:"Client ka naam",
-    tafseel:"Tafseel / kaam", kulraqam:"Kul raqam (Rs)", addk:"Add karein",
-    baklist:"Bakaya list", emptybak:"Abhi koi bakaya payment nahi hai.", kulb:"Kul bakaya: ",
-    bijh:"Bijli ka bill — last date yaad rakhein", lastdatelbl:"Last date: ",
-    dinbaqi:" din baqi", dinover:" din OVER ho gaye!", jama:"Jama ho gaya",
-    unpaidtkh:"Tickets / Umrah — unpaid", emptyub:"Koi unpaid ticket nahi.", ublbl2:"Unpaid ticket", apnahissa:"apna hissa", ubnote:"Ye unpaid tickets kul bakaya mein gini jaati hain. Paid mark karte hi yahan se hat jati hain. (Unpaid ticket ka profit phir bhi usi mahine ki kamai mein gina jata hai.)",
-    seth:"Partners aur rates", sadqa:"Sadqa (%)", qarzap:"Qarza payment (%)",
-    loanbal:"Qarza ka mojooda baqaya (Rs)", saveset:"Settings save karein",
-    bijcard:"Bijli ka bill (K-Electric)", bijweb:"Bill check karne ki website (KE ka page)",
-    bijmeter:"Meter / account numbers (ek har line par)",
-    fixkh:"Mahana fix kharche (har mahine khud judte hain)", nfix:"Naya fix kharcha add karein",
-    synch:"Doosre PC se data sync (Google Sheet)", copyshare:"Mobile ke liye link bana kar copy karein (bhai ko bhejne ke liye)", gascard:"Google Sheet setup (sirf ek dafa)",
-    backuph:"Backup / Backup wapas", exbtn:"Data download karein (backup)", repbtn:"Report download karein (Excel file — poora hisaab dekhne ke liye)",
-    imlbl:"Purana backup file se wapas layein",
-    reseth:"Sab data mita dein", resetbtn:"Poora data delete karein",
-    bkremind:"Backup yaad-dihani", bknow:"Abhi backup download karein"
-  },
   en: {
     dash:"Summary", month:"Monthly Accounts", tickets:"Sales", exp:"Expenses", invoice:"Invoice", bakaya:"Pending Payments", settings:"Settings",
     abbu:"Father", waseem:"Waseem",
@@ -368,7 +300,7 @@ function T(k){
 }
 function blankState(){
   return {
-    settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"en", hints:true, lastBackup:"",
+    settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
                 invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true,
                 invCompany:"AB Travels", ayatIdx:-1, theme:"", btnStyle:"sleek",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
