@@ -12,6 +12,7 @@
     --green:#059669; --green-bg:#ecfdf5; --red:#dc2626; --red-bg:#fef2f2;
     --blue:#2563eb; --blue-bg:#eff6ff; --gold:#d97706; --gold-bg:#fffbeb;
     --line:#e5e7eb; --radius:14px;
+    --field:#ffffff; --line-soft:#eef1f6; --stat-a:#f8fafc; --stat-b:#f1f5f9;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   :root{ --header-h:58px; }
@@ -53,7 +54,7 @@
   .row > *{flex:1; min-width:120px;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px; font-weight:600;}
-  input,select,textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:#fff;}
+  input,select,textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:var(--field); color:var(--ink);}
   textarea{resize:vertical; min-height:76px; line-height:1.5;}
   input:focus,select:focus{outline:2px solid var(--blue); border-color:var(--blue);}
   .btn{display:inline-block; border:none; border-radius:10px; padding:11px 16px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:10px;}
@@ -64,8 +65,8 @@
   .stat{border-radius:12px; padding:12px; background:var(--bg);}
   .stat .v{font-size:20px; font-weight:800; margin-top:2px;}
   .stat .t{font-size:12px; color:var(--muted); font-weight:600;}
-.sum-btn{display:inline-flex; align-items:center; gap:6px; margin:2px 0 10px; background:#f8fafc; border:1px dashed #cbd5e1; color:#475569; border-radius:9px; padding:5px 11px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;}
-.sum-btn:hover{border-color:#94a3b8; background:#f1f5f9;}
+.sum-btn{display:inline-flex; align-items:center; gap:6px; margin:2px 0 10px; background:var(--stat-a); border:1px dashed var(--line); color:var(--muted); border-radius:9px; padding:5px 11px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;}
+.sum-btn:hover{border-color:#94a3b8; background:var(--stat-b);}
   .pos{color:var(--green);} .neg{color:var(--red);} .blu{color:var(--blue);} .gld{color:var(--gold);}
   table{width:100%; border-collapse:collapse; font-size:14px;}
   th{text-align:left; color:var(--muted); font-size:12px; padding:6px 4px; border-bottom:1px solid var(--line);}
@@ -83,8 +84,8 @@
   .ok-msg{background:var(--green-bg); color:var(--green); border-radius:10px; padding:10px; font-size:14px; font-weight:600; margin-top:10px;}
 
   /* ---------- Polish ---------- */
-  .card{box-shadow:0 1px 2px rgba(16,24,40,.04), 0 3px 10px rgba(16,24,40,.05); border:1px solid #eef1f6;}
-  .stat{background:linear-gradient(180deg,#f8fafc,#f1f5f9); border:1px solid #edf1f7;}
+  .card{box-shadow:0 1px 2px rgba(16,24,40,.04), 0 3px 10px rgba(16,24,40,.05); border:1px solid var(--line-soft);}
+  .stat{background:linear-gradient(180deg,var(--stat-a),var(--stat-b)); border:1px solid var(--line-soft);}
   .stat .v{letter-spacing:-.01em;}
   th{font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;}
   tr:last-child td{border-bottom:none;}
@@ -94,6 +95,29 @@
   .ayat{background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1px solid #fde68a; text-align:center; padding:16px 14px;}
   .ayat .ar{font-size:25px; line-height:1.95; color:#78350f; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px;}
   .ayat .tr{font-size:12.5px; color:#92400e; margin-top:8px; line-height:1.6;}
+
+  /* ---------- Dark mode ---------- */
+  body.dark{
+    --bg:#0a1120; --card:#121c2c; --ink:#e8eef7; --muted:#94a3b8;
+    --green:#34d399; --green-bg:#0d2a22; --red:#f87171; --red-bg:#2b1518;
+    --blue:#60a5fa; --blue-bg:#10233d; --gold:#fbbf24; --gold-bg:#2b2310;
+    --line:#22304a; --field:#0d1727; --line-soft:#1c2941;
+    --stat-a:#101a2a; --stat-b:#0c1626;
+    color-scheme:dark;
+  }
+  body.dark .card{box-shadow:0 1px 2px rgba(0,0,0,.45), 0 6px 18px rgba(0,0,0,.32);}
+  body.dark input::placeholder, body.dark textarea::placeholder{color:#64748b;}
+  body.dark option{background:var(--card); color:var(--ink);}
+  body.dark .sum-btn:hover{border-color:#3b4c66;}
+  body.dark .ayat{background:linear-gradient(135deg,#241d0e,#2f2611); border-color:#4a3a14;}
+  body.dark .ayat .ar{color:#fcd34d;}
+  body.dark .ayat .tr{color:#e7c873;}
+  body.dark .btn.primary{background:#2563eb; color:#fff;}
+  body.dark .btn.green{background:#047857; color:#fff;}
+  body.dark .btn[style*="var(--gold)"]{background:#b45309 !important; color:#fff !important;}
+  body.dark .btn[style*="var(--green)"]{background:#047857 !important; color:#fff !important;}
+  body.dark .btn[style*="var(--red)"]{background:#b91c1c !important; color:#fff !important;}
+  body.dark .ok-msg{background:#0d2a22; color:#6ee7b7;}
 
   /* ---------- Ayat header center ---------- */
   .ayat-head{flex:1 1 auto; text-align:center; min-width:0; line-height:1.35; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px; padding:0 10px;}
@@ -140,7 +164,8 @@
     <div class="ar" dir="rtl" lang="ar">وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا ۞ وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ</div>
     <div class="tr">&ldquo;And whoever fears Allah &mdash; He will make for him a way out, and provide for him from where he does not expect.&rdquo; &mdash; At-Talaq 65:2&ndash;3</div>
   </div>
-  <button id="hintsBtn" class="hints-btn">Hints: ON</button>
+  <button id="themeBtn" class="hints-btn" title="Switch to dark mode" aria-label="Toggle dark mode">🌙</button>
+<button id="hintsBtn" class="hints-btn">Hints: ON</button>
 </header>
 
 <div class="shell">
@@ -184,7 +209,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.48";
+var APP_VER = "1.49";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -334,7 +359,7 @@ function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"en", hints:true, lastBackup:"",
                 invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true,
-                invCompany:"AB Travels", ayatIdx:-1,
+                invCompany:"AB Travels", ayatIdx:-1, theme:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
       { id:"fix-rent", label:"Office rent", amount:70000, on:true },
@@ -1226,10 +1251,10 @@ function bindAirportField(inputId){
     }).slice(0, 15);
     if(!matches.length) return;
     drop = document.createElement("div");
-    drop.style.cssText = "border:1px solid var(--line); border-radius:10px; margin-top:4px; max-height:200px; overflow-y:auto; background:#fff; box-shadow:0 4px 12px rgba(0,0,0,.08);";
+    drop.style.cssText = "border:1px solid var(--line); border-radius:10px; margin-top:4px; max-height:200px; overflow-y:auto; background:var(--card); color:var(--ink); box-shadow:0 4px 12px rgba(0,0,0,.18);";
     matches.forEach(function(a){
       var row = document.createElement("div");
-      row.style.cssText = "padding:8px 10px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:13px;";
+      row.style.cssText = "padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--line-soft); font-size:13px;";
       row.innerHTML = "<b>"+esc(a.iata)+"</b> — "+esc(a.name)+" <span style='color:#94a3b8;'>("+esc(a.city)+", "+esc(a.country)+")</span>";
       row.onmousedown = function(){ pick(a); };
       drop.appendChild(row);
@@ -1714,7 +1739,7 @@ function viewAirIds(){
       html += '<tr><td><b>'+esc(a.name)+'</b>'+(a.link?' <button class="del air-open" data-id="'+a.id+'" title="Open login page" style="background:var(--green-bg); color:var(--green);">↗</button>':'')+(a.note?'<div style="font-size:12px; color:var(--muted);">'+esc(a.note)+'</div>':'')+'</td>'
             + '<td style="font-family:monospace; word-break:break-all;">'+esc(a.login)+' <button class="del air-copy" data-id="'+a.id+'" data-f="login" style="background:var(--blue-bg); color:var(--blue);" title="Copy">⧉</button></td>'
             + '<td style="font-family:monospace; word-break:break-all;">'+(shown?esc(a.pass):'••••••••')+' <button class="del air-copy" data-id="'+a.id+'" data-f="pass" style="background:var(--blue-bg); color:var(--blue);" title="Copy">⧉</button>'
-            + '<button class="del air-show" data-id="'+a.id+'" style="background:var(--muted); color:#fff; margin-left:4px;">'+(shown?'Hide':'Show')+'</button></td>'
+            + '<button class="del air-show" data-id="'+a.id+'" style="background:#64748b; color:#fff; margin-left:4px;">'+(shown?'Hide':'Show')+'</button></td>'
             + '<td><button class="del air-edit" data-id="'+a.id+'" style="background:var(--blue-bg); color:var(--blue); margin-right:4px;">✏</button><button class="del air-del" data-id="'+a.id+'">✕</button></td></tr>';
     });
     html += '</table><button class="btn small" id="airPwChange" style="margin-top:10px;">Change password</button></div>';
@@ -1857,6 +1882,7 @@ function render(){
   var vb = document.getElementById("verBadge");
   if(vb) vb.textContent = "v"+APP_VER;
   applyAyat();
+  applyTheme();
   document.body.classList.toggle("no-hints", S.settings.hints === false);
   var hb = document.getElementById("hintsBtn");
   if(hb){
@@ -1941,6 +1967,18 @@ function applyAyat(){
   var tr = document.querySelector(".ayat-head .tr");
   if(ar) ar.textContent = a.ar;
   if(tr) tr.textContent = "\u201c" + a.tr + "\u201d \u2014 " + a.ref;
+}
+function themeDark(){
+  var t = S.settings.theme;
+  if(t === "dark") return true;
+  if(t === "light") return false;
+  try{ return window.matchMedia("(prefers-color-scheme: dark)").matches; }catch(e){ return false; }
+}
+function applyTheme(){
+  var dark = themeDark();
+  document.body.classList.toggle("dark", dark);
+  var b = document.getElementById("themeBtn");
+  if(b){ b.textContent = dark ? "\u2600\uFE0F" : "\uD83C\uDF19"; b.title = dark ? "Switch to light mode" : "Switch to dark mode"; }
 }
 function ayatCard(){
   var a = ayatPick();
@@ -2213,7 +2251,7 @@ function viewTickets(){
                 +'<button class="del tk-inv" data-id="'+t.id+'" title="'+(t.inv?'View invoice':'Create invoice for this sale')+'" style="background:'+(t.inv?'var(--green-bg)':'var(--blue-bg)')+'; color:'+(t.inv?'var(--green)':'var(--blue)')+'; margin-right:4px;">🧾'+(t.inv?' ✓':'')+'</button>'
                 +'<button class="del tk-edit" data-id="'+t.id+'" title="Edit sale (cost / sale / client)" style="background:var(--blue-bg); color:var(--blue); margin-right:4px;">✏</button>'
                 +'<button class="del" data-type="ticket" data-id="'+t.id+'">✕</button>'
-                +'<button class="del tk-datedit" data-id="'+t.id+'" title="Edit date" style="background:var(--muted); color:#fff; margin-left:4px;">📅</button></td></tr>';
+                +'<button class="del tk-datedit" data-id="'+t.id+'" title="Edit date" style="background:#64748b; color:#fff; margin-left:4px;">📅</button></td></tr>';
     });
     html += '</table></div>';
   } else {
@@ -2611,7 +2649,7 @@ function viewSettings(){
   html += '<textarea id="batchIds" rows="3" placeholder="Optional: paste File IDs, one per line (leave empty to use the list saved in the app)" style="margin-top:8px; width:100%; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px;"></textarea>';
   html += '<button class="btn small green" id="importAll" style="margin-top:8px; width:100%;">Re-import all files (one click — old rows skipped, new duplicates marked)</button>';
   html += '<button class="btn small primary" id="copyShare" style="margin-top:8px; width:100%;">'+esc(T("copyshare"))+'</button>';
-  html += '<div id="syncReport" class="hint" style="margin-top:10px; line-height:1.7; word-break:break-word; background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px;"></div>';
+  html += '<div id="syncReport" class="hint" style="margin-top:10px; line-height:1.7; word-break:break-word; background:var(--field); border:1px solid var(--line); border-radius:10px; padding:10px;"></div>';
   html += '<div class="hint">If sync fails: (1) the deployment must have <b>Who has access: Anyone</b>, (2) the URL must end with <b>/exec</b> (not …/dev), (3) copy the URL again and paste it. The &ldquo;Test&rdquo; button will tell you what is wrong.</div>';
   html += '</div>';
 
@@ -2644,6 +2682,15 @@ function viewSettings(){
         + '<button class="btn small" id="ayatReset" style="margin-top:0;">Daily (auto)</button>'
         + '</div>';
   html += '<div class="hint">A new ayat appears at the top every day automatically. Press <b>Next ayat</b> to choose another one, or <b>Daily (auto)</b> to go back to the automatic daily ayat.</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>Appearance</h2>';
+  var isDk = themeDark();
+  html += '<div class="row" style="margin-top:8px;">'
+        + '<button class="btn small'+(isDk?'':' primary')+'" id="thLight" style="margin-top:0;">☀️ Light</button>'
+        + '<button class="btn small'+(isDk?' primary':'')+'" id="thDark" style="margin-top:0;">🌙 Dark</button>'
+        + '</div>';
+  html += '<div class="hint">Dark mode is easier on the eyes at night. Your choice is saved with your settings. The 🌙 button in the top bar switches it any time.</div>';
   html += '</div>';
 
   html += '<div class="card"><h2>Invoice / Ticket settings</h2>';
@@ -3097,6 +3144,15 @@ function bind(){
   if(anr) anr.onclick = function(){
     S.settings.ayatIdx = -1;
     save(); render();
+  };
+  // Appearance — light / dark
+  var thl = document.getElementById("thLight");
+  if(thl) thl.onclick = function(){
+    S.settings.theme = "light"; save(); applyTheme(); render();
+  };
+  var thd = document.getElementById("thDark");
+  if(thd) thd.onclick = function(){
+    S.settings.theme = "dark"; save(); applyTheme(); render();
   };
   var sis = document.getElementById("saveInvSet");
   if(sis) sis.onclick = function(){
@@ -3601,6 +3657,11 @@ var hintsB = document.getElementById("hintsBtn");
 if(hintsB) hintsB.onclick = function(){
   S.settings.hints = (S.settings.hints === false) ? true : false;
   save(); render();
+};
+var themeB = document.getElementById("themeBtn");
+if(themeB) themeB.onclick = function(){
+  S.settings.theme = themeDark() ? "light" : "dark";
+  save(); applyTheme(); render();
 };
 </script>
 
