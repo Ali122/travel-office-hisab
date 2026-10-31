@@ -64,6 +64,8 @@
   .stat{border-radius:12px; padding:12px; background:var(--bg);}
   .stat .v{font-size:20px; font-weight:800; margin-top:2px;}
   .stat .t{font-size:12px; color:var(--muted); font-weight:600;}
+.sum-btn{display:inline-flex; align-items:center; gap:6px; margin:2px 0 10px; background:#f8fafc; border:1px dashed #cbd5e1; color:#475569; border-radius:9px; padding:5px 11px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;}
+.sum-btn:hover{border-color:#94a3b8; background:#f1f5f9;}
   .pos{color:var(--green);} .neg{color:var(--red);} .blu{color:var(--blue);} .gld{color:var(--gold);}
   table{width:100%; border-collapse:collapse; font-size:14px;}
   th{text-align:left; color:var(--muted); font-size:12px; padding:6px 4px; border-bottom:1px solid var(--line);}
@@ -182,7 +184,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.47";
+var APP_VER = "1.48";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1264,6 +1266,31 @@ function invRowRaw(k, v){
   if(!v) return "";
   return '<tr><td style="padding:7px 4px; color:#64748b; width:40%; border-bottom:1px solid #f3f4f6;">'+esc(k)+'</td><td style="padding:7px 4px; font-weight:700; border-bottom:1px solid #f3f4f6;">'+esc(v)+'</td></tr>';
 }
+function applyStatPrivacy(){
+  var app = document.getElementById("app");
+  if(!app) return;
+  var grids = [].slice.call(app.querySelectorAll(".grid2")).filter(function(g){
+    return g.querySelector(".stat") && !g.querySelector("input, textarea, select");
+  });
+  grids.forEach(function(g){
+    if(g.closest(".sumwrap")) return;
+    var wrap = document.createElement("div");
+    wrap.className = "sumwrap";
+    g.parentNode.insertBefore(wrap, g);
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sum-btn";
+    btn.innerHTML = '<span>👁</span> Show totals';
+    wrap.appendChild(btn);
+    wrap.appendChild(g);
+    g.style.display = "none";
+    btn.onclick = function(){
+      var open = g.style.display !== "none";
+      g.style.display = open ? "none" : "";
+      btn.innerHTML = open ? '<span>👁</span> Show totals' : '<span>🙈</span> Hide totals';
+    };
+  });
+}
 function showTab(k){
   currentTab = k;
   if(k !== "airids") airUnlocked = false;
@@ -1640,6 +1667,12 @@ function viewInvoice(){
   html += '<div id="invOut"></div>';
   return html;
 }
+function airLinkFix(u){
+  u = String(u||"").trim();
+  if(!u) return "";
+  if(!/^https?:\/\//i.test(u)) u = "https://" + u;
+  return u;
+}
 function airHash(s){
   var h1 = 5381, h2 = 52711, str = "abtravels:" + String(s||"");
   for(var i=0;i<str.length;i++){ var c = str.charCodeAt(i); h1 = ((h1*33) ^ c) >>> 0; h2 = ((h2*31) + c) >>> 0; }
@@ -1671,13 +1704,14 @@ function viewAirIds(){
         + '<div><label>Login / ID</label><input id="airLogin" placeholder="Agent ID / email" autocomplete="off"></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Password</label><input id="airPass" placeholder="Password" autocomplete="off"></div>'
         + '<div><label>Note (optional)</label><input id="airNote" placeholder="e.g. agent account" autocomplete="off"></div></div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Login page link (optional — you add it yourself)</label><input id="airLink" placeholder="https://www.airline.com/login" autocomplete="off"></div></div>';
   html += '<button class="btn green" id="airAdd">Add airline ID</button>';
   html += '</div>';
   if(list.length){
     html += '<div class="card"><h2>Saved IDs ('+list.length+')</h2><table><tr><th>Airline</th><th>Login / ID</th><th>Password</th><th></th></tr>';
     list.forEach(function(a){
       var shown = !!airShow[a.id];
-      html += '<tr><td><b>'+esc(a.name)+'</b>'+(a.note?'<div style="font-size:12px; color:var(--muted);">'+esc(a.note)+'</div>':'')+'</td>'
+      html += '<tr><td><b>'+esc(a.name)+'</b>'+(a.link?' <button class="del air-open" data-id="'+a.id+'" title="Open login page" style="background:var(--green-bg); color:var(--green);">↗</button>':'')+(a.note?'<div style="font-size:12px; color:var(--muted);">'+esc(a.note)+'</div>':'')+'</td>'
             + '<td style="font-family:monospace; word-break:break-all;">'+esc(a.login)+' <button class="del air-copy" data-id="'+a.id+'" data-f="login" style="background:var(--blue-bg); color:var(--blue);" title="Copy">⧉</button></td>'
             + '<td style="font-family:monospace; word-break:break-all;">'+(shown?esc(a.pass):'••••••••')+' <button class="del air-copy" data-id="'+a.id+'" data-f="pass" style="background:var(--blue-bg); color:var(--blue);" title="Copy">⧉</button>'
             + '<button class="del air-show" data-id="'+a.id+'" style="background:var(--muted); color:#fff; margin-left:4px;">'+(shown?'Hide':'Show')+'</button></td>'
@@ -1812,6 +1846,7 @@ function render(){
     var dd2 = document.getElementById("invDoc"); if(dd2) dd2.dispatchEvent(new Event("change"));
     if(invAutoGen){ invAutoGen = false; var gb2 = document.getElementById("genInv"); if(gb2) gb2.click(); }
   }
+  applyStatPrivacy();
   var t1 = document.querySelector("#tabPA .lbl"), t2 = document.querySelector("#tabPB .lbl");
   if(t1) t1.textContent = S.settings.partnerA;
   if(t2) t2.textContent = S.settings.partnerB;
@@ -3142,10 +3177,17 @@ function bind(){
     var lg = (document.getElementById("airLogin")||{}).value||"";
     var ps = (document.getElementById("airPass")||{}).value||"";
     var nt = (document.getElementById("airNote")||{}).value||"";
+    var lk = (document.getElementById("airLink")||{}).value||"";
     if(!nm.trim() || !lg.trim()){ alert("Airline name and login/ID are required."); return; }
-    S.airlineIds.push({ id:uid(), name:nm.trim(), login:lg.trim(), pass:ps, note:nt.trim() });
+    S.airlineIds.push({ id:uid(), name:nm.trim(), login:lg.trim(), pass:ps, note:nt.trim(), link:airLinkFix(lk) });
     save(); render();
   };
+  app.querySelectorAll(".air-open").forEach(function(b){
+    b.onclick = function(){
+      var a = (S.airlineIds||[]).filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
+      if(a && a.link) window.open(a.link, "_blank");
+    };
+  });
   app.querySelectorAll(".air-show").forEach(function(b){
     b.onclick = function(){ var id = b.getAttribute("data-id"); airShow[id] = !airShow[id]; render(); };
   });
@@ -3174,8 +3216,9 @@ function bind(){
       var nm = prompt("Airline name:", a.name); if(nm === null) return;
       var lg = prompt("Login / ID:", a.login); if(lg === null) return;
       var ps = prompt("Password:", a.pass); if(ps === null) return;
+      var lk = prompt("Login page link (optional):", a.link||""); if(lk === null) return;
       var nt = prompt("Note (optional):", a.note||""); if(nt === null) return;
-      a.name = nm.trim() || a.name; a.login = lg.trim(); a.pass = ps; a.note = nt.trim();
+      a.name = nm.trim() || a.name; a.login = lg.trim(); a.pass = ps; a.note = nt.trim(); a.link = airLinkFix(lk);
       save(); render();
     };
   });
