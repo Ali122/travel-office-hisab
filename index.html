@@ -14,17 +14,20 @@
     --line:#e5e7eb; --radius:14px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  :root{ --header-h:64px; }
+  :root{ --header-h:58px; }
   body{margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:16px;}
 
   /* ---------- Header ---------- */
-  header{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); color:#fff; padding:10px 14px; min-height:var(--header-h); display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:40; box-shadow:0 2px 12px rgba(15,23,42,.18);}
-  header .brand{display:flex; align-items:center; gap:10px; min-width:0;}
-  header h1{margin:0; font-size:17px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  header .tag{font-size:11.5px; color:#94a3b8; margin-top:1px;}
-  .ver{font-size:11px; color:#cbd5e1; font-weight:700; margin-left:6px; background:#1e293b; border:1px solid #334155; padding:1px 7px; border-radius:999px;}
-  .hints-btn{margin-left:auto; flex:0 0 auto; border:1px solid #475569; background:#1e293b; color:#94a3b8; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
-  #menuBtn{display:none; align-items:center; justify-content:center; flex:0 0 auto; width:38px; height:38px; border:1px solid #475569; background:#1e293b; color:#fff; border-radius:10px; font-size:18px; line-height:1; cursor:pointer;}
+  header{background:linear-gradient(115deg,#0b1220 0%,#111c2e 52%,#1a2940 100%); color:#fff; padding:9px 18px; min-height:var(--header-h); display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:40; box-shadow:0 1px 0 rgba(255,255,255,.04), 0 8px 24px rgba(15,23,42,.16);}
+  header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:linear-gradient(90deg,rgba(217,119,6,0),#d97706 35%,#fbbf24 50%,#d97706 65%,rgba(217,119,6,0)); opacity:.75; pointer-events:none;}
+  header .brand{display:flex; align-items:center; gap:11px; min-width:0;}
+  header .brand img{width:38px; height:38px; border-radius:50%; object-fit:cover; flex:0 0 auto; border:1.5px solid rgba(251,191,36,.55); box-shadow:0 0 0 3px rgba(255,255,255,.05); background:#fff;}
+  header h1{margin:0; font-size:16.5px; font-weight:800; letter-spacing:.2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  header .tag{font-size:10.5px; color:#8fa3bb; margin-top:1px; letter-spacing:.15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ver{font-size:10px; color:#fbbf24; font-weight:800; margin-left:6px; background:rgba(217,119,6,.16); border:1px solid rgba(251,191,36,.3); padding:1px 6px; border-radius:999px; vertical-align:1px;}
+  .hints-btn{margin-left:auto; flex:0 0 auto; border:1px solid rgba(148,163,184,.28); background:rgba(255,255,255,.05); color:#cbd5e1; border-radius:999px; padding:6px 11px; font-size:11px; font-weight:700; letter-spacing:.2px; cursor:pointer; transition:background .15s,border-color .15s,color .15s;}
+  .hints-btn:hover{background:rgba(255,255,255,.1); border-color:rgba(251,191,36,.45); color:#fff;}
+  #menuBtn{display:none; align-items:center; justify-content:center; flex:0 0 auto; width:34px; height:34px; border:1px solid rgba(148,163,184,.28); background:rgba(255,255,255,.05); color:#fff; border-radius:9px; font-size:16px; line-height:1; cursor:pointer;}
   body.no-hints .hint:not(.hint-status){display:none;}
 
   /* ---------- Shell + Sidebar ---------- */
@@ -91,19 +94,21 @@
   .ayat .tr{font-size:12.5px; color:#92400e; margin-top:8px; line-height:1.6;}
 
   /* ---------- Ayat header center ---------- */
-  .ayat-head{flex:1; text-align:center; min-width:0; line-height:1.7; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px;}
-  .ayat-head .ar{font-size:17px; color:#fff7ed; text-shadow:0 1px 3px rgba(0,0,0,.55);}
-  .ayat-head .tr{font-size:10px; color:#a8b8ca; margin-top:2px; line-height:1.5; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .ayat-head{flex:1 1 auto; text-align:center; min-width:0; line-height:1.35; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px; padding:0 10px;}
+  .ayat-head .ar{font-size:14px; color:#f5ead7; text-shadow:0 1px 2px rgba(0,0,0,.45);}
+  .ayat-head .tr{font-size:9.5px; color:#8fa3bb; margin-top:1px; line-height:1.35; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
 
   /* ---------- Mobile ---------- */
   @media (max-width: 860px){
     #menuBtn{display:inline-flex;}
-    header{flex-wrap:wrap; row-gap:2px; padding-bottom:8px;}
-    header h1{font-size:15.5px;}
-    .ayat-head{order:2; flex:0 0 100%; padding:2px 0;}
-    .ayat-head .ar{font-size:13px;}
-    .ayat-head .tr{font-size:9px;}
-    .hints-btn{order:3;}
+    header{flex-wrap:wrap; row-gap:4px; padding:8px 12px 10px; gap:10px;}
+    header h1{font-size:15px;}
+    header .brand img{width:34px; height:34px;}
+    header .tag{font-size:9.5px;}
+    .ayat-head{order:5; flex:0 0 100%; padding:3px 0 0; border-top:1px solid rgba(255,255,255,.06); margin-top:1px;}
+    .ayat-head .ar{font-size:11.5px; line-height:1.65; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .ayat-head .tr{display:none;}
+    .hints-btn{padding:5px 9px; font-size:10.5px;}
     /* Invoice form — mobile par fields ek column mein */
     .inv-form .row{flex-direction:column; align-items:stretch;}
     .inv-form .row > *{min-width:100%;}
@@ -123,9 +128,9 @@
 <header>
   <button id="menuBtn" aria-label="Menu">☰</button>
   <div class="brand">
-    <img src="logo.png" alt="AB Travels" style="width:42px; height:42px; border-radius:50%; object-fit:cover; flex:0 0 auto; border:2px solid rgba(255,255,255,.35);" onerror="this.style.display='none'">
+    <img src="logo.png" alt="AB Travels" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.20</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.43</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -175,7 +180,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.42";
+var APP_VER = "1.43";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -325,6 +330,7 @@ function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", lang:"en", hints:true, lastBackup:"",
                 invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:false,
+                invCompany:"AB Travels", invTagline:"Ahmed Brothers Hajj & Umra Services (Pvt) Ltd",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
       { id:"fix-rent", label:"Office rent", amount:70000, on:true },
@@ -572,7 +578,7 @@ function findKey(o, sub){
   for(var i=0;i<keys.length;i++){ if(String(keys[i]).toLowerCase().indexOf(sub) !== -1) return o[keys[i]]; }
   return "";
 }
-function kvHtml(o){
+function kvInline(o){
   var keys = Object.keys(o||{});
   var parts = [];
   for(var i=0;i<keys.length;i++){ parts.push("<b>"+esc(keys[i])+"</b>: "+esc(o[keys[i]])); }
@@ -863,8 +869,8 @@ function importFromSheet(opts){
           +(nDup ? "<br><b>Duplicate tickets skipped (already present):</b> "+nDup : "")
           +"<br><br><b>Expenses went into these months:</b><br>"+tallyHtml
           + (offUniq.length ? "<br><b style='color:#b00;'>⚠ Rows from other months were also found: "+esc(offUniq.map(monthLabel).join(", "))+"</b>" : "");
-        if(nT===0 && nBs2>0) h2 += "<br><b>First booking (not added):</b><br>"+kvHtml(j.bookings[0]);
-        if(nE===0 && nEs2>0) h2 += "<br><b>First expense (not added):</b><br>"+kvHtml(j.expenses[0]);
+        if(nT===0 && nBs2>0) h2 += "<br><b>First booking (not added):</b><br>"+kvInline(j.bookings[0]);
+        if(nE===0 && nEs2>0) h2 += "<br><b>First expense (not added):</b><br>"+kvInline(j.expenses[0]);
         rep2.innerHTML = h2;
       }
             var sumMsg = "Import complete!\nMonth: "+midDefault+midSrc+"\n\nRows found in the sheet: tickets "+((j.bookings||[]).length)+", expenses "+((j.expenses||[]).length)+"\nTickets added: "+nT+(nDup ? " (duplicates skipped: "+nDup+")" : "")+"\nExpenses added: "+nE+(nFlagged ? "\n⚠ Possible duplicate: "+nFlagged+" (marked with ⚠ in Tickets/Monthly Accounts — press ✓ to remove the flag if correct, or ✕ to delete)" : "")+"\nPartner withdrawals added: "+nP+((nC>0)?"\nCharity paid (entries): "+nC:"")+((nSkip||nSkipE)?"\nRows skipped (missing date or amount): "+(nSkip+nSkipE):"")+qMsg+(tallyTxt ? "\n\nExpenses went into these months:\n"+tallyTxt : "")+offTxt+"\n\nImportant: compare 2-3 tickets with your sheet to confirm cost/sale are correct. If something looks wrong, tell me — it can be fixed with one setting." + ((((j.bookings||[]).length===0) && ((j.expenses||[]).length===0)) ? "\n\nNo rows were found in the sheet — either the headers were not recognised or the tab is empty. First press the 'Test' button — it shows the file name and tabs. If it is the wrong file, enter that file's File ID and import again." : ((nT===0 && (j.bookings||[]).length>0) ? "\n\nRows were found but not added — date/name/amount were not recognised. First row headings: ["+Object.keys(j.bookings[0]||{}).join("; ")+"] and values: ["+Object.values(j.bookings[0]||{}).join("; ")+"] — please send me these." : ""));
@@ -908,7 +914,21 @@ function monthCalc(mid){
   var loanPay = 0, split = 0;
   if(rest > 0){
     loanPay = rest * effLoan / 100;
+    // Never "pay" more loan than the remaining balance. If the loan is already
+    // finished, that share goes to the partners instead of being lost.
+    var loanBal = Number(S.settings.loanBalance) || 0;
+    if(loanBal <= 0) loanPay = 0;
+    else if(loanPay > loanBal) loanPay = loanBal;
     split = rest - loanPay;
+  }
+  // Applied months keep the exact split that was posted at the time.
+  // Editing income/expenses later must not silently change partner shares or the loan figure
+  // until the user presses "Re-apply split".
+  if(m.applied && m.appliedInfo){
+    var ai = m.appliedInfo;
+    if(ai.charity !== undefined && ai.charity !== null) charity = Number(ai.charity) || 0;
+    if(ai.loan !== undefined && ai.loan !== null) loanPay = Number(ai.loan) || 0;
+    if(ai.each !== undefined && ai.each !== null) split = (Number(ai.each) || 0) * 2;
   }
   return { income:income, expenses:expenses, net:net, charity:charity, loanPay:loanPay, split:split, ticketProfit:ticketProfit, abbu:abbu, commission:commission, charityRate:effCharity, loanRate:effLoan,
            each:split/2, applied:!!m.applied, appliedInfo:m.appliedInfo||null };
@@ -1271,12 +1291,14 @@ function invHtml(d, bw){
   var logo = "";
   try{ logo = new URL("logo.png", location.href).href; }catch(e){ logo = "logo.png"; }
   var p1 = S.settings.invPhone1 || "0310-3311199", p2 = S.settings.invPhone2 || "0314-3178560";
+  var company = (S.settings.invCompany || "AB Travels").trim();
+  var tagline = (S.settings.invTagline || "").trim();
   // B&W printer-friendly palette: white background, dark text, no ink-heavy fills
   var bannerBg  = bw ? "#fff" : "linear-gradient(135deg,#0f172a,#1e293b)";
   var bannerBr  = bw ? "2px solid #111" : "none";
   var bannerTtl = bw ? "#111" : "#fff";
   var bannerSub = bw ? "#444" : "#94a3b8";
-  var logoBrd   = bw ? "2px solid #999" : "2px solid rgba(255,255,255,.35)";
+  var logoBrd   = bw ? "2px solid #999" : "1.5px solid rgba(251,191,36,.55)";
   var stampBg   = bw ? "#fff" : "#dc2626";
   var stampTx   = bw ? "#000" : "#fff";
   var stampBrd  = bw ? "3px solid #000" : "none";
@@ -1293,13 +1315,19 @@ function invHtml(d, bw){
   var tmpBrd    = bw ? "2px solid #000" : "1.5px solid #f59e0b";
   var tmpTx     = bw ? "#000" : "#92400e";
   var h = '<div id="invPrint" style="max-width:640px; margin:0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; position:relative;">'
-    + '<div style="text-align:center; padding:14px 18px 4px;">'
-    + '<img src="'+logo+'" alt="AB Travels" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid '+(bw?'#999':'rgba(15,23,42,.15)')+'; background:#fff;">'
-    + '<div style="color:'+bannerTtl+'; font-weight:800; font-size:20px; letter-spacing:1px; margin-top:6px;">AB Travels</div>'
-    + '<div style="color:'+bannerSub+'; font-size:11px; margin-top:2px;">📞 '+esc(p1)+' &nbsp;•&nbsp; 📞 '+esc(p2)+'</div>'
+    + '<div style="background:'+bannerBg+'; border-bottom:'+bannerBr+'; padding:14px 18px; display:flex; align-items:center; gap:13px;">'
+    + '<img src="'+logo+'" alt="'+esc(company)+'" style="width:46px; height:46px; border-radius:50%; object-fit:cover; border:'+logoBrd+'; background:#fff; flex:0 0 auto;">'
+    + '<div style="flex:1; min-width:0;">'
+    + '<div style="color:'+bannerTtl+'; font-weight:800; font-size:19px; letter-spacing:2.2px; line-height:1.1; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+esc(company)+'</div>'
+    + (tagline ? '<div style="color:'+bannerSub+'; font-size:9.5px; letter-spacing:.4px; margin-top:3px; line-height:1.35; text-transform:uppercase; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">'+esc(tagline)+'</div>' : '')
     + '</div>'
-    + '<div style="border-top:1px solid #e5e7eb; margin-top:10px;"></div>'
-    + (d.nr ? '<div style="position:absolute; top:64px; right:-38px; transform:rotate(35deg); background:'+stampBg+'; border:'+stampBrd+'; color:'+stampTx+'; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
+    + '<div style="text-align:right; font-size:10.5px; line-height:1.6; color:'+bannerSub+'; flex:0 0 auto;">'
+    + '<div style="color:'+bannerTtl+'; font-weight:800; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:1px;">Travel Desk</div>'
+    + '<div>&#128222; '+esc(p1)+'</div>'
+    + '<div>&#128222; '+esc(p2)+'</div>'
+    + '</div></div>'
+    + (bw ? '' : '<div style="height:3px; background:linear-gradient(90deg,#d97706,#f59e0b,#fbbf24);"></div>')
+    + (d.nr ? '<div style="position:absolute; top:88px; right:-34px; transform:rotate(35deg); background:'+stampBg+'; border:'+stampBrd+'; color:'+stampTx+'; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
     + '<div style="padding:18px;">'
     + '<div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">'
     + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">'+(d.docType === "umrah" ? "UMRAH PACKAGE — BOOKING CONFIRMATION" : "BOOKING CONFIRMATION")+'</div>'
@@ -1509,7 +1537,7 @@ function printInvoice(){
   if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
   var pnr = ((document.getElementById("invPnr")||{}).value||"").toUpperCase();
   var paxName = ((document.getElementById("invClient")||{}).value||"").trim() || ((lastInv||{}).name||"") || ((lastInv||{}).paxNames||[])[0] || "";
-  paxName = String(paxName).replace(/[^\w\s\-]/g,"").replace(/\s+/g,"-");
+  paxName = String(paxName).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g,"-");
   // Black & White printer style (Settings > Invoice): ink bachane ke liye plain print
   var html = (S.settings.invBW && lastInv) ? invHtml(lastInv, true) : (document.getElementById("invPrint")||"").outerHTML;
   if(!html){ alert("Press Generate Invoice first."); return; }
@@ -1619,7 +1647,9 @@ function partnerBalances(){
     var c = monthCalc(mid);
     if(c.applied){ earned.A += c.each; earned.B += c.each; }
   });
-  S.draws.forEach(function(d){ drawn[d.partner] += Number(d.amount)||0; });
+  S.draws.forEach(function(d){
+    if(d.partner === "A" || d.partner === "B") drawn[d.partner] += Number(d.amount) || 0;
+  });
   return { earned:earned, drawn:drawn,
            balA: earned.A - drawn.A, balB: earned.B - drawn.B };
 }
@@ -2340,12 +2370,14 @@ function viewSettings(){
   html += '</div>';
 
   html += '<div class="card"><h2>Invoice / Ticket settings</h2>';
-  html += '<div class="row"><div><label>Phone 1</label><input id="setInvPhone1" value="'+esc(st.invPhone1||"0310-3311199")+'" inputmode="tel"></div>'
+  html += '<label>Company name (printed on the invoice)</label><input id="setInvCompany" maxlength="40" value="'+esc(st.invCompany||"AB Travels")+'">';
+  html += '<label style="margin-top:8px;">Tagline (small line under the name)</label><input id="setInvTagline" maxlength="90" value="'+esc(st.invTagline||"")+'">';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Phone 1</label><input id="setInvPhone1" value="'+esc(st.invPhone1||"0310-3311199")+'" inputmode="tel"></div>'
         + '<div><label>Phone 2</label><input id="setInvPhone2" value="'+esc(st.invPhone2||"0314-3178560")+'" inputmode="tel"></div></div>';
   html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="setInvNR" style="width:auto"'+(st.invNR?' checked':'')+'> NON-REFUNDABLE stamp default on</label>';
   html += '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="setInvBW" style="width:auto"'+(st.invBW?' checked':'')+'> Black &amp; White printer style (B&amp;W printer ke liye — sirf print par)</label>';
   html += '<button class="btn primary" id="saveInvSet">Save invoice settings</button>';
-  html += '<div class="hint">Ye numbers aur company ka naam client wale invoice par chapte hain (Invoice tab). B&amp;W style on ho to print par safed background aur kale nishan bante hain — screen par invoice waise hi colorful dikhta hai.</div>';
+  html += '<div class="hint">Ye company ka naam, tagline aur numbers client wale invoice par chapte hain (Invoice tab). B&amp;W style on ho to print par safed background aur kale nishan bante hain — screen par invoice waise hi colorful dikhta hai.</div>';
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("reseth"))+'</h2>';
@@ -2419,13 +2451,14 @@ function bind(){
 
   var saveMR = document.getElementById("saveMRates");
   if(saveMR) saveMR.onclick = function(){
-    var mid = selectedMonth; if(!mid || !S.months[mid]) return;
+    var mid = selectedMonth; if(!mid) return;
+    if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
     var cv = (document.getElementById("mCharity")||{}).value;
     var lv = (document.getElementById("mLoan")||{}).value;
     if(cv === "" || cv === null) delete S.months[mid].charityRate;
-    else { var cn = Number(cv); if(isNaN(cn) || cn < 0) cn = S.settings.charityRate; S.months[mid].charityRate = cn; }
+    else { var cn = Number(cv); if(isNaN(cn) || cn < 0) cn = S.settings.charityRate; if(cn > 100) cn = 100; S.months[mid].charityRate = cn; }
     if(lv === "" || lv === null) delete S.months[mid].loanRate;
-    else { var ln = Number(lv); if(isNaN(ln) || ln < 0) ln = S.settings.loanRate; S.months[mid].loanRate = ln; }
+    else { var ln = Number(lv); if(isNaN(ln) || ln < 0) ln = S.settings.loanRate; if(ln > 100) ln = 100; S.months[mid].loanRate = ln; }
     save(); render();
     alert("Rates saved for "+monthLabel(mid)+" — the split now uses these rates.");
   };
@@ -2703,10 +2736,6 @@ function bind(){
     }
   };
   // Flight block chhupao jab Umrah invoice ban rahi ho
-  var flightWrap = document.createElement("div");
-  flightWrap.id = "invFlightWrap";
-  flightWrap.innerHTML = app.querySelector("#invFlightWrap") ? app.querySelector("#invFlightWrap").innerHTML : "";
-  // (form HTML upar bana chuke — yahan sirf Umrah toggle logic lagta hai)
   var docSel = document.getElementById("invDoc");
   if(docSel) docSel.onchange = function(){
     var um = (this.value === "umrah");
@@ -2750,12 +2779,14 @@ function bind(){
   // Invoice settings save
   var sis = document.getElementById("saveInvSet");
   if(sis) sis.onclick = function(){
+    S.settings.invCompany = ((document.getElementById("setInvCompany")||{}).value||"").trim() || "AB Travels";
+    S.settings.invTagline = ((document.getElementById("setInvTagline")||{}).value||"").trim();
     S.settings.invPhone1 = ((document.getElementById("setInvPhone1")||{}).value||"").trim() || "0310-3311199";
     S.settings.invPhone2 = ((document.getElementById("setInvPhone2")||{}).value||"").trim() || "0314-3178560";
     S.settings.invNR = !!((document.getElementById("setInvNR")||{}).checked);
     S.settings.invBW = !!((document.getElementById("setInvBW")||{}).checked);
     save(); render();
-    alert("Invoice settings save ho gayi.");
+    alert("Invoice settings saved.");
   };
   // Day-to-day expenses tab
   var exs = document.getElementById("expTabSel");
@@ -3203,6 +3234,7 @@ if(hintsB) hintsB.onclick = function(){
 
   var KEY = "travelOfficeLookups";
   var last = { code:"", pnr:"", name:"" };
+  var flash = "";
 
   function recent(){
     try{ return JSON.parse(localStorage.getItem(KEY) || "[]"); }catch(e){ return []; }
@@ -3229,7 +3261,7 @@ if(hintsB) hintsB.onclick = function(){
        + '</div>';
     h += '<button class="btn primary" id="lkGo">Open Manage Booking</button>';
     h += '<button class="btn small green" id="lkSt" style="margin-top:8px; width:100%;">Open Flight Status</button>';
-    h += '<div class="hint" id="lkMsg"></div></div>';
+    h += '<div class="hint" id="lkMsg">'+flash+'</div></div>';
 
     var r = recent();
     if(r.length){
@@ -3264,7 +3296,7 @@ if(hintsB) hintsB.onclick = function(){
     var url = (kind==="s") ? a.s : a.m;
     var w = window.open(url, "_blank");
     if(!w) location.href = url;
-    if(msg) msg.innerHTML = "✓ Opened — <b>"+esc(pnr)+"</b> is in the clipboard.";
+    flash = "&#10003; Opened — <b>"+esc(pnr)+"</b> is in the clipboard.";
     window.render();
   }
 
