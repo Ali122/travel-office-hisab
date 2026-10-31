@@ -180,7 +180,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.44";
+var APP_VER = "1.45";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -890,6 +890,7 @@ function money(n){
   return "Rs " + n.toLocaleString("en-PK");
 }
 function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dmy(s){ var m = String(s==null?"":s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[3]+"/"+m[2]+"/"+m[1].slice(-2)) : String(s==null?"":s); }
 function monthLabel(m){ var p=m.split("-"); return MONTH_NAMES[Number(p[1])-1] + " " + p[0]; }
 function esc(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function up(t){ return esc(String(t==null?"":t).toUpperCase()); }
@@ -1255,6 +1256,10 @@ function invRow(k, v){
   if(!v) return "";
   return '<tr><td style="padding:7px 4px; color:#64748b; width:40%; border-bottom:1px solid #f3f4f6;">'+esc(k)+'</td><td style="padding:7px 4px; font-weight:700; border-bottom:1px solid #f3f4f6;">'+up(v)+'</td></tr>';
 }
+function invRowRaw(k, v){
+  if(!v) return "";
+  return '<tr><td style="padding:7px 4px; color:#64748b; width:40%; border-bottom:1px solid #f3f4f6;">'+esc(k)+'</td><td style="padding:7px 4px; font-weight:700; border-bottom:1px solid #f3f4f6;">'+esc(v)+'</td></tr>';
+}
 function invTimeTxt(t){
   if(!t) return "";
   var h = +t.slice(0,2), m = t.slice(3,5);
@@ -1324,10 +1329,15 @@ function invHtml(d, bw){
     + (d.nr ? '<div style="position:absolute; top:74px; right:-34px; transform:rotate(35deg); background:'+stampBg+'; border:'+stampBrd+'; color:'+stampTx+'; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
     + '<div style="padding:18px;">'
     + '<div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">'
-    + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">'+(d.docType === "umrah" ? "UMRAH PACKAGE — BOOKING CONFIRMATION" : "BOOKING CONFIRMATION")+'</div>'
+    + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">'+(d.docType === "umrah" ? "UMRAH PACKAGE — BOOKING CONFIRMATION" : "PNR / BOOKING REFERENCE NO:")+'</div>'
     + (d.trip === "round" && d.docType !== "umrah" ? '<span style="background:'+tripBg+'; color:'+tripTx+'; border:'+tripBrd+'; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800;">Round Trip</span>' : '')
     + '</div>';
   if(d.docType === "umrah"){
+    var uPax = Math.max(1, Number(d.pax)||1);
+    var uPkg = Number(d.pkg)||0;
+    var uChild = d.child ? (Number(d.childPrice)||0) : 0;
+    var uTotal = uPkg * uPax + uChild;
+    var uPaid = Number(d.paid)||0;
     h += '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-top:12px;">'
        + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:8px;"> PACKAGE DETAILS</div>'
        + '<table style="width:100%; border-collapse:collapse; font-size:13.5px;">'
@@ -1335,9 +1345,16 @@ function invHtml(d, bw){
        + (d.beds ? invRowAlways("Beds (quantity)", String(d.beds)) : "")
        + invRowAlways("Flight", d.flightType)
        + (d.hotel ? invRow("Hotel", d.hotel) : "")
+       + (d.shuttle ? invRowAlways("Shuttle service", "Included") : "")
+       + (!d.shuttle && d.makkahDist ? invRowRaw("Makkah hotel distance", d.makkahDist + " m") : "")
+       + (!d.shuttle && d.madinahDist ? invRowRaw("Madinah hotel distance", d.madinahDist + " m") : "")
        + (d.nights ? invRow("Nights", String(d.nights)) : "")
-       + (d.child ? invRowAlways("Child without bed", d.childPrice > 0 ? money(d.childPrice) : "—") : "")
-       + (d.pkg ? invRow("Package price (per person)", money(d.pkg)) : "")
+       + (d.ziyarat ? invRowAlways("Ziyarat", "Makkah & Madinah included") : "")
+       + (d.child ? invRowAlways("Child without bed", uChild > 0 ? money(uChild) : "—") : "")
+       + (uPkg ? invRow("Price per person", money(uPkg)) : "")
+       + (uTotal ? invRow("Total ("+uPax+" person"+(uPax>1?"s":"")+")", money(uTotal)) : "")
+       + (uPaid ? invRow("Advance paid", money(uPaid)) : "")
+       + (uPaid ? invRowAlways("Remaining", money(Math.max(0, uTotal - uPaid))) : "")
        + '</table></div>';
     h += '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-top:12px;">'
        + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:8px;">PASSENGERS ('+d.pax+')</div>';
@@ -1398,8 +1415,8 @@ function invHtml(d, bw){
        + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">CHECKED-IN BAG</div><div style="font-weight:800; font-size:15px; margin-top:4px;">🧳 '+esc(bag)+'</div></div>'
        + '</div>';
   }
-  if(d.nr) h += '<div style="margin-top:12px; background:'+warnBg+'; border:'+warnBrd+'; color:'+warnTx+'; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund and change charges depend solely on the airline&rsquo;s policy</div>';
-  if(d.tmp) h += '<div style="margin-top:12px; background:'+tmpBg+'; border:'+tmpBrd+'; color:'+tmpTx+'; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:800; text-align:center;">⏳ TEMPORARY BOOKING ONLY — this is a temporary booking only and can be cancelled any time.</div>';
+  if(d.nr && d.docType !== "umrah") h += '<div style="margin-top:12px; background:'+warnBg+'; border:'+warnBrd+'; color:'+warnTx+'; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund and change charges depend solely on the airline&rsquo;s policy</div>';
+  if(d.tmp && d.docType !== "umrah") h += '<div style="margin-top:12px; background:'+tmpBg+'; border:'+tmpBrd+'; color:'+tmpTx+'; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:800; text-align:center;">⏳ TEMPORARY BOOKING ONLY — this is a temporary booking only and can be cancelled any time.</div>';
   if(d.docType !== "umrah"){
     h += '<div style="margin-top:12px; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; background:#f8fafc;">'
        + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:6px;">TRAVEL GUIDELINES</div>'
@@ -1469,7 +1486,7 @@ function viewInvoice(){
   var html = "";
   html += '<div class="card inv-form"><h2>Invoice / Ticket — for the client</h2>';
   html += '<div class="row"><div><label>Invoice type</label><select id="invDoc"><option value="ticket">Ticket (flight)</option><option value="umrah">Umrah package</option></select></div>'
-        + '<div><label>Trip type</label><select id="invTrip"><option value="one">One-way</option><option value="round">Round trip (return flight)</option></select></div>'
+        + '<div class="umrah-hide"><label>Trip type</label><select id="invTrip"><option value="one">One-way</option><option value="round">Round trip (return flight)</option></select></div>'
         + '<div><label>Airline</label><select id="invAir">'+airOpts+'</select></div></div>';
   html += '<div id="invUmrahWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🕋 Umrah package details</div>'
@@ -1478,23 +1495,31 @@ function viewInvoice(){
         + '<div><label>Flight</label><select id="invFlightType"><option>Direct</option><option>Connecting</option></select></div></div>'
         + '<div class="row" style="margin-top:8px;"><div><label>Hotel (optional)</label><input id="invHotel" placeholder="Hotel name, Makkah/Madinah" autocomplete="off"></div>'
         + '<div><label>Nights (optional)</label><input type="number" id="invNights" min="0" inputmode="numeric" placeholder="e.g. 14"></div></div>'
+        + '<div class="row" style="margin-top:8px;"><div><label>Makkah hotel distance (meters)</label><input type="number" id="invMakkahDist" min="0" inputmode="numeric" placeholder="e.g. 300"></div>'
+        + '<div><label>Madinah hotel distance (meters)</label><input type="number" id="invMadinahDist" min="0" inputmode="numeric" placeholder="e.g. 500"></div></div>'
+        + '<div class="row" style="margin-top:8px; align-items:center;">'
+        + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invShuttle" style="width:auto"> Shuttle service (hide hotel distance)</label>'
+        + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invZiyarat" style="width:auto"> Makkah &amp; Madinah Ziyarat included</label>'
+        + '</div>'
         + '<label style="margin-top:8px; display:flex; gap:8px; align-items:center;"><input type="checkbox" id="invChild" style="width:auto"> Child without bed (alag price ke saath)</label>'
         + '<div class="row" id="invChildPriceRow" style="margin-top:8px; display:none;"><div><label>Child without bed — price (Rs)</label><input type="number" id="invChildPrice" min="0" inputmode="decimal" placeholder="e.g. 75000"></div></div>'
-        + '<div class="row" style="margin-top:8px;"><div><label>Package price (Rs) — optional</label><input type="number" id="invPkg" min="0" inputmode="decimal" placeholder="Total package price"></div></div>'
+        + '<div class="row" style="margin-top:8px;"><div><label>Price per person (Rs)</label><input type="number" id="invPkg" min="0" inputmode="decimal" placeholder="e.g. 250000"></div>'
+        + '<div><label>Advance paid (Rs)</label><input type="number" id="invPaid" min="0" inputmode="decimal" placeholder="e.g. 100000"></div></div>'
+        + '<div class="hint">Total and remaining are calculated from the number of passengers.</div>'
         + '</div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>PNR / Booking ref</label><input id="invPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px; font-weight:700;"></div>'
         + '<div><label>Number of passengers</label><input type="number" id="invPax" min="1" value="'+invPaxCount+'" inputmode="numeric"></div></div>';
   html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label>Client name</label><input id="invClient" placeholder="Passenger name" autocomplete="off" style="text-transform:uppercase;"></div>'
-        + '<div><label>Ticket number</label><input id="invTk" placeholder="Ticket number" autocomplete="off" style="text-transform:uppercase;"></div></div>';
+        + '<div class="umrah-hide"><label>Ticket number</label><input id="invTk" placeholder="Ticket number" autocomplete="off" style="text-transform:uppercase;"></div></div>';
   html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invNicRow"><div><label>NIC / Passport</label><input id="invNic1" placeholder="NIC or Passport number" autocomplete="off" style="text-transform:uppercase;"></div>'
-        + '<div><label>Outbound seat (optional)</label><input id="invSeat1" placeholder="e.g. 12A" autocomplete="off" style="text-transform:uppercase;"></div></div>';
+        + '<div class="umrah-hide"><label>Outbound seat (optional)</label><input id="invSeat1" placeholder="e.g. 12A" autocomplete="off" style="text-transform:uppercase;"></div></div>';
   if(invPaxCount <= 1){
     html += '<div class="row retseat" style="margin-top:8px; display:none;"><div><label>Return seat (optional)</label><input id="invRetSeat1" placeholder="e.g. 14C" autocomplete="off" style="text-transform:uppercase;"></div></div>';
   }
   html += '<div class="grid2" id="invPaxListRow" style="margin-top:8px;'+(invPaxCount>1?'':' display:none;')+'">'
         + '<div><label>Passengers (one name per line — press Enter)</label><textarea id="invPaxNames" rows="'+Math.max(3, invPaxCount)+'" placeholder="Ali Khan&#10;Sana Khan&#10;Bilal Ahmed" style="text-transform:uppercase;"></textarea></div>'
         + '<div><label>NIC / Passport (same order — one per line)</label><textarea id="invNicMulti" rows="'+Math.max(3, invPaxCount)+'" placeholder="42101-1234567-1&#10;AB1234567&#10;42201-7654321-9" style="text-transform:uppercase;"></textarea></div>'
-        + '<div style="grid-column:1/-1;"><label>Outbound seats (optional — same order, one per line)</label><textarea id="invSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="12A&#10;12B&#10;14C" style="text-transform:uppercase;"></textarea></div>'
+        + '<div class="umrah-hide" style="grid-column:1/-1;"><label>Outbound seats (optional — same order, one per line)</label><textarea id="invSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="12A&#10;12B&#10;14C" style="text-transform:uppercase;"></textarea></div>'
         + '<div class="retseat" style="grid-column:1/-1; display:none;"><label>Return seats (optional — same order, one per line)</label><textarea id="invRetSeats" rows="'+Math.max(2, invPaxCount)+'" placeholder="14C&#10;14D&#10;16A" style="text-transform:uppercase;"></textarea></div>'
         + '<div style="grid-column:1/-1;"><div class="hint">Names, NIC/Passport and seats match line by line (first line = first passenger). Press Enter for a new line. Any seat left empty is hidden on the invoice.</div></div></div>';
   html += '<div id="invFlightWrap">';
@@ -1513,20 +1538,31 @@ function viewInvoice(){
         + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="date" id="invRetDate"></div>'
         + '<div><label>Return time</label><input type="time" id="invRetTime"></div>'
         + '<div><label>Arrival time (optional)</label><input type="time" id="invRetArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div></div>';
-  html += '<div class="row" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
+  html += '<div class="row umrah-hide" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
         + '<div><label>Checked-in bag (kg)</label><input type="number" id="invBag" min="0" value="0" inputmode="decimal"><div class="hint">0 = None (default)</div></div></div>';
-  html += '<div class="row" style="margin-top:8px; align-items:center;">'
+  html += '<div class="row umrah-hide" style="margin-top:8px; align-items:center;">'
         + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invNR" style="width:auto"'+(st.invNR?' checked':'')+'> Non-refundable (adds the NON-REFUNDABLE stamp)</label>'
         + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invMeal" style="width:auto"> Meal included (show on invoice)</label>'
         + '<label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="invTmp" style="width:auto"> Temporary booking (adds the &ldquo;temporary booking only&rdquo; notice)</label>'
         + '</div>';
-  html += '<div class="hint" id="nrHint" style="margin-top:2px;"></div>';
+  html += '<div class="hint umrah-hide" id="nrHint" style="margin-top:2px;"></div>';
   html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
   html += '<button class="btn" id="invPrintBtn" style="display:none; background:var(--gold); color:#fff;">🖨 Print / Save as PDF (A4)</button>';
   html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
   html += '</div>';
   html += '<div id="invOut"></div>';
   return html;
+}
+function applyInvDocType(){
+  var dsel = document.getElementById("invDoc");
+  var um = !!(dsel && dsel.value === "umrah");
+  [].forEach.call(document.querySelectorAll(".umrah-hide"), function(x){ x.style.display = um ? "none" : ""; });
+  var tsel = document.getElementById("invTrip");
+  var round = !um && !!(tsel && tsel.value === "round");
+  [].forEach.call(document.querySelectorAll(".retseat"), function(x){ x.style.display = round ? "" : "none"; });
+  var rw = document.getElementById("invRetWrap");
+  if(rw) rw.style.display = round ? "block" : "none";
+  if(um){ var h = document.getElementById("nrHint"); if(h) h.textContent = ""; }
 }
 function printInvoice(){
   if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
@@ -1763,7 +1799,7 @@ function viewDash(){
   if(chL.length){
     html += '<table style="margin-top:8px;"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     chL.forEach(function(x){
-      html += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.note||"—")+'</td><td class="neg">'+money(x.amount)+'</td><td><button class="del" data-type="charity" data-id="'+x.id+'">✕</button></td></tr>';
+      html += '<tr><td>'+esc(dmy(x.date))+'</td><td>'+esc(x.note||"—")+'</td><td class="neg">'+money(x.amount)+'</td><td><button class="del" data-type="charity" data-id="'+x.id+'">✕</button></td></tr>';
     });
     html += '</table>';
   } else {
@@ -1933,7 +1969,7 @@ function viewTickets(){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
       var costPending = !(Number(t.cost) > 0) && (Number(t.sale) > 0);
       var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket")).toLowerCase();
-      html += '<tr data-search="'+esc(hay)+'"><td>'+esc(t.date)+'</td>'
+      html += '<tr data-search="'+esc(hay)+'"><td>'+esc(dmy(t.date))+'</td>'
             + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+(costPending?' <span class="pill pending" title="Cost price abhi nahi dali — ✏ se edit karein">⚠ cost pending</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.payMethod?' <div style="font-size:12px; color:var(--muted);">'+(t.payMethod==='Online'?'💳':'💵')+' '+esc(t.payMethod)+'</div>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
             + '<td>'+(costPending?'<span style="color:var(--muted);">—</span>':money(t.cost))+'</td><td>'+money(t.sale)+'</td>'
             + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
@@ -2059,7 +2095,7 @@ function viewPartner(which){
   if(mine.length){
     html += '<div class="card"><h2>'+esc(T("nikhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     mine.forEach(function(d){
-      html += '<tr><td>'+esc(d.date)+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
+      html += '<tr><td>'+esc(dmy(d.date))+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
     });
     html += '</table></div>';
   } else {
@@ -2113,7 +2149,7 @@ function viewAbbu(){
   if(mine.length){
     html += '<div class="card"><h2>'+esc(T("abbuhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     mine.forEach(function(d){
-      html += '<tr><td>'+esc(d.date)+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
+      html += '<tr><td>'+esc(dmy(d.date))+'</td><td>'+esc(d.note||"—")+'</td><td class="neg">'+money(d.amount)+'</td><td><button class="del" data-type="draw" data-id="'+d.id+'">✕</button></td></tr>';
     });
     html += '</table></div>';
   }
@@ -2184,7 +2220,7 @@ function viewWaseem(){
   if(mine.length){
     html += '<div class="card"><h2>'+esc(T("payhist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thkism"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     mine.forEach(function(w){
-      html += '<tr><td>'+esc(w.date)+'</td><td>'+esc(w.kind === "commission" ? T("kcomm") : T("ksal"))+'</td><td>'+esc(w.note||"—")+'</td><td class="neg">'+money(w.amount)+'</td><td><button class="del" data-type="waseem" data-id="'+w.id+'">✕</button></td></tr>';
+      html += '<tr><td>'+esc(dmy(w.date))+'</td><td>'+esc(w.kind === "commission" ? T("kcomm") : T("ksal"))+'</td><td>'+esc(w.note||"—")+'</td><td class="neg">'+money(w.amount)+'</td><td><button class="del" data-type="waseem" data-id="'+w.id+'">✕</button></td></tr>';
     });
     html += '</table></div>';
   } else {
@@ -2212,7 +2248,7 @@ function viewQarza(){
   if(mine.length){
     html += '<div class="card"><h2>'+esc(T("qzhist"))+'</h2><table><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thw"))+'</th><th>'+esc(T("raqamh"))+'</th><th></th></tr>';
     mine.forEach(function(x){
-      html += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.note||"—")+'</td><td class="pos">'+money(x.amount)+'</td><td><button class="del" data-type="qz" data-id="'+x.id+'">✕</button></td></tr>';
+      html += '<tr><td>'+esc(dmy(x.date))+'</td><td>'+esc(x.note||"—")+'</td><td class="pos">'+money(x.amount)+'</td><td><button class="del" data-type="qz" data-id="'+x.id+'">✕</button></td></tr>';
     });
     html += '</table></div>';
   } else {
@@ -2642,6 +2678,11 @@ function bind(){
       child: !!((document.getElementById("invChild")||{}).checked),
       childPrice: Number((document.getElementById("invChildPrice")||{}).value)||0,
       pkg: Number((document.getElementById("invPkg")||{}).value)||0,
+      paid: Number((document.getElementById("invPaid")||{}).value)||0,
+      makkahDist: Number((document.getElementById("invMakkahDist")||{}).value)||0,
+      madinahDist: Number((document.getElementById("invMadinahDist")||{}).value)||0,
+      shuttle: !!((document.getElementById("invShuttle")||{}).checked),
+      ziyarat: !!((document.getElementById("invZiyarat")||{}).checked),
       meal: !!((document.getElementById("invMeal")||{}).checked),
       seat: ((document.getElementById("invSeat1")||{}).value||"").trim().toUpperCase(),
       paxSeats: (function(){
@@ -2671,7 +2712,7 @@ function bind(){
       if(!d.from || !d.to){ alert("Please enter both From and To airports."); return; }
     } else if(!d.name){ alert("Passenger name is required."); return; }
     var dt = new Date(d.date + "T00:00:00");
-    d.dateTxt = d.date ? dt.toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric" }) : "";
+    d.dateTxt = d.date ? dt.toLocaleDateString("en-GB", { day:"2-digit", month:"2-digit", year:"2-digit" }) : "";
     d.timeTxt = invTimeTxt(d.time);
     d.arrTxt = invTimeTxt(d.arr);
     if(invAlwaysNR(d.air)) d.nr = true;
@@ -2688,7 +2729,7 @@ function bind(){
       };
       if(d.ret.date){
         var rt = new Date(d.ret.date + "T00:00:00");
-        d.ret.dateTxt = rt.toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric" });
+        d.ret.dateTxt = rt.toLocaleDateString("en-GB", { day:"2-digit", month:"2-digit", year:"2-digit" });
       }
       d.ret.timeTxt = invTimeTxt(d.ret.time);
       d.ret.arrTxt = invTimeTxt(d.retArr);
@@ -2729,6 +2770,7 @@ function bind(){
       if(rf && !rf.value) rf.value = t0;
       if(rt2 && !rt2.value) rt2.value = f0;
     }
+    applyInvDocType();
   };
   // Flight block chhupao jab Umrah invoice ban rahi ho
   var docSel = document.getElementById("invDoc");
@@ -2738,6 +2780,7 @@ function bind(){
     var fw = document.getElementById("invFlightWrap");
     if(uw) uw.style.display = um ? "block" : "none";
     if(fw) fw.style.display = um ? "none" : "block";
+    applyInvDocType();
   };
   var ch = document.getElementById("invChild");
   if(ch) ch.onchange = function(){
@@ -2764,6 +2807,8 @@ function bind(){
     if(tr2) tr2.dispatchEvent(new Event("change"));
     var ar2 = document.getElementById("invAir");
     if(ar2) ar2.dispatchEvent(new Event("change"));
+    var dc2 = document.getElementById("invDoc");
+    if(dc2) dc2.dispatchEvent(new Event("change"));
     var px = document.getElementById("invPax");
     if(px){ try{ px.focus({preventScroll:true}); px.setSelectionRange(px.value.length, px.value.length); }catch(e){ px.focus(); } }
   };
