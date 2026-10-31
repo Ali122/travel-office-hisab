@@ -147,13 +147,14 @@
 
     <div class="nav-group" id="navMain">
       <div class="nav-group-title">Main</div>
-      <button data-tab="dash"><span class="ic">📊</span><span class="lbl">Summary</span></button>
-      <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
       <button data-tab="tickets" class="active"><span class="ic">🎫</span><span class="lbl">Sales</span></button>
       <button data-tab="exp"><span class="ic">💸</span><span class="lbl">Expenses</span></button>
       <button data-tab="invoice"><span class="ic">🧾</span><span class="lbl">Invoice</span></button>
-      <button data-tab="qarza"><span class="ic">🏦</span><span class="lbl">Loan</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
+      <button data-tab="lookup"><span class="ic">🔎</span><span class="lbl">PNR Lookup</span></button>
+      <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
+      <button data-tab="dash"><span class="ic">📊</span><span class="lbl">Summary</span></button>
+      <button data-tab="qarza"><span class="ic">🏦</span><span class="lbl">Loan</span></button>
     </div>
 
     <div class="nav-group">
@@ -170,6 +171,7 @@
 
     <div class="nav-group">
       <div class="nav-group-title">App</div>
+      <button data-tab="airids"><span class="ic">🔐</span><span class="lbl">Airline IDs</span></button>
       <button data-tab="settings"><span class="ic">⚙️</span><span class="lbl">Settings</span></button>
     </div>
   </nav>
@@ -180,7 +182,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.46";
+var APP_VER = "1.47";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -345,7 +347,8 @@ function blankState(){
     waseem: [],        // {id, date, kind:"commission"|"salary", note, amount}
     charityPaid: [],   // {id, date, amount, note} — di hui sadqa
     qarzaPaid: [],     // {id, date, amount, note} — qarza ki payments
-    bills: []          // {id, label, amount, due:"2025-09-15", paid:false}
+    bills: [],         // {id, label, amount, due:"2025-09-15", paid:false}
+    airlineIds: []     // {id, name, login, pass, note} — password protected section
   };
 }
 function load(){
@@ -359,6 +362,7 @@ function load(){
     if(!s.receivables) s.receivables = [];
     if(!s.tickets) s.tickets = [];
     if(!s.bills) s.bills = [];
+    if(!s.airlineIds) s.airlineIds = [];
     if(!s.waseem) s.waseem = [];
     if(!s.charityPaid) s.charityPaid = [];
     if(!s.qarzaPayments) s.qarzaPayments = [];
@@ -1260,6 +1264,83 @@ function invRowRaw(k, v){
   if(!v) return "";
   return '<tr><td style="padding:7px 4px; color:#64748b; width:40%; border-bottom:1px solid #f3f4f6;">'+esc(k)+'</td><td style="padding:7px 4px; font-weight:700; border-bottom:1px solid #f3f4f6;">'+esc(v)+'</td></tr>';
 }
+function showTab(k){
+  currentTab = k;
+  if(k !== "airids") airUnlocked = false;
+  document.querySelectorAll("#tabs button[data-tab]").forEach(function(x){ x.classList.toggle("active", x.getAttribute("data-tab") === k); });
+  closeNav();
+  render();
+}
+function saleToCache(t){
+  return {
+    invDoc: (String(t.kind||"").toLowerCase() === "umrah") ? "umrah" : "ticket",
+    invTrip: "one",
+    invClient: t.client || "",
+    invPax: 1,
+    invDate: t.date || ""
+  };
+}
+function invToCache(d){
+  return {
+    invDoc: d.docType || "ticket",
+    invTrip: d.trip || "one",
+    invAir: d.air || "",
+    invPnr: (d.pnr && d.pnr !== "UMRAH") ? d.pnr : "",
+    invPax: d.pax || 1,
+    invClient: d.name || "",
+    invNic1: d.nic || "",
+    invTk: d.tkNo || "",
+    invPaxNames: (d.paxNames||[]).join("\n"),
+    invNicMulti: (d.paxNics||[]).join("\n"),
+    invSeat1: d.seat || "",
+    invRetSeat1: d.retSeat || "",
+    invSeats: (d.paxSeats||[]).join("\n"),
+    invRetSeats: (d.paxRetSeats||[]).join("\n"),
+    invFrom: (d.from === "—" ? "" : (d.from||"")),
+    invTo: (d.to === "—" ? "" : (d.to||"")),
+    invDate: d.date || "",
+    invTime: d.time || "",
+    invArr: d.arr || "",
+    invHand: d.hand || 0,
+    invBag: d.bag || 0,
+    invNR: !!d.nr,
+    invMeal: !!d.meal,
+    invTmp: !!d.tmp,
+    invBed: d.bed || "Single",
+    invBeds: d.beds || 0,
+    invFlightType: d.flightType || "Direct",
+    invHotel: d.hotel || "",
+    invNights: d.nights || 0,
+    invMakkahDist: d.makkahDist || 0,
+    invMadinahDist: d.madinahDist || 0,
+    invShuttle: !!d.shuttle,
+    invZiyarat: !!d.ziyarat,
+    invChild: !!d.child,
+    invChildPrice: d.childPrice || 0,
+    invPkg: d.pkg || 0,
+    invPaid: d.paid || 0,
+    invRetFrom: (d.ret && d.ret.from) || "",
+    invRetTo: (d.ret && d.ret.to) || "",
+    invRetDate: (d.ret && d.ret.date) || "",
+    invRetTime: (d.ret && d.ret.time) || "",
+    invRetArr: (d.ret && d.ret.arr) || ""
+  };
+}
+function openInvoiceForSale(id){
+  var t = (S.tickets||[]).filter(function(x){ return x.id === id; })[0];
+  if(!t) return;
+  invLinkId = id;
+  if(t.inv){
+    invPaxCount = Math.max(1, Number(t.inv.pax) || 1);
+    invPrefill = invToCache(t.inv);
+    invAutoGen = true;
+  } else {
+    invPaxCount = 1;
+    invPrefill = saleToCache(t);
+    invAutoGen = false;
+  }
+  showTab("invoice");
+}
 function invTimeTxt(t){
   if(!t) return "";
   var h = +t.slice(0,2), m = t.slice(3,5);
@@ -1488,6 +1569,12 @@ function viewInvoice(){
   html += '<div class="row"><div><label>Invoice type</label><select id="invDoc"><option value="ticket">Ticket (flight)</option><option value="umrah">Umrah package</option></select></div>'
         + '<div class="umrah-hide"><label>Trip type</label><select id="invTrip"><option value="one">One-way</option><option value="round">Round trip (return flight)</option></select></div>'
         + '<div><label>Airline</label><select id="invAir">'+airOpts+'</select></div></div>';
+  var saleOpts = '<option value="">— Not linked to any sale —</option>';
+  (S.tickets||[]).slice().sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }).slice(0,300).forEach(function(t){
+    saleOpts += '<option value="'+esc(t.id)+'"'+(t.id===invLinkId?' selected':'')+'>'+esc(dmy(t.date))+' — '+esc(t.client||"")+' — '+money(t.sale)+(t.kind?' ('+esc(t.kind)+')':'')+'</option>';
+  });
+  html += '<div class="row" style="margin-top:8px;"><div><label>Link this invoice to a sale (optional)</label><select id="invLinkSale">'+saleOpts+'</select>'
+        + '<div class="hint" id="invLinkStatus">'+(invLinkId?'This invoice will be saved with the selected sale.':'Not every client needs an invoice — leave this empty if not needed.')+'</div></div></div>';
   html += '<div id="invUmrahWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🕋 Umrah package details</div>'
         + '<div class="row"><div><label>Bed type</label><select id="invBed"><option>Single</option><option>Double</option><option>Triple</option><option>Quad</option><option>Sharing</option></select></div>'
@@ -1551,6 +1638,55 @@ function viewInvoice(){
   html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
   html += '</div>';
   html += '<div id="invOut"></div>';
+  return html;
+}
+function airHash(s){
+  var h1 = 5381, h2 = 52711, str = "abtravels:" + String(s||"");
+  for(var i=0;i<str.length;i++){ var c = str.charCodeAt(i); h1 = ((h1*33) ^ c) >>> 0; h2 = ((h2*31) + c) >>> 0; }
+  return ("00000000"+h1.toString(16)).slice(-8) + ("00000000"+h2.toString(16)).slice(-8);
+}
+function viewAirIds(){
+  if(!S.settings.airPw){
+    return '<div class="card" style="max-width:560px; margin:0 auto;"><h2>🔐 Airline IDs — set a password</h2>'
+      + '<div class="hint">Save your airline login IDs and passwords here. Set a password now — it will be asked every time this section is opened. The data is saved with your backup and Google Sheet like the rest of the app.</div>'
+      + '<label>New password</label><input type="password" id="airPw1" autocomplete="new-password">'
+      + '<label style="margin-top:8px;">Confirm password</label><input type="password" id="airPw2" autocomplete="new-password">'
+      + '<button class="btn primary" id="airPwSave" style="margin-top:10px; width:100%;">Save password</button>'
+      + '</div>';
+  }
+  if(!airUnlocked){
+    return '<div class="card" style="max-width:560px; margin:0 auto;"><h2>🔐 Airline IDs — locked</h2>'
+      + '<div class="hint">Enter the password to open your airline IDs.</div>'
+      + '<label>Password</label><input type="password" id="airPwIn" autocomplete="current-password">'
+      + '<button class="btn primary" id="airPwGo" style="margin-top:10px; width:100%;">Unlock</button>'
+      + '<div class="hint" id="airPwMsg" style="color:var(--red);"></div>'
+      + '<button class="btn small" id="airPwForgot" style="margin-top:12px; background:var(--red); color:#fff;">Forgot password</button>'
+      + '<div class="hint">Forgot password resets the lock and clears the saved airline IDs (they can be added again).</div>'
+      + '</div>';
+  }
+  var list = S.airlineIds || [];
+  var html = '<div class="card"><h2>🔐 Airline IDs &amp; passwords</h2>';
+  html += '<div class="hint">Office use only. This section locks again as soon as you switch to another tab.</div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Airline</label><input id="airName" placeholder="e.g. Fly Jinnah (9P)" autocomplete="off"></div>'
+        + '<div><label>Login / ID</label><input id="airLogin" placeholder="Agent ID / email" autocomplete="off"></div></div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Password</label><input id="airPass" placeholder="Password" autocomplete="off"></div>'
+        + '<div><label>Note (optional)</label><input id="airNote" placeholder="e.g. agent account" autocomplete="off"></div></div>';
+  html += '<button class="btn green" id="airAdd">Add airline ID</button>';
+  html += '</div>';
+  if(list.length){
+    html += '<div class="card"><h2>Saved IDs ('+list.length+')</h2><table><tr><th>Airline</th><th>Login / ID</th><th>Password</th><th></th></tr>';
+    list.forEach(function(a){
+      var shown = !!airShow[a.id];
+      html += '<tr><td><b>'+esc(a.name)+'</b>'+(a.note?'<div style="font-size:12px; color:var(--muted);">'+esc(a.note)+'</div>':'')+'</td>'
+            + '<td style="font-family:monospace; word-break:break-all;">'+esc(a.login)+' <button class="del air-copy" data-id="'+a.id+'" data-f="login" style="background:var(--blue-bg); color:var(--blue);" title="Copy">⧉</button></td>'
+            + '<td style="font-family:monospace; word-break:break-all;">'+(shown?esc(a.pass):'••••••••')+' <button class="del air-copy" data-id="'+a.id+'" data-f="pass" style="background:var(--blue-bg); color:var(--blue);" title="Copy">⧉</button>'
+            + '<button class="del air-show" data-id="'+a.id+'" style="background:var(--muted); color:#fff; margin-left:4px;">'+(shown?'Hide':'Show')+'</button></td>'
+            + '<td><button class="del air-edit" data-id="'+a.id+'" style="background:var(--blue-bg); color:var(--blue); margin-right:4px;">✏</button><button class="del air-del" data-id="'+a.id+'">✕</button></td></tr>';
+    });
+    html += '</table><button class="btn small" id="airPwChange" style="margin-top:10px;">Change password</button></div>';
+  } else {
+    html += '<div class="card"><div class="empty">No airline IDs saved yet.</div></div>';
+  }
   return html;
 }
 function applyInvDocType(){
@@ -1620,12 +1756,19 @@ var currentTab = "tickets";
 var invPaxCount = 1;
 var lastInv = null;
 var invCache = {};
+var invLinkId = null;
+var invPrefill = null;
+var invAutoGen = false;
+var airUnlocked = false;
+var airShow = {};
 function closeNav(){ document.body.classList.remove("nav-open"); }
 function openNav(){ document.body.classList.add("nav-open"); }
 document.getElementById("tabs").addEventListener("click", function(e){
   var b = e.target.closest("button"); if(!b) return;
   if(b.id === "navClose"){ closeNav(); return; }
   currentTab = b.getAttribute("data-tab");
+  if(currentTab !== "airids") airUnlocked = false;
+  if(currentTab === "invoice") invLinkId = null;
   document.querySelectorAll("#tabs button[data-tab]").forEach(function(x){ x.classList.toggle("active", x===b); });
   closeNav();
   render();
@@ -1652,8 +1795,23 @@ function render(){
   else if(currentTab==="exp") app.innerHTML = viewExpenses();
   else if(currentTab==="invoice") app.innerHTML = viewInvoice();
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
+  else if(currentTab==="airids") app.innerHTML = viewAirIds();
   else app.innerHTML = viewSettings();
   bind();
+  // Sale se aayi invoice values form mein bhar dein
+  if(currentTab === "invoice" && invPrefill){
+    var pf = invPrefill; invPrefill = null;
+    Object.keys(pf).forEach(function(id){
+      var x = document.getElementById(id);
+      if(!x) return;
+      if(x.type === "checkbox") x.checked = !!pf[id];
+      else x.value = pf[id];
+    });
+    var td2 = document.getElementById("invTrip"); if(td2) td2.dispatchEvent(new Event("change"));
+    var ad2 = document.getElementById("invAir"); if(ad2) ad2.dispatchEvent(new Event("change"));
+    var dd2 = document.getElementById("invDoc"); if(dd2) dd2.dispatchEvent(new Event("change"));
+    if(invAutoGen){ invAutoGen = false; var gb2 = document.getElementById("genInv"); if(gb2) gb2.click(); }
+  }
   var t1 = document.querySelector("#tabPA .lbl"), t2 = document.querySelector("#tabPB .lbl");
   if(t1) t1.textContent = S.settings.partnerA;
   if(t2) t2.textContent = S.settings.partnerB;
@@ -2017,6 +2175,7 @@ function viewTickets(){
                   ? '<button class="btn small tk-toggle" data-id="'+t.id+'" style="margin:0 4px 0 0; padding:5px 9px; background:var(--gold); color:#fff;">'+esc(T("unpaid"))+'</button>'
                   : '<span class="pill done">'+esc(T("paidp"))+'</span>')
                 +(t.doubleEntry?'<button class="del" data-unflagTk="'+t.id+'" style="background:var(--green-bg); color:var(--green); margin-right:4px;" title="OK — remove this flag (ticket stays)">✓</button>':'')
+                +'<button class="del tk-inv" data-id="'+t.id+'" title="'+(t.inv?'View invoice':'Create invoice for this sale')+'" style="background:'+(t.inv?'var(--green-bg)':'var(--blue-bg)')+'; color:'+(t.inv?'var(--green)':'var(--blue)')+'; margin-right:4px;">🧾'+(t.inv?' ✓':'')+'</button>'
                 +'<button class="del tk-edit" data-id="'+t.id+'" title="Edit sale (cost / sale / client)" style="background:var(--blue-bg); color:var(--blue); margin-right:4px;">✏</button>'
                 +'<button class="del" data-type="ticket" data-id="'+t.id+'">✕</button>'
                 +'<button class="del tk-datedit" data-id="'+t.id+'" title="Edit date" style="background:var(--muted); color:#fff; margin-left:4px;">📅</button></td></tr>';
@@ -2788,6 +2947,13 @@ function bind(){
       if(!d.ret.from || !d.ret.to){ alert("Please enter the return airports too (or choose One-way)."); return; }
     } else { d.ret = null; }
     lastInv = d;
+    // Sale ke sath invoice attach karein (agar link selected hai)
+    if(invLinkId){
+      var lk = (S.tickets||[]).filter(function(x){ return x.id === invLinkId; })[0];
+      if(lk){ lk.inv = d; save(); }
+      var lkSt = document.getElementById("invLinkStatus");
+      if(lkSt) lkSt.textContent = lk ? ("✓ Invoice saved with the sale of "+(lk.client||"")+" ("+dmy(lk.date)+").") : "Linked sale not found.";
+    }
     var out = document.getElementById("invOut");
     if(out){ out.innerHTML = invHtml(d); out.scrollIntoView({behavior:"smooth", block:"start"}); }
     var pb = document.getElementById("invPrintBtn");
@@ -2868,6 +3034,22 @@ function bind(){
   ["invFrom","invTo","invRetFrom","invRetTo"].forEach(function(id){ bindAirportField(id); });
   var ipb = document.getElementById("invPrintBtn");
   if(ipb) ipb.onclick = printInvoice;
+  // Invoice ko sale ke sath link karein
+  var ls = document.getElementById("invLinkSale");
+  if(ls) ls.onchange = function(){
+    invLinkId = this.value || null;
+    var stt = document.getElementById("invLinkStatus");
+    if(invLinkId){
+      var tk = (S.tickets||[]).filter(function(x){ return x.id === invLinkId; })[0];
+      if(stt) stt.textContent = tk ? ("This invoice will be saved with the sale of "+(tk.client||"")+" ("+dmy(tk.date)+").") : "Sale not found.";
+      if(tk){
+        var cn = document.getElementById("invClient");
+        if(cn && !cn.value) cn.value = tk.client || "";
+        var dtx = document.getElementById("invDate");
+        if(dtx && tk.date) dtx.value = tk.date;
+      }
+    } else if(stt) stt.textContent = "Not every client needs an invoice — leave this empty if not needed.";
+  };
   // Invoice settings save
   var an = document.getElementById("ayatNext");
   if(an) an.onclick = function(){
@@ -2927,6 +3109,84 @@ function bind(){
       save(); render();
     };
   });
+  // Invoice for a sale (🧾) — invoice form kholo, sale ke sath link
+  app.querySelectorAll(".tk-inv").forEach(function(b){
+    b.onclick = function(){ openInvoiceForSale(b.getAttribute("data-id")); };
+  });
+  // Airline IDs (password protected)
+  var apsv = document.getElementById("airPwSave");
+  if(apsv) apsv.onclick = function(){
+    var p1 = (document.getElementById("airPw1")||{}).value||"";
+    var p2 = (document.getElementById("airPw2")||{}).value||"";
+    if(p1.length < 4){ alert("Password must be at least 4 characters."); return; }
+    if(p1 !== p2){ alert("The two passwords do not match."); return; }
+    S.settings.airPw = airHash(p1); airUnlocked = true; save(); render();
+  };
+  var apgo = document.getElementById("airPwGo");
+  if(apgo) apgo.onclick = function(){
+    var p = (document.getElementById("airPwIn")||{}).value||"";
+    if(airHash(p) === S.settings.airPw){ airUnlocked = true; render(); }
+    else { var m = document.getElementById("airPwMsg"); if(m) m.textContent = "Wrong password — try again."; }
+  };
+  var apin = document.getElementById("airPwIn");
+  if(apin) apin.onkeydown = function(e){ if(e.key === "Enter"){ e.preventDefault(); var g = document.getElementById("airPwGo"); if(g) g.click(); } };
+  var apfo = document.getElementById("airPwForgot");
+  if(apfo) apfo.onclick = function(){
+    if(!confirm("Forgot password reset will clear the saved airline IDs. Continue?")) return;
+    if(!confirm("Are you sure? The saved IDs and passwords will be deleted.")) return;
+    S.airlineIds = []; delete S.settings.airPw; airUnlocked = false; save(); render();
+  };
+  var aadd = document.getElementById("airAdd");
+  if(aadd) aadd.onclick = function(){
+    var nm = (document.getElementById("airName")||{}).value||"";
+    var lg = (document.getElementById("airLogin")||{}).value||"";
+    var ps = (document.getElementById("airPass")||{}).value||"";
+    var nt = (document.getElementById("airNote")||{}).value||"";
+    if(!nm.trim() || !lg.trim()){ alert("Airline name and login/ID are required."); return; }
+    S.airlineIds.push({ id:uid(), name:nm.trim(), login:lg.trim(), pass:ps, note:nt.trim() });
+    save(); render();
+  };
+  app.querySelectorAll(".air-show").forEach(function(b){
+    b.onclick = function(){ var id = b.getAttribute("data-id"); airShow[id] = !airShow[id]; render(); };
+  });
+  app.querySelectorAll(".air-copy").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id"), f = b.getAttribute("data-f");
+      var a = (S.airlineIds||[]).filter(function(x){ return x.id === id; })[0]; if(!a) return;
+      var v = f === "pass" ? a.pass : a.login;
+      if(navigator.clipboard) navigator.clipboard.writeText(v).catch(function(){});
+      b.textContent = "✓";
+      setTimeout(function(){ b.textContent = "⧉"; }, 1200);
+    };
+  });
+  app.querySelectorAll(".air-del").forEach(function(b){
+    b.onclick = function(){
+      if(!confirm("Delete this airline ID?")) return;
+      var id = b.getAttribute("data-id");
+      S.airlineIds = (S.airlineIds||[]).filter(function(x){ return x.id !== id; });
+      delete airShow[id]; save(); render();
+    };
+  });
+  app.querySelectorAll(".air-edit").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id");
+      var a = (S.airlineIds||[]).filter(function(x){ return x.id === id; })[0]; if(!a) return;
+      var nm = prompt("Airline name:", a.name); if(nm === null) return;
+      var lg = prompt("Login / ID:", a.login); if(lg === null) return;
+      var ps = prompt("Password:", a.pass); if(ps === null) return;
+      var nt = prompt("Note (optional):", a.note||""); if(nt === null) return;
+      a.name = nm.trim() || a.name; a.login = lg.trim(); a.pass = ps; a.note = nt.trim();
+      save(); render();
+    };
+  });
+  var apc = document.getElementById("airPwChange");
+  if(apc) apc.onclick = function(){
+    var p1 = prompt("New password (at least 4 characters):"); if(p1 === null) return;
+    if(String(p1).length < 4){ alert("Password must be at least 4 characters."); return; }
+    var p2 = prompt("Confirm new password:"); if(p2 === null) return;
+    if(p1 !== p2){ alert("The two passwords do not match."); return; }
+    S.settings.airPw = airHash(p1); save(); alert("Password changed.");
+  };
   // Sale edit (✏) — cost / sale / client, khali = purana rahega
   app.querySelectorAll(".tk-edit").forEach(function(b){
     b.onclick = function(){
