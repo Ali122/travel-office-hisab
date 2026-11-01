@@ -191,7 +191,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.58</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.59</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -245,7 +245,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.58";
+var APP_VER = "1.59";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1718,6 +1718,7 @@ function viewInvoice(){
   html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
   html += '<button class="btn" id="invPrintBtn" style="display:none; background:var(--gold); color:#fff;">🖨 Print / Save as PDF (A4)</button>';
   html += '<button class="btn" id="invShareBtn" style="display:none; background:#25D366; color:#fff;">📲 Share on WhatsApp / PDF</button>';
+  html += '<div class="hint" id="invShareStatus" style="color:var(--green);"></div>';
   html += '<div class="hint" id="invShareHint" style="display:none;">Phone par ye button PDF bana kar seedha WhatsApp (ya kisi bhi app) mein bhej deta hai. Computer par PDF download ho jati hai — usko WhatsApp mein attach kar dein.</div>';
   html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. On a phone, <b>Share on WhatsApp / PDF</b> bhi use kar sakte hain. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
   html += '</div>';
@@ -1912,40 +1913,63 @@ function invPdfBlob(){
       }, function(err){ if(holder.parentNode) holder.parentNode.removeChild(holder); throw err; });
   });
 }
+var invPdfCache = null;
+function invPdfKey(d){
+  try{ return JSON.stringify(d || {}); }catch(e){ return ""; }
+}
+function prepareInvPdf(){
+  if(!lastInv) return Promise.resolve(null);
+  var key = invPdfKey(lastInv);
+  if(invPdfCache && invPdfCache.key === key) return Promise.resolve(invPdfCache.blob);
+  return invPdfBlob().then(function(b){ invPdfCache = { key:key, blob:b }; return b; });
+}
+function invDoShare(blob, d){
+  var name = invPdfName(d), text = invCaption(d), file = null;
+  try{ file = new File([blob], name, { type:"application/pdf" }); }catch(e){ file = null; }
+  var canFiles = !!(file && navigator.canShare && navigator.canShare({ files:[file] }));
+  if(navigator.share && canFiles){
+    // iPhone Safari: ye call seedha tap ke waqt honi chahiye
+    return navigator.share({ files:[file], title:name, text:text });
+  }
+  // Desktop ya purana browser: PDF download + WhatsApp Web
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); if(a.parentNode) a.parentNode.removeChild(a); }, 2000);
+  try{ window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener"); }catch(e){}
+  return Promise.resolve();
+}
 function shareInvoice(){
   if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
   var d = lastInv || {};
   var btn = document.getElementById("invShareBtn");
-  var label = btn ? btn.textContent : "";
-  if(btn){ btn.disabled = true; btn.textContent = "PDF ban rahi hai…"; }
+  var label = btn ? btn.getAttribute("data-label") || btn.textContent : "";
+  if(btn){ btn.setAttribute("data-label", label); }
   var finish = function(){ if(btn){ btn.disabled = false; btn.textContent = label || "📲 Share on WhatsApp / PDF"; } };
+  var notify = function(msg){ var h = document.getElementById("invShareStatus"); if(h) h.textContent = msg; };
 
-  invPdfBlob().then(function(blob){
-    var name = invPdfName(d);
-    var text = invCaption(d);
-    var file = null;
-    try{ file = new File([blob], name, { type:"application/pdf" }); }catch(e){ file = null; }
-    var canFiles = !!(file && navigator.canShare && navigator.canShare({ files:[file] }));
-    if(navigator.share && canFiles){
-      return navigator.share({ files:[file], title:name, text:text }).then(finish, function(err){
-        finish();
-        if(err && err.name !== "AbortError") alert("Share nahi ho saka — PDF download kar ke bhej dein.");
-      });
-    }
-    // Desktop ya purana browser: PDF download + WhatsApp Web kholein
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click();
-    setTimeout(function(){ URL.revokeObjectURL(url); if(a.parentNode) a.parentNode.removeChild(a); }, 2000);
-    try{ window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener"); }catch(e){}
+  // PDF pehle se tayyar ho to foran share (iPhone Safari ke liye zaroori)
+  if(invPdfCache && invPdfCache.key === invPdfKey(d)){
+    return Promise.resolve(invDoShare(invPdfCache.blob, d)).then(finish, function(err){
+      finish();
+      if(err && err.name === "AbortError") return;
+      if(err && err.name === "NotAllowedError"){ notify("PDF tayyar hai — dobara Share button dabayen."); return; }
+      notify("Share nahi ho saka — PDF download kar ke bhej dein.");
+    });
+  }
+
+  if(btn){ btn.disabled = true; btn.textContent = "PDF ban rahi hai…"; }
+  notify("PDF ban rahi hai…");
+  prepareInvPdf().then(function(blob){
+    return invDoShare(blob, d);
+  }).then(function(){ finish(); notify(""); }, function(err){
     finish();
-  }).catch(function(err){
-    finish();
-    if(err && err.name === "AbortError") return;
+    if(err && err.name === "AbortError"){ return; }
+    if(err && err.name === "NotAllowedError"){ notify("PDF tayyar hai — dobara Share button dabayen."); return; }
     console.error(err);
+    notify("");
     alert("PDF nahi ban saki (internet check karein).\nAap Print / Save as PDF se bhi invoice bhej sakte hain.");
-    try{ printInvoice(); }catch(e){}
   });
 }
 
@@ -3283,6 +3307,9 @@ function bind(){
     if(sb) sb.style.display = "block";
     var sh = document.getElementById("invShareHint");
     if(sh) sh.style.display = "block";
+    // PDF background mein tayyar kar lein taake share foran ho (iPhone par zaroori)
+    invPdfCache = null;
+    setTimeout(function(){ try{ prepareInvPdf().catch(function(){}); }catch(e){} }, 400);
   };
   var invAirSel = document.getElementById("invAir");
   if(invAirSel){
