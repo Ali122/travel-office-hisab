@@ -81,6 +81,10 @@
   .btn.primary{background:var(--blue); color:#fff;}
   .btn.green{background:var(--green); color:#fff;}
   .btn.small{width:auto; padding:7px 12px; font-size:13px; margin-top:0;}
+  /* Destructive actions — chhota, baqi buttons se alag, ghalti se na dabay */
+  body .btn.btn-del{width:auto; background:transparent; color:var(--red); border:1px solid var(--red); font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:7px; margin-top:8px; opacity:.75;}
+  body .btn.btn-del:hover{opacity:1; background:var(--red-bg);}
+  body.dark .btn.btn-del{background:transparent !important; color:#f87171 !important; border-color:#b91c1c !important;}
   .btn:disabled{opacity:.5;}
   .stat{border-radius:12px; padding:12px; background:var(--bg);}
   .stat .v{font-size:20px; font-weight:800; margin-top:2px;}
@@ -191,7 +195,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.59</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.60</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -245,7 +249,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.59";
+var APP_VER = "1.60";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -343,6 +347,7 @@ function blankState(){
     charityPaid: [],   // {id, date, amount, note} — di hui sadqa
     qarzaPaid: [],     // {id, date, amount, note} — qarza ki payments
     bills: [],         // {id, label, amount, due:"2025-09-15", paid:false}
+    invoices: [],      // {id, date, savedAt, d} — sale se link na ho to yahan save hoti hai
     airlineIds: []     // {id, name, login, pass, note} — password protected section
   };
 }
@@ -357,6 +362,7 @@ function load(){
     if(!s.receivables) s.receivables = [];
     if(!s.tickets) s.tickets = [];
     if(!s.bills) s.bills = [];
+    if(!s.invoices) s.invoices = [];
     if(!s.airlineIds) s.airlineIds = [];
     if(!s.waseem) s.waseem = [];
     if(!s.charityPaid) s.charityPaid = [];
@@ -494,6 +500,7 @@ function syncPull(cb){
           if(!data.receivables) data.receivables = [];
           if(!data.tickets) data.tickets = [];
           if(!data.bills) data.bills = [];
+          if(!data.invoices) data.invoices = [];
           if(!data.waseem) data.waseem = [];
           if(!data.charityPaid) data.charityPaid = [];
           if(!data.qarzaPayments) data.qarzaPayments = [];
@@ -1024,6 +1031,73 @@ function downloadBackup(){
   S.settings.lastBackup = today();
   save();
 }
+/* ---------- Delete se pehle lazmi auto-backup (file + in-app Undo) ---------- */
+var SNAP_KEY = "ab_last_snapshot";
+var undoInfo = null;
+(function(){
+  try{
+    var o = JSON.parse(localStorage.getItem(SNAP_KEY) || "null");
+    if(o && o.ts) undoInfo = { label: o.label || "delete", ts: o.ts, canUndo: true };
+  }catch(e){}
+}());
+function takeAutoBackup(label, noFile){
+  var snapOk = false, fileOk = false;
+  try{
+    localStorage.setItem(SNAP_KEY, JSON.stringify({ ts: Date.now(), label: label, data: JSON.stringify(S) }));
+    snapOk = true;
+  }catch(e){ snapOk = false; }
+  if(!noFile){
+    try{ downloadBackup(); fileOk = true; }catch(e){ fileOk = false; }
+  }
+  undoInfo = { label: label, ts: Date.now(), canUndo: snapOk };
+  undoToast();
+  return snapOk || fileOk;
+}
+function undoToast(){
+  var old = document.getElementById("undoToast");
+  if(old && old.parentNode) old.parentNode.removeChild(old);
+  if(!undoInfo) return;
+  var el = document.createElement("div");
+  el.id = "undoToast";
+  el.style.cssText = "position:fixed; left:12px; right:12px; bottom:14px; z-index:9999; background:#0f172a; color:#fff; border-radius:12px; padding:10px 14px; display:flex; gap:10px; align-items:center; box-shadow:0 8px 24px rgba(0,0,0,.28); font-size:13px;";
+  el.innerHTML = '<span style="flex:1;">🗄 Backup liya gaya — ' + esc(undoInfo.label) + (undoInfo.canUndo ? '' : ' (backup file download hui hai)') + '</span>'
+    + (undoInfo.canUndo ? '<button class="btn small" id="undoToastBtn" style="background:#fff; color:#0f172a; font-weight:700; padding:5px 10px; flex:0 0 auto;">↩ Undo</button>' : '');
+  document.body.appendChild(el);
+  var b = el.querySelector("#undoToastBtn");
+  if(b) b.onclick = function(){ restoreLastSnapshot(); };
+  setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 25000);
+}
+function undoBanner(){
+  if(!undoInfo) return "";
+  return '<div class="hint" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">'
+       + '<span>🗄 Auto-backup: '+esc(undoInfo.label)+' — ghalti hui ho to</span>'
+       + (undoInfo.canUndo ? '<button class="btn small" id="undoLast" style="flex:0 0 auto; padding:5px 10px;">↩ Undo</button>' : '<span>(backup file download hui hai)</span>')+'</div>';
+}
+function restoreLastSnapshot(){
+  var raw = null;
+  try{ raw = localStorage.getItem(SNAP_KEY); }catch(e){}
+  if(!raw){ alert("Koi auto-backup nahi mila."); return; }
+  var o, d;
+  try{
+    o = JSON.parse(raw);
+    d = JSON.parse(o.data);
+  }catch(e){ o = null; d = null; }
+  if(!d || !d.settings){ alert("Auto-backup kharab hai — downloaded backup file se restore karein."); return; }
+  d.settings.syncUrl = S.settings.syncUrl;
+  d.settings.importId = S.settings.importId || "";
+  S = d;
+  ensureSettings(S);
+  if(!S.invoices) S.invoices = [];
+  S.__ts = Date.now();
+  _monthAgg = null;
+  saveLocal();
+  selectedMonth = null;
+  undoInfo = null;
+  var _tt = document.getElementById("undoToast"); if(_tt && _tt.parentNode) _tt.parentNode.removeChild(_tt);
+  render();
+  if(S.settings.syncUrl) syncPush();
+  alert("✓ Pichhli state wapas aa gayi" + (o && o.label ? " — " + o.label : "") + ".");
+}
 function csvVal(v){
   return '"' + String(v==null?"":v).replace(/"/g,'""') + '"';
 }
@@ -1489,7 +1563,7 @@ function invHtml(d, bw){
     + '<div>'+esc(p1)+'</div>'
     + '<div>'+esc(p2)+'</div>'
     + '</div></div>'
-    + (d.nr ? '<div style="position:absolute; top:74px; right:-34px; transform:rotate(35deg); background:'+stampBg+'; border:'+stampBrd+'; color:'+stampTx+'; font-weight:800; font-size:11px; letter-spacing:1px; padding:4px 44px; box-shadow:0 2px 6px rgba(0,0,0,.25);">NON-REFUNDABLE</div>' : '')
+    + (d.nr ? '<div style="position:absolute; top:70px; right:-30px; transform:rotate(35deg); background:#fff; border:1px solid #94a3b8; color:#475569; font-weight:700; font-size:9px; letter-spacing:1px; padding:3px 34px;">NON-REFUNDABLE</div>' : '')
     + '<div style="padding:18px;">'
     + '<div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">'
     + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">'+(d.docType === "umrah" ? "UMRAH PACKAGE — BOOKING CONFIRMATION" : "PNR / BOOKING REFERENCE NO:")+'</div>'
@@ -1573,13 +1647,13 @@ function invHtml(d, bw){
     h += '</div>';
     // Baggage
     var bag = d.bag > 0 ? (d.bag + " kg") : "None";
-    h += '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-top:12px; display:flex; gap:16px;">'
-       + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">HAND CARRY</div><div style="font-weight:800; font-size:15px; margin-top:4px;">✈ '+esc(d.hand)+' kg</div></div>'
-       + '<div style="flex:1; text-align:center;"><div style="font-size:10.5px; font-weight:800; letter-spacing:1.5px; color:#94a3b8;">CHECKED-IN BAG</div><div style="font-weight:800; font-size:15px; margin-top:4px;">🧳 '+esc(bag)+'</div></div>'
+    h += '<div style="margin-top:10px; border:1px solid #e5e7eb; border-radius:10px; padding:7px 12px; display:flex; gap:14px; font-size:11.3px; color:#334155;">'
+       + '<div style="flex:1;"><span style="color:#94a3b8; font-weight:700; letter-spacing:1px; font-size:9.5px;">HAND CARRY</span> &nbsp;<b>'+esc(d.hand)+' kg</b></div>'
+       + '<div style="flex:1;"><span style="color:#94a3b8; font-weight:700; letter-spacing:1px; font-size:9.5px;">CHECKED-IN</span> &nbsp;<b>'+esc(bag)+'</b></div>'
        + '</div>';
   }
-  if(d.nr && d.docType !== "umrah") h += '<div style="margin-top:12px; background:'+warnBg+'; border:'+warnBrd+'; color:'+warnTx+'; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;">⚠ NON-REFUNDABLE — refund and change charges depend solely on the airline&rsquo;s policy</div>';
-  if(d.tmp && d.docType !== "umrah") h += '<div style="margin-top:12px; background:'+tmpBg+'; border:'+tmpBrd+'; color:'+tmpTx+'; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:800; text-align:center;">⏳ TEMPORARY BOOKING ONLY — this is a temporary booking only and can be cancelled any time.</div>';
+  if(d.nr && d.docType !== "umrah") h += '<div style="margin-top:8px; font-size:11.3px; line-height:1.5; color:#334155;">⚠ Non-refundable — refund and change charges depend solely on the airline&rsquo;s policy.</div>';
+  if(d.tmp && d.docType !== "umrah") h += '<div style="margin-top:4px; font-size:11.3px; line-height:1.5; color:#334155;">⏳ Temporary booking only — this booking can be cancelled at any time.</div>';
   if(d.docType !== "umrah"){
     h += '<div style="margin-top:12px; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; background:#f8fafc;">'
        + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:6px;">TRAVEL GUIDELINES</div>'
@@ -1657,6 +1731,7 @@ function viewInvoice(){
   });
   html += '<div class="row" style="margin-top:8px;"><div><label>Link this invoice to a sale (optional)</label><select id="invLinkSale">'+saleOpts+'</select>'
         + '<div class="hint" id="invLinkStatus">'+(invLinkId?'This invoice will be saved with the selected sale.':'Not every client needs an invoice — leave this empty if not needed.')+'</div></div></div>';
+  html += '<label style="display:flex; gap:8px; align-items:center; margin-top:8px;"><input type="checkbox" id="invSaveIt" style="width:auto" checked> Save this invoice (default) — uncheck karein to sirf generate hogi, save nahi hogi</label>';
   html += '<div id="invUmrahWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🕋 Umrah package details</div>'
         + '<div class="row"><div><label>Bed type</label><select id="invBed"><option>Single</option><option>Double</option><option>Triple</option><option>Quad</option><option>Sharing</option></select></div>'
@@ -1723,6 +1798,20 @@ function viewInvoice(){
   html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. On a phone, <b>Share on WhatsApp / PDF</b> bhi use kar sakte hain. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
   html += '</div>';
   html += '<div id="invOut"></div>';
+  var invs = (S.invoices||[]).slice().sort(function(a,b){ return (b.savedAt||0)-(a.savedAt||0); });
+  if(invs.length){
+    html += '<div class="card" data-collapse="invlist"><h2>Saved invoices ('+invs.length+')</h2>';
+    html += '<div class="hint" style="margin-top:0;">Sale se link ki gayi invoices us sale ke sath save hoti hain (Tickets tab ka 🧾). Ye list un invoices ki hai jo kisi sale se link nahi thin.</div>';
+    invs.slice(0, 80).forEach(function(x){
+      var ix = x.d || {};
+      html += '<div style="display:flex; gap:8px; align-items:center; border-bottom:1px solid var(--line); padding:7px 0;">'
+            + '<div style="flex:1; min-width:0;"><b>'+esc(ix.name||"")+'</b>'
+            + '<div class="hint" style="margin:0;">'+esc(dmy(x.date))+(ix.pnr && ix.pnr !== "UMRAH" ? ' · PNR '+esc(ix.pnr) : '')+(ix.docType === "umrah" ? ' · Umrah' : '')+'</div></div>'
+            + '<button class="btn small inv-open" data-id="'+esc(x.id)+'" style="flex:0 0 auto;">Open</button>'
+            + '<button class="del inv-del" data-id="'+esc(x.id)+'">✕</button></div>';
+    });
+    html += '</div>';
+  }
   return html;
 }
 function airLinkFix(u){
@@ -2348,7 +2437,7 @@ function viewMonth(){
   var html = "";
   html += '<div class="card"><div class="monthbar"><select id="monthSel">'+opts+'</select>'
         + '<button class="btn small primary" id="addMonth">'+esc(T("newmonth"))+'</button>'
-        + '<button class="btn small" id="delMonth" style="background:var(--red); color:#fff;">Delete month</button></div>';
+        + '<button class="btn btn-del" id="delMonth">Delete month</button></div>';
   html += '<div class="grid2">'
         + '<div class="stat"><div class="t">'+esc(T("kulkam"))+'</div><div class="v pos">'+money(c.income)+'</div></div>'
         + '<div class="stat"><div class="t">'+esc(T("kulkh"))+'</div><div class="v neg">'+money(c.expenses)+'</div></div>'
@@ -2483,7 +2572,7 @@ function viewTickets(){
   var pendingCnt = list.filter(function(t){ return !(Number(t.cost) > 0) && (Number(t.sale) > 0); }).length;
   html += '<div class="hint" style="margin-top:8px;">'+list.length+' tickets '+(ticketFilter==="all" ? "in the full record" : "in "+esc(monthLabel(ticketFilter)))+'</div>';
   if(pendingCnt) html += '<div class="hint" style="color:var(--gold);">⚠ '+pendingCnt+' sale(s) pending — cost price abhi nahi dali. Neeche har sale par ✏ (Edit) dabakar cost daal dein.</div>';
-  html += '<button class="btn small" id="clearTickets" style="margin-top:10px; width:100%; background:var(--red); color:#fff;">'+esc(T("cleartk"))+'</button></div>';
+  html += '<button class="btn btn-del" id="clearTickets">'+esc(T("cleartk"))+'</button>'+undoBanner()+'</div>';
 
   if(list.length){
     var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
@@ -2523,7 +2612,7 @@ function viewTickets(){
   if(all.length){
     html += '<div class="card"><h2>Remove duplicate tickets</h2>';
     html += '<div class="hint" style="margin-top:0;">If the same ticket appears in two months (same client + cost + sale), the oldest date is kept and the other copies are removed.</div>';
-    html += '<button class="btn small" id="dedupeTickets" style="width:100%; background:var(--red); color:#fff;">Check duplicates</button>';
+    html += '<button class="btn btn-del" id="dedupeTickets">Check duplicates</button>';
     html += '</div>';
   }
   return html;
@@ -2964,7 +3053,8 @@ function viewSettings(){
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("reseth"))+'</h2>';
-  html += '<button class="btn" id="resetAll" style="background:var(--red); color:#fff;">'+esc(T("resetbtn"))+'</button>';
+  html += '<button class="btn btn-del" id="resetAll">'+esc(T("resetbtn"))+'</button>';
+  html += undoBanner();
   html += '</div>';
   html += '<div class="hint">App version: '+esc(APP_VER)+'</div>';
   return html;
@@ -3009,7 +3099,8 @@ function bind(){
     var m = S.months[mid];
     if(!m){ alert(monthLabel(mid)+" has no data."); return; }
     var ne = (m.expenses||[]).length, ni = (m.incomes||[]).length;
-    if(!confirm("Delete the month "+monthLabel(mid)+"?\n\nIncome entries: "+ni+" — Expense entries: "+ne+"\n\n(Tickets are separate and will not be deleted. Use this to remove a month that was imported by mistake.)")) return;
+    if(!confirm("Delete the month "+monthLabel(mid)+"?\n\nIncome entries: "+ni+" — Expense entries: "+ne+"\n\n(Tickets are separate and will not be deleted. Use this to remove a month that was imported by mistake.)\n\nPehle automatic backup liya jayega.")) return;
+    if(!takeAutoBackup("Month deleted: " + monthLabel(mid))){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
     delete S.months[mid];
     selectedMonth = null;
     save(); render();
@@ -3075,8 +3166,15 @@ function bind(){
 
   app.querySelectorAll(".del[data-type='income'], .del[data-type='expense']").forEach(function(b){
     b.onclick = function(){
-      var type = b.getAttribute("data-type") === "income" ? "incomes" : "expenses";
+      var isInc = b.getAttribute("data-type") === "income";
+      var type = isInc ? "incomes" : "expenses";
       var i = Number(b.getAttribute("data-i"));
+      var arr = (S.months[selectedMonth] || {})[type] || [];
+      var it = arr[i];
+      if(!it) return;
+      var nm = it.desc || it.label || it.src || (isInc ? "income" : "expense");
+      if(!confirm("Delete this " + (isInc ? "income" : "expense") + "?\n\n" + nm + " — " + money(it.amount||0) + "\n\nAuto-backup ban jayega — ↩ Undo se wapas aa sakta hai.")) return;
+      if(!takeAutoBackup(isInc ? "1 income deleted" : "1 expense deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
       S.months[selectedMonth][type].splice(i,1);
       save(); render();
     };
@@ -3105,7 +3203,12 @@ function bind(){
 
   app.querySelectorAll(".del[data-type='draw']").forEach(function(b){
     b.onclick = function(){
-      S.draws = S.draws.filter(function(d){ return d.id !== b.getAttribute("data-id"); });
+      var id = b.getAttribute("data-id");
+      var dr = (S.draws||[]).filter(function(x){ return x.id === id; })[0];
+      if(!dr) return;
+      if(!confirm("Delete this withdrawal?\n\n" + (dr.partner||"") + " — " + money(dr.amount||0) + " — " + dmy(dr.date||"") + "\n\nAuto-backup ban jayega — ↩ Undo se wapas aa sakta hai.")) return;
+      if(!takeAutoBackup("1 withdrawal deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+      S.draws = S.draws.filter(function(d){ return d.id !== id; });
       save(); render();
     };
   });
@@ -3157,8 +3260,12 @@ function bind(){
   });
   app.querySelectorAll(".del[data-type='receivable']").forEach(function(b){
     b.onclick = function(){
-      if(!confirm("Delete this client entry?")) return;
-      S.receivables = S.receivables.filter(function(x){ return x.id !== b.getAttribute("data-id"); });
+      var id = b.getAttribute("data-id");
+      var rr = (S.receivables||[]).filter(function(x){ return x.id === id; })[0];
+      if(!rr) return;
+      if(!confirm("Delete this client entry?\n\n" + (rr.client||"") + " — " + money(rr.total||0) + "\n\nAuto-backup ban jayega — ↩ Undo se wapas aa sakta hai.")) return;
+      if(!takeAutoBackup("1 client entry deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+      S.receivables = S.receivables.filter(function(x){ return x.id !== id; });
       save(); render();
     };
   });
@@ -3292,12 +3399,30 @@ function bind(){
       if(!d.ret.from || !d.ret.to){ alert("Please enter the return airports too (or choose One-way)."); return; }
     } else { d.ret = null; }
     lastInv = d;
-    // Sale ke sath invoice attach karein (agar link selected hai)
-    if(invLinkId){
-      var lk = (S.tickets||[]).filter(function(x){ return x.id === invLinkId; })[0];
-      if(lk){ lk.inv = d; save(); }
-      var lkSt = document.getElementById("invLinkStatus");
-      if(lkSt) lkSt.textContent = lk ? ("✓ Invoice saved with the sale of "+(lk.client||"")+" ("+dmy(lk.date)+").") : "Linked sale not found.";
+    // Invoice save karein (default ON) — sale se link ho to sale ke sath, warna "Saved invoices" mein
+    var saveChk = document.getElementById("invSaveIt");
+    var saveIt = saveChk ? !!saveChk.checked : true;
+    var lkSt = document.getElementById("invLinkStatus");
+    if(saveIt){
+      if(invLinkId){
+        var lk = (S.tickets||[]).filter(function(x){ return x.id === invLinkId; })[0];
+        if(lk){ lk.inv = d; }
+        save();
+        if(lkSt) lkSt.textContent = lk ? ("✓ Invoice saved with the sale of "+(lk.client||"")+" ("+dmy(lk.date)+").") : "Linked sale not found.";
+      } else {
+        if(!S.invoices) S.invoices = [];
+        var exist = null;
+        for(var ii = 0; ii < S.invoices.length; ii++){
+          var cx = S.invoices[ii].d || {};
+          if(cx.name === d.name && cx.pnr === d.pnr && cx.date === d.date && (cx.docType||"ticket") === (d.docType||"ticket")){ exist = S.invoices[ii]; break; }
+        }
+        if(exist){ exist.d = d; exist.date = d.date; exist.savedAt = Date.now(); }
+        else S.invoices.push({ id: uid(), date: d.date, savedAt: Date.now(), d: d });
+        save();
+        if(lkSt) lkSt.textContent = "✓ Invoice saved in “Saved invoices”.";
+      }
+    } else {
+      if(lkSt) lkSt.textContent = "Invoice save nahi hui (aap ne Save hata diya tha).";
     }
     var out = document.getElementById("invOut");
     if(out){ out.innerHTML = invHtml(d); out.scrollIntoView({behavior:"smooth", block:"start"}); }
@@ -3388,6 +3513,30 @@ function bind(){
   if(ipb) ipb.onclick = printInvoice;
   var isb = document.getElementById("invShareBtn");
   if(isb) isb.onclick = shareInvoice;
+  app.querySelectorAll(".inv-open").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id");
+      var rec = (S.invoices||[]).filter(function(x){ return x.id === id; })[0];
+      if(!rec) return;
+      invLinkId = null;
+      invPaxCount = Math.max(1, Number(rec.d && rec.d.pax) || 1);
+      invPrefill = invToCache(rec.d || {});
+      invAutoGen = true;
+      showTab("invoice");
+    };
+  });
+  app.querySelectorAll(".inv-del").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id");
+      var rec = (S.invoices||[]).filter(function(x){ return x.id === id; })[0];
+      if(!rec) return;
+      var dd = rec.d || {};
+      if(!confirm("Delete this saved invoice?\n\n" + (dd.name || "") + (dd.pnr ? " — " + dd.pnr : ""))) return;
+      if(!takeAutoBackup("1 saved invoice deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+      S.invoices = (S.invoices||[]).filter(function(x){ return x.id !== id; });
+      save(); render();
+    };
+  });
   // Invoice ko sale ke sath link karein
   var ls = document.getElementById("invLinkSale");
   if(ls) ls.onchange = function(){
@@ -3459,7 +3608,12 @@ function bind(){
   };
   app.querySelectorAll(".del[data-type='ticket']").forEach(function(b){
     b.onclick = function(){
-      S.tickets = S.tickets.filter(function(t){ return t.id !== b.getAttribute("data-id"); });
+      var id = b.getAttribute("data-id");
+      var tk = (S.tickets||[]).filter(function(x){ return x.id === id; })[0];
+      if(!tk) return;
+      if(!confirm("Delete this ticket?\n\n" + (tk.client||"") + " — " + dmy(tk.date||"") + " — " + money(tk.sale||0) + "\n\nAuto-backup ban jayega — ↩ Undo se wapas aa sakta hai.")) return;
+      if(!takeAutoBackup("1 ticket deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+      S.tickets = S.tickets.filter(function(t){ return t.id !== id; });
       save(); render();
     };
   });
@@ -3607,19 +3761,23 @@ function bind(){
       if(seen[k]) rm.push(t.id); else seen[k] = 1;
     });
     if(!rm.length){ alert("No duplicate tickets found."); return; }
-    if(!confirm(rm.length+" duplicate tickets found (same client + same cost/sale).\n\nThe one with the oldest date is kept and the rest are removed. Remove them?")) return;
+    if(!confirm(rm.length+" duplicate tickets found (same client + same cost/sale).\n\nThe one with the oldest date is kept and the rest are removed. Remove them?\n\nPehle automatic backup liya jayega.")) return;
+    if(!takeAutoBackup(rm.length + " duplicate tickets removed")){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
     S.tickets = S.tickets.filter(function(t){ return rm.indexOf(t.id) === -1; });
     save(); render();
   };
   var ctk = document.getElementById("clearTickets");
   if(ctk) ctk.onclick = function(){
     if(!S.tickets.length){ alert("There are no tickets."); return; }
-    if(confirm("All tickets ("+S.tickets.length+") will be deleted — including manual ones. OK?") &&
-       confirm("Are you sure? Do you want to import again?")){
-      S.tickets = [];
-      save(); render();
-    }
+    var n = S.tickets.length;
+    if(!confirm("Delete all "+n+" tickets (including manual ones)?\n\nPehle automatic backup liya jayega — file download + in-app Undo.")) return;
+    if(!takeAutoBackup(n + " tickets deleted")){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+    S.tickets = [];
+    save(); render();
+    alert("✓ "+n+" tickets delete ho gaye.\n\n" + ((undoInfo && undoInfo.canUndo) ? "Backup save ho gaya — ↩ Undo dabayen (ya backup file se restore karein)." : "Backup file download ho gayi — us file se restore karein."));
   };
+  var ulb = document.getElementById("undoLast");
+  if(ulb) ulb.onclick = restoreLastSnapshot;
 
   var ss = document.getElementById("saveSettings");
   if(ss) ss.onclick = function(){
@@ -3710,7 +3868,11 @@ function bind(){
   };
   app.querySelectorAll(".del[data-type='waseem']").forEach(function(b){
     b.onclick = function(){
-      S.waseem = S.waseem.filter(function(w){ return w.id !== b.getAttribute("data-id"); });
+      var id = b.getAttribute("data-id");
+      var w = (S.waseem||[]).filter(function(x){ return x.id === id; })[0];
+      if(w && !confirm("Delete this entry?\n\n" + (w.note||w.kind||"") + " — " + money(w.amount||0))) return;
+      if(!takeAutoBackup("1 Waseem entry deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+      S.waseem = S.waseem.filter(function(x){ return x.id !== id; });
       save(); render();
     };
   });
@@ -3723,7 +3885,11 @@ function bind(){
   };
   app.querySelectorAll(".del[data-type='charity']").forEach(function(b){
     b.onclick = function(){
-      S.charityPaid = S.charityPaid.filter(function(y){ return y.id !== b.getAttribute("data-id"); });
+      var id = b.getAttribute("data-id");
+      var c = (S.charityPaid||[]).filter(function(y){ return y.id === id; })[0];
+      if(c && !confirm("Delete this charity payment?\n\n" + money(c.amount||0) + " — " + dmy(c.date||""))) return;
+      if(!takeAutoBackup("1 charity payment deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+      S.charityPaid = S.charityPaid.filter(function(y){ return y.id !== id; });
       save(); render();
     };
   });
@@ -3740,6 +3906,7 @@ function bind(){
       var x = (S.qarzaPaid||[]).filter(function(y){ return y.id === b.getAttribute("data-id"); })[0];
       if(!x) return;
       if(confirm("Remove this payment record? (The loan balance will increase again)")){
+        if(!takeAutoBackup("1 qarza payment deleted", true)){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
         S.settings.loanBalance = (Number(S.settings.loanBalance)||0) + (Number(x.amount)||0);
         S.qarzaPaid = S.qarzaPaid.filter(function(y){ return y.id !== x.id; });
         save(); render();
@@ -3896,8 +4063,9 @@ function bind(){
   };
   var ra = document.getElementById("resetAll");
   if(ra) ra.onclick = function(){
-    if(confirm("Really delete ALL data?\n\n(This also deletes the data saved in the Google Sheet — take a backup first!)")){
+    if(confirm("Really delete ALL data?\n\n(This also deletes the data saved in the Google Sheet — pehle automatic backup liya jayega)")){
       if(confirm("Final confirmation: all records will be removed and the sheet will be cleared.")){
+        if(!takeAutoBackup("All data deleted")){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
         var keepUrl = S.settings.syncUrl, keepId = S.settings.importId;
         S = blankState();
         S.settings.syncUrl = keepUrl;      // connection settings barqarar
