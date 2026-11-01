@@ -4,8 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Travel Office Hisab</title>
+<meta name="description" content="AB Travels — travel office accounts: sales, expenses, invoices, monthly profit split and pending payments.">
+<meta name="theme-color" content="#0b1220">
+<meta property="og:title" content="Travel Office Hisab — AB Travels">
+<meta property="og:description" content="Travel office accounts: sales, expenses, invoices, monthly profit split and pending payments.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://ali122.github.io/travel-office-hisab/logo.png">
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
+<link rel="preload" as="image" href="logo.png">
 <style>
   :root{
     --bg:#f4f6fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280;
@@ -13,9 +20,9 @@
     --blue:#2563eb; --blue-bg:#eff6ff; --gold:#d97706; --gold-bg:#fffbeb;
     --line:#e5e7eb; --radius:14px;
     --field:#ffffff; --line-soft:#eef1f6; --stat-a:#f8fafc; --stat-b:#f1f5f9;
+    --header-h:58px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  :root{ --header-h:58px; }
   body{margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:16px;}
 
   /* ---------- Header ---------- */
@@ -162,12 +169,15 @@
 </style>
 </head>
 <body>
+<script>/* Apply the saved theme before the first paint (avoids a white flash in dark mode). */
+(function(){try{var s=JSON.parse(localStorage.getItem("travelOfficeHisab")||"{}");var t=s&&s.settings&&s.settings.theme;var d=(t==="dark")||(!t&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.body.classList.add("dark");}catch(e){}})();
+</script>
 <header>
   <button id="menuBtn" aria-label="Menu">☰</button>
   <div class="brand">
-    <img src="logo.png" alt="AB Travels" onerror="this.style.display='none'">
+    <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.43</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.55</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -220,7 +230,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.54";
+var APP_VER = "1.55";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -364,7 +374,7 @@ var S = load();
     if(S.__urlFromLink || S.__idFromLink){ delete S.__urlFromLink; delete S.__idFromLink; saveLocal(); }
   }catch(e){}
 }());
-function saveLocal(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+function saveLocal(){ _monthAgg = null; localStorage.setItem(KEY, JSON.stringify(S)); }
 function save(){ S.__ts = Date.now(); saveLocal(); syncPush(); }
 function saveNow(cb){ S.__ts = Date.now(); saveLocal(); if(syncTimer) clearTimeout(syncTimer); doPush(cb); }
 
@@ -475,6 +485,7 @@ function syncPull(cb){
           if(!data.qarzaPaid) data.qarzaPaid = [];
           S = data;
           ensureSettings(S);
+          _monthAgg = null;
           localStorage.setItem(KEY, JSON.stringify(S));
           selectedMonth = null;
           setSyncStatus("✓ Data loaded from the sheet");
@@ -859,9 +870,11 @@ function importFromSheet(opts){
     .catch(function(){ setSyncStatus("Could not get data from the sheet (check URL/internet)", true); if(!quiet) alert("Could not get data from the sheet. Check the sync URL and your internet."); if(opts.done) opts.done(null, "data not found (internet/URL)"); });
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+var _moneyFmt = null;
 function money(n){
   n = Math.round((Number(n)||0) * 100) / 100;
-  return "Rs " + n.toLocaleString("en-PK");
+  if(!_moneyFmt){ try{ _moneyFmt = new Intl.NumberFormat("en-PK"); }catch(e){ _moneyFmt = null; } }
+  return "Rs " + (_moneyFmt ? _moneyFmt.format(n) : n.toLocaleString());
 }
 function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function dmy(s){ var m = String(s==null?"":s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[3]+"/"+m[2]+"/"+m[1].slice(-2)) : String(s==null?"":s); }
@@ -870,17 +883,37 @@ function esc(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,
 function up(t){ return esc(String(t==null?"":t).toUpperCase()); }
 
 /* ================= MONTH CALCULATION ================= */
+/* Per-month totals computed once per render — avoids scanning every ticket for every month. */
+var _monthAgg = null;
+function monthAgg(){
+  if(_monthAgg) return _monthAgg;
+  var byMonth = {};
+  function bucket(mid){
+    if(!/^\d{4}-\d{2}$/.test(mid)) return null;
+    return byMonth[mid] || (byMonth[mid] = { profit:0, commission:0, abbu:0 });
+  }
+  (S.tickets||[]).forEach(function(t){
+    var b = bucket(String(t.date||"").slice(0,7));
+    if(!b) return;
+    b.profit += (Number(t.sale)||0) - (Number(t.cost)||0);
+    b.commission += Number(t.commission)||0;
+  });
+  (S.draws||[]).forEach(function(d){
+    if(d.partner !== "ABBU") return;
+    var b = bucket(String(d.date||"").slice(0,7));
+    if(b) b.abbu += Number(d.amount)||0;
+  });
+  return (_monthAgg = byMonth);
+}
 function monthCalc(mid){
   var m = S.months[mid] || {incomes:[], expenses:[], applied:false};
+  var ag = monthAgg()[mid] || { profit:0, commission:0, abbu:0 };
   var income = 0; (m.incomes||[]).forEach(function(x){ income += Number(x.amount)||0; });
-  var ticketProfit = 0;
-  S.tickets.forEach(function(t){ if((t.date||"").slice(0,7) === mid) ticketProfit += (Number(t.sale)||0) - (Number(t.cost)||0); });
+  var ticketProfit = ag.profit;
   income += ticketProfit;
   var expenses = 0; (m.expenses||[]).forEach(function(x){ expenses += Number(x.amount)||0; });
-  var abbu = 0;
-  S.draws.forEach(function(d){ if(d.partner==="ABBU" && (d.date||"").slice(0,7) === mid) abbu += Number(d.amount)||0; });
-  var commission = 0;
-  S.tickets.forEach(function(t){ if((t.date||"").slice(0,7) === mid) commission += Number(t.commission)||0; });
+  var abbu = ag.abbu;
+  var commission = ag.commission;
   var net = income - expenses - abbu - commission;
   var charity = 0, rest = net;
   var effCharity = (m.charityRate !== undefined && m.charityRate !== null && m.charityRate !== "") ? (Number(m.charityRate)||0) : (Number(S.settings.charityRate)||0);
@@ -1124,6 +1157,7 @@ function invAirLogo(code){
 /* Airports — internet se fetch (country/city/code search), localStorage cache */
 var AB_COUNTRY_NAMES = { PK:"Pakistan", AE:"UAE", SA:"Saudi Arabia", QA:"Qatar", BH:"Bahrain", KW:"Kuwait", OM:"Oman", TR:"Turkey", US:"USA", GB:"UK", IN:"India", BD:"Bangladesh", LK:"Sri Lanka", NP:"Nepal", MY:"Malaysia", SG:"Singapore", TH:"Thailand", ID:"Indonesia", PH:"Philippines", CN:"China", JP:"Japan", KR:"South Korea", VN:"Vietnam", EG:"Egypt", JO:"Jordan", LB:"Lebanon", IQ:"Iraq", IR:"Iran", AF:"Afghanistan", UZ:"Uzbekistan", KZ:"Kazakhstan", AZ:"Azerbaijan", GE:"Georgia", ET:"Ethiopia", KE:"Kenya", NG:"Nigeria", ZA:"South Africa", MA:"Morocco", TN:"Tunisia", DZ:"Algeria", LY:"Libya", SD:"Sudan", CA:"Canada", AU:"Australia", NZ:"New Zealand", DE:"Germany", FR:"France", IT:"Italy", ES:"Spain", NL:"Netherlands", BE:"Belgium", CH:"Switzerland", AT:"Austria", SE:"Sweden", NO:"Norway", DK:"Denmark", FI:"Finland", PL:"Poland", UA:"Ukraine", RU:"Russia", GR:"Greece", PT:"Portugal", IE:"Ireland", HU:"Hungary", CZ:"Czechia", RO:"Romania", IL:"Israel", MV:"Maldives", MM:"Myanmar", KH:"Cambodia", MN:"Mongolia" };
 var AB_AIRPORTS_MEM = null;
+var AB_AIRPORTS_HAY = null;
 function countryName(cc){
   return AB_COUNTRY_NAMES[cc] || cc;
 }
@@ -1133,6 +1167,7 @@ function airportsCache(cb, force){
   try{ cached = JSON.parse(localStorage.getItem("ab_airports") || "null"); }catch(e){}
   if(!force && cached && cached.list && cached.list.length){
     AB_AIRPORTS_MEM = cached.list;
+    AB_AIRPORTS_HAY = null;
     cb(AB_AIRPORTS_MEM);
     if(Date.now() - cached.ts > 7*86400000) airportsCache(function(){}, true); // background refresh
     return;
@@ -1152,6 +1187,7 @@ function airportsCache(cb, force){
       });
       try{ localStorage.setItem("ab_airports", JSON.stringify({ ts:Date.now(), list:list })); }catch(e){}
       AB_AIRPORTS_MEM = list;
+      AB_AIRPORTS_HAY = null;
       cb(list);
     })
     .catch(function(){ cb(AB_AIRPORTS_MEM || []); });
@@ -1188,12 +1224,17 @@ function bindAirportField(inputId){
     closeDrop();
     var qn = String(q||"").trim().toLowerCase();
     if(!qn) return;
-    var matches = list.filter(function(a){
-      return a.iata === qn.toUpperCase()
-        || a.country.toLowerCase().indexOf(qn) >= 0
-        || a.city.toLowerCase().indexOf(qn) >= 0
-        || a.name.toLowerCase().indexOf(qn) >= 0;
-    }).slice(0, 15);
+    // Search keys are built once per airport list (not on every keypress).
+    var hay = AB_AIRPORTS_HAY;
+    if(!hay || hay.list !== list){
+      hay = AB_AIRPORTS_HAY = { list:list, keys:list.map(function(a){
+        return (a.iata + " " + a.name + " " + a.city + " " + a.country).toLowerCase();
+      }) };
+    }
+    var qu = qn.toUpperCase(), matches = [];
+    for(var i = 0; i < list.length && matches.length < 15; i++){
+      if(list[i].iata === qu || hay.keys[i].indexOf(qn) >= 0) matches.push(list[i]);
+    }
     if(!matches.length) return;
     arr = matches;
     activeIdx = -1;
@@ -1425,7 +1466,7 @@ function invHtml(d, bw){
   var tmpTx     = bw ? "#000" : "#92400e";
   var h = '<div id="invPrint" style="max-width:640px; margin:0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; position:relative;">'
     + '<div class="inv-head" style="background:#fff; padding:12px 18px; display:flex; align-items:center; gap:11px; border-bottom:1px solid #e5e7eb;">'
-    + '<img src="'+logo+'" alt="'+esc(company)+'" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:1px solid #e5e7eb; background:#fff; flex:0 0 auto;">'
+    + '<img src="'+logo+'" alt="'+esc(company)+'" onerror="this.remove()" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:1px solid #e5e7eb; background:#fff; flex:0 0 auto;">'
     + '<div style="flex:1; min-width:0;">'
     + '<div style="color:#0f172a; font-weight:800; font-size:19px; letter-spacing:1.6px; line-height:1.1; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+esc(company)+'</div>'
     + '</div>'
@@ -1827,6 +1868,7 @@ document.getElementById("tabs").addEventListener("click", function(e){
 }());
 
 function render(){
+  _monthAgg = null; // data may have changed since the last calculation
   var app = document.getElementById("app");
   if(currentTab==="dash") app.innerHTML = viewDash();
   else if(currentTab==="month") app.innerHTML = viewMonth();
@@ -2169,8 +2211,11 @@ function viewMonth(){
 var ticketFilter = "all";
 function viewTickets(){
   var all = S.tickets || [];
-  var ms = {};
-  all.forEach(function(t){ var m = String(t.date||"").slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) ms[m] = true; });
+  var ms = {}, mc = {};
+  all.forEach(function(t){
+    var m = String(t.date||"").slice(0,7);
+    if(/^\d{4}-\d{2}$/.test(m)){ ms[m] = true; mc[m] = (mc[m] || 0) + 1; }
+  });
   var months = Object.keys(ms).sort();
   if(ticketFilter !== "all" && months.indexOf(ticketFilter) === -1) ticketFilter = "all";
   var list = (ticketFilter === "all") ? all : all.filter(function(t){ return String(t.date||"").slice(0,7) === ticketFilter; });
@@ -2193,7 +2238,7 @@ function viewTickets(){
   if(all.length){
     var opts = '<option value="all"'+(ticketFilter==="all"?" selected":"")+'>All months — '+all.length+' tickets</option>';
     months.forEach(function(m){
-      var n = all.filter(function(t){ return String(t.date||"").slice(0,7) === m; }).length;
+      var n = mc[m] || 0;
       opts += '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+esc(monthLabel(m))+' — '+n+' tickets</option>';
     });
     html += '<div class="card" style="padding-bottom:10px;"><label>Month filter</label>'
@@ -3236,7 +3281,7 @@ function bind(){
   app.querySelectorAll(".air-open").forEach(function(b){
     b.onclick = function(){
       var a = (S.airlineIds||[]).filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
-      if(a && a.link) window.open(a.link, "_blank");
+      if(a && a.link) window.open(a.link, "_blank", "noopener");
     };
   });
   app.querySelectorAll(".air-show").forEach(function(b){
@@ -3566,14 +3611,9 @@ function bind(){
           return;
         }
         if(confirm("A new version is live: v"+live+" (yours: v"+APP_VER+")\n\nReload the app to the new version now?")){
-          if(window.caches && caches.keys){
-            caches.keys().then(function(ks){
-              ks.forEach(function(k){ caches.delete(k); });
-              location.reload(true);
-            });
-            return;
-          }
-          location.reload(true);
+          // Cache-busted URL — GitHub Pages can keep the old index.html in the browser cache.
+          try{ location.replace(location.pathname + "?v=" + encodeURIComponent(live)); }
+          catch(e){ location.reload(); }
         }
       })
       .catch(function(){
