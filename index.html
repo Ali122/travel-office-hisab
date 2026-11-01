@@ -36,7 +36,6 @@
   .hints-btn{margin-left:auto; flex:0 0 auto; border:1px solid rgba(148,163,184,.28); background:rgba(255,255,255,.05); color:#cbd5e1; border-radius:999px; padding:6px 11px; font-size:11px; font-weight:700; letter-spacing:.2px; cursor:pointer; transition:background .15s,border-color .15s,color .15s;}
   .hints-btn:hover{background:rgba(255,255,255,.1); border-color:rgba(251,191,36,.45); color:#fff;}
   #menuBtn{display:none; align-items:center; justify-content:center; flex:0 0 auto; width:34px; height:34px; border:1px solid rgba(148,163,184,.28); background:rgba(255,255,255,.05); color:#fff; border-radius:9px; font-size:16px; line-height:1; cursor:pointer;}
-  body.no-hints .hint:not(.hint-status){display:none;}
 
   /* ---------- Shell + Sidebar ---------- */
   .shell{display:flex; align-items:flex-start;}
@@ -215,14 +214,14 @@
 </head>
 <body>
 <script>/* Apply the saved theme before the first paint (avoids a white flash in dark mode). */
-(function(){try{var s=JSON.parse(localStorage.getItem("travelOfficeHisab")||"{}");var t=s&&s.settings&&s.settings.theme;var d=(t==="dark"||t==="oled")||(!t&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.body.classList.add("dark");if(t==="oled")document.body.classList.add("oled");}catch(e){}})();
+(function(){try{var s=JSON.parse(localStorage.getItem("travelOfficeHisab")||"{}");var t=s&&s.settings&&s.settings.theme;var d=(!t)||t==="dark"||t==="oled";if(d)document.body.classList.add("dark");if((!t)||t==="oled")document.body.classList.add("oled");}catch(e){}})();
 </script>
 <header>
   <button id="menuBtn" aria-label="Menu">☰</button>
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.61</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.62</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -231,8 +230,7 @@
     <div class="tr">&ldquo;And whoever fears Allah &mdash; He will make for him a way out, and provide for him from where he does not expect.&rdquo; &mdash; At-Talaq 65:2&ndash;3</div>
     <div class="ur" dir="rtl" lang="ur">اور جو اللہ سے ڈرے، اللہ اس کے لیے نکلنے کا راستہ بنا دیتا ہے اور اسے ایسی جگہ سے رزق دیتا ہے جہاں سے اسے گمان بھی نہ ہو۔</div>
   </div>
-  <button id="themeBtn" class="hints-btn" title="Switch to dark mode" aria-label="Toggle dark mode">🌙</button>
-<button id="hintsBtn" class="hints-btn">Hints: ON</button>
+  <button id="themeBtn" class="hints-btn" title="Theme" aria-label="Change theme">🌙</button>
 </header>
 
 <div class="shell">
@@ -276,7 +274,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.61";
+var APP_VER = "1.62";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -358,7 +356,7 @@ function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
                 invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true,
-                invCompany:"AB Travels", ayatIdx:-1, theme:"", btnStyle:"sleek",
+                invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
       { id:"fix-rent", label:"Office rent", amount:70000, on:true },
@@ -1422,6 +1420,25 @@ function invRowRaw(k, v){
   if(!v) return "";
   return '<tr><td style="padding:7px 4px; color:#64748b; width:40%; border-bottom:1px solid #f3f4f6;">'+esc(k)+'</td><td style="padding:7px 4px; font-weight:700; border-bottom:1px solid #f3f4f6;">'+esc(v)+'</td></tr>';
 }
+function totalsPinOk(){
+  var pin = String(S.settings.totalsPin || "");
+  if(!pin){
+    var p1 = prompt("🔒 Show totals ke liye pehle passcode set karein (kam az kam 4 characters):");
+    if(p1 == null) return false;
+    p1 = String(p1).trim();
+    if(p1.length < 4){ alert("Passcode kam az kam 4 characters ka hona chahiye."); return false; }
+    var p2 = prompt("Passcode dobara likhein (confirm):");
+    if(p2 == null) return false;
+    if(String(p2).trim() !== p1){ alert("Passcode match nahi hua — dobara koshish karein."); return false; }
+    S.settings.totalsPin = p1;
+    save();
+    return true;
+  }
+  var got = prompt("🔒 Passcode likhein (Show totals):");
+  if(got == null) return false;
+  if(String(got).trim() !== pin){ alert("Ghalat passcode."); return false; }
+  return true;
+}
 function applyStatPrivacy(){
   var app = document.getElementById("app");
   if(!app) return;
@@ -1442,6 +1459,7 @@ function applyStatPrivacy(){
     g.style.display = "none";
     btn.onclick = function(){
       var open = g.style.display !== "none";
+      if(!open && !totalsPinOk()) return;
       g.style.display = open ? "none" : "";
       btn.innerHTML = open ? '<span>👁</span> Show totals' : '<span>🙈</span> Hide totals';
     };
@@ -2237,12 +2255,6 @@ function render(){
   applyAyat();
   applyTheme();
   document.body.classList.toggle("btn-sleek", S.settings.btnStyle !== "classic");
-  document.body.classList.toggle("no-hints", S.settings.hints === false);
-  var hb = document.getElementById("hintsBtn");
-  if(hb){
-    hb.textContent = (S.settings.hints === false) ? "Hints: OFF" : "Hints: ON";
-    hb.style.color = (S.settings.hints === false) ? "#64748b" : "#94a3b8";
-  }
 }
 
 /* ================= DASHBOARD ================= */
@@ -2335,7 +2347,7 @@ function applyAyat(){
 function themeMode(){
   var t = S.settings.theme;
   if(t === "dark" || t === "oled" || t === "light") return t;
-  try{ return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }catch(e){ return "light"; }
+  return "oled"; // default theme
 }
 function themeDark(){
   return themeMode() !== "light";
@@ -3079,6 +3091,20 @@ function viewSettings(){
   html += '<div class="hint">Button size across the whole app — Sleek is compact and modern, Classic is the old large style.</div>';
   html += '</div>';
 
+  html += '<div class="card"><h2>🔒 Privacy — Show totals passcode</h2>';
+  html += '<div class="hint" style="margin-top:0;">Profit / paise wale totals sab jagah chhupe rehte hain. <b>Show totals</b> dabane par passcode poocha jata hai.</div>';
+  if(st.totalsPin){
+    html += '<div class="hint" style="color:var(--green);">✓ Passcode set hai</div>'
+          + '<div class="row" style="margin-top:8px;">'
+          + '<button class="btn small" id="pinChange" style="margin-top:0;">Change passcode</button>'
+          + '<button class="btn btn-del" id="pinRemove">Remove passcode</button>'
+          + '</div>';
+  } else {
+    html += '<div class="hint">Abhi passcode set nahi hai — pehli baar “Show totals” dabane par set karne ko kaha jayega.</div>'
+          + '<button class="btn small primary" id="pinSet" style="margin-top:8px;">Set passcode now</button>';
+  }
+  html += '</div>';
+
   html += '<div class="card"><h2>Invoice / Ticket settings</h2>';
   html += '<label>Company name (printed on the invoice)</label><input id="setInvCompany" maxlength="40" value="'+esc(st.invCompany||"AB Travels")+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Phone 1</label><input id="setInvPhone1" value="'+esc(st.invPhone1||"0310-3311199")+'" inputmode="tel"></div>'
@@ -3616,6 +3642,27 @@ function bind(){
   if(tho) tho.onclick = function(){
     S.settings.theme = "oled"; save(); applyTheme(); render();
   };
+  var pinS = document.getElementById("pinSet");
+  if(pinS) pinS.onclick = function(){
+    if(totalsPinOk()){ alert("✓ Passcode set ho gaya."); render(); }
+  };
+  var pinC = document.getElementById("pinChange");
+  if(pinC) pinC.onclick = function(){
+    var old = String(S.settings.totalsPin || "");
+    var cur = prompt("Purana passcode likhein:");
+    if(cur == null) return;
+    if(String(cur).trim() !== old){ alert("Ghalat passcode."); return; }
+    var p1 = prompt("Naya passcode (kam az kam 4 characters):");
+    if(p1 == null) return;
+    p1 = String(p1).trim();
+    if(p1.length < 4){ alert("Kam az kam 4 characters."); return; }
+    S.settings.totalsPin = p1; save(); render(); alert("✓ Passcode badal gaya.");
+  };
+  var pinR = document.getElementById("pinRemove");
+  if(pinR) pinR.onclick = function(){
+    if(!confirm("Passcode hata dein? Phir totals bina passcode khulengay.")) return;
+    S.settings.totalsPin = ""; save(); render();
+  };
   var bsSl = document.getElementById("btnStyleSleek");
   if(bsSl) bsSl.onclick = function(){ S.settings.btnStyle = "sleek"; save(); render(); };
   var bsCl = document.getElementById("btnStyleClassic");
@@ -4134,11 +4181,6 @@ document.addEventListener("visibilitychange", function(){
   var typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
   if(!typing) syncPull(function(){ render(); });
 });
-var hintsB = document.getElementById("hintsBtn");
-if(hintsB) hintsB.onclick = function(){
-  S.settings.hints = (S.settings.hints === false) ? true : false;
-  save(); render();
-};
 var themeB = document.getElementById("themeBtn");
 if(themeB) themeB.onclick = function(){
   var m = themeMode();
