@@ -153,6 +153,33 @@
   body.dark input:focus, body.dark select:focus, body.dark textarea:focus{outline-color:#5b8def; box-shadow:0 0 0 3px rgba(91,141,239,.14);}
   body.dark .btn.primary{text-shadow:0 1px 2px rgba(15,23,42,.4);}
 
+  /* ---------- OLED theme (true black) ---------- */
+  body.oled{
+    --bg:#000000; --card:#0b0b0e; --ink:#e9edf5; --muted:#8f9bad;
+    --green:#34d399; --green-bg:#052018; --red:#f87171; --red-bg:#20090b;
+    --blue:#60a5fa; --blue-bg:#07162a; --gold:#fbbf24; --gold-bg:#1e1707;
+    --line:#191920; --field:#07070a; --line-soft:#141419;
+    --stat-a:#08080b; --stat-b:#050507;
+    color-scheme:dark;
+  }
+  body.oled header{background:#000; box-shadow:0 1px 0 #151519;}
+  body.oled .card{border-color:#191920; box-shadow:none;}
+  body.oled .card:hover{border-color:#2a2a33;}
+  body.oled .stat{border-color:#191920;}
+  body.oled .ayat{background:#0a0803; border-color:#332a10;}
+  body.oled .btn.primary{background:#3b3bd8; box-shadow:none; text-shadow:none;}
+  body.oled .btn.primary:hover{background:#4545e0; box-shadow:none;}
+  body.oled .btn.green{background:#047857; box-shadow:none;}
+  body.oled input, body.oled select, body.oled textarea{background:var(--field);}
+  body.oled .card-head .collapse-arrow{background:var(--field);}
+  body.oled .sum-btn{background:var(--card);}
+  body.oled nav#tabs{background:#000;}
+  body.oled nav#tabs button:hover, body.oled nav#tabs button.active{background:#121216;}
+  body.oled nav#tabs::-webkit-scrollbar-thumb{background:#1a1a1f;}
+  body.oled nav#tabs #navClose{background:#141418; color:#cbd5e1;}
+  body.oled #navBackdrop{background:#000;}
+  body.oled header::after{opacity:.5;}
+
   /* ---------- Ayat header center ---------- */
   .ayat-head{flex:1 1 auto; text-align:center; min-width:0; line-height:1.35; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px; padding:0 10px;}
   .ayat-head .ar{font-size:14px; color:#f5ead7; text-shadow:0 1px 2px rgba(0,0,0,.45);}
@@ -188,14 +215,14 @@
 </head>
 <body>
 <script>/* Apply the saved theme before the first paint (avoids a white flash in dark mode). */
-(function(){try{var s=JSON.parse(localStorage.getItem("travelOfficeHisab")||"{}");var t=s&&s.settings&&s.settings.theme;var d=(t==="dark")||(!t&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.body.classList.add("dark");}catch(e){}})();
+(function(){try{var s=JSON.parse(localStorage.getItem("travelOfficeHisab")||"{}");var t=s&&s.settings&&s.settings.theme;var d=(t==="dark"||t==="oled")||(!t&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.body.classList.add("dark");if(t==="oled")document.body.classList.add("oled");}catch(e){}})();
 </script>
 <header>
   <button id="menuBtn" aria-label="Menu">☰</button>
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.60</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.61</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -249,7 +276,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.60";
+var APP_VER = "1.61";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1563,7 +1590,7 @@ function invHtml(d, bw){
     + '<div>'+esc(p1)+'</div>'
     + '<div>'+esc(p2)+'</div>'
     + '</div></div>'
-    + (d.nr ? '<div style="position:absolute; top:70px; right:-30px; transform:rotate(35deg); background:#fff; border:1px solid #94a3b8; color:#475569; font-weight:700; font-size:9px; letter-spacing:1px; padding:3px 34px;">NON-REFUNDABLE</div>' : '')
+    + (d.nr ? '<div style="position:absolute; top:112px; right:-26px; transform:rotate(35deg); background:#fff; border:1px solid #94a3b8; color:#475569; font-weight:700; font-size:9px; letter-spacing:1px; padding:3px 30px; pointer-events:none;">NON-REFUNDABLE</div>' : '')
     + '<div style="padding:18px;">'
     + '<div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">'
     + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">'+(d.docType === "umrah" ? "UMRAH PACKAGE — BOOKING CONFIRMATION" : "PNR / BOOKING REFERENCE NO:")+'</div>'
@@ -2305,17 +2332,26 @@ function applyAyat(){
   if(tr) tr.textContent = "\u201c" + a.tr + "\u201d \u2014 " + a.ref;
   if(ur) ur.textContent = a.ur || "";
 }
-function themeDark(){
+function themeMode(){
   var t = S.settings.theme;
-  if(t === "dark") return true;
-  if(t === "light") return false;
-  try{ return window.matchMedia("(prefers-color-scheme: dark)").matches; }catch(e){ return false; }
+  if(t === "dark" || t === "oled" || t === "light") return t;
+  try{ return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }catch(e){ return "light"; }
+}
+function themeDark(){
+  return themeMode() !== "light";
 }
 function applyTheme(){
-  var dark = themeDark();
+  var mode = themeMode();
+  var dark = mode !== "light";
   document.body.classList.toggle("dark", dark);
+  document.body.classList.toggle("oled", mode === "oled");
   var b = document.getElementById("themeBtn");
-  if(b){ b.textContent = dark ? "\u2600\uFE0F" : "\uD83C\uDF19"; b.title = dark ? "Switch to light mode" : "Switch to dark mode"; }
+  if(b){
+    var next = mode === "light" ? "dark" : (mode === "dark" ? "oled" : "light");
+    b.textContent = mode === "light" ? "\uD83C\uDF19" : (mode === "dark" ? "\u2B1B" : "\u2600\uFE0F");
+    b.title = "Theme: " + mode.toUpperCase() + " — tap for " + next.toUpperCase();
+    b.setAttribute("aria-label", b.title);
+  }
 }
 function ayatCard(){
   var a = ayatPick();
@@ -3028,12 +3064,13 @@ function viewSettings(){
   html += '</div>';
 
   html += '<div class="card"><h2>Appearance</h2>';
-  var isDk = themeDark();
+  var mode = themeMode();
   html += '<div class="row" style="margin-top:8px;">'
-        + '<button class="btn small'+(isDk?'':' primary')+'" id="thLight" style="margin-top:0;">☀️ Light</button>'
-        + '<button class="btn small'+(isDk?' primary':'')+'" id="thDark" style="margin-top:0;">🌙 Dark</button>'
+        + '<button class="btn small'+(mode==="light"?' primary':'')+'" id="thLight" style="margin-top:0;">☀️ Light</button>'
+        + '<button class="btn small'+(mode==="dark"?' primary':'')+'" id="thDark" style="margin-top:0;">🌙 Dark</button>'
+        + '<button class="btn small'+(mode==="oled"?' primary':'')+'" id="thOled" style="margin-top:0;">⬛ OLED</button>'
         + '</div>';
-  html += '<div class="hint">Dark mode is easier on the eyes at night. Your choice is saved with your settings. The 🌙 button in the top bar switches it any time.</div>';
+  html += '<div class="hint">Light = din ke liye. Dark = aankhon ke liye asaan. <b>OLED</b> = pure black background (sirf black pixels jalte hain — OLED screen par battery bachti hai aur raat ko sab se araam deh). Choice settings ke sath save hoti hai; top bar ka button teeno modes ke darmiyan badalta hai.</div>';
   var isSleek = S.settings.btnStyle !== "classic";
   html += '<div class="row" style="margin-top:10px;">'
         + '<button class="btn small'+(isSleek?' primary':'')+'" id="btnStyleSleek" style="margin-top:0;">✨ Sleek (compact)</button>'
@@ -3575,6 +3612,10 @@ function bind(){
   if(thd) thd.onclick = function(){
     S.settings.theme = "dark"; save(); applyTheme(); render();
   };
+  var tho = document.getElementById("thOled");
+  if(tho) tho.onclick = function(){
+    S.settings.theme = "oled"; save(); applyTheme(); render();
+  };
   var bsSl = document.getElementById("btnStyleSleek");
   if(bsSl) bsSl.onclick = function(){ S.settings.btnStyle = "sleek"; save(); render(); };
   var bsCl = document.getElementById("btnStyleClassic");
@@ -4100,7 +4141,8 @@ if(hintsB) hintsB.onclick = function(){
 };
 var themeB = document.getElementById("themeBtn");
 if(themeB) themeB.onclick = function(){
-  S.settings.theme = themeDark() ? "light" : "dark";
+  var m = themeMode();
+  S.settings.theme = m === "light" ? "dark" : (m === "dark" ? "oled" : "light");
   save(); applyTheme(); render();
 };
 </script>
