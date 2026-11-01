@@ -57,6 +57,16 @@
   main{flex:1; min-width:0; padding:16px 16px 90px; max-width:820px; margin:0 auto;}
   .card{background:var(--card); border-radius:var(--radius); padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .card h2{margin:0 0 10px; font-size:16px;}
+  /* ---------- Collapsible cards ---------- */
+  .card-head{display:flex; align-items:center; gap:10px; cursor:pointer; -webkit-user-select:none; user-select:none;}
+  .card-head h2{margin:0; flex:1; min-width:0; font-size:16px;}
+  .card-head .collapse-arrow{flex:0 0 auto; width:30px; height:30px; padding:0; border:1px solid var(--line); border-radius:9px; background:var(--card); color:var(--muted); font-size:11px; line-height:1; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .18s ease, background .15s, color .15s, border-color .15s;}
+  .card-head:hover .collapse-arrow{background:var(--blue-bg); color:var(--blue); border-color:var(--blue);}
+  .card.collapsed > .card-body{display:none;}
+  .card.collapsed .collapse-arrow{transform:rotate(0deg);}
+  .card:not(.collapsed) .collapse-arrow{transform:rotate(180deg);}
+  .card.collapsible > .card-body{margin-top:10px;}
+  body.dark .card-head .collapse-arrow{background:var(--field);}
   .row{display:flex; gap:10px; flex-wrap:wrap;}
   .row > *{flex:1; min-width:120px;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
@@ -177,7 +187,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.55</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.56</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -230,7 +240,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.55";
+var APP_VER = "1.56";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1602,7 +1612,7 @@ function viewExpenses(){
   var tot = list.reduce(function(a,x){ return a + (Number(x.amount)||0); }, 0);
   var opts = monthOptions();
   var html = "";
-  html += '<div class="card"><h2>Day-to-day Expenses</h2>';
+  html += '<div class="card" data-collapse="expadd"><h2>Day-to-day Expenses</h2>';
   html += '<div class="hint" style="margin-top:0;">Rozana kharche yahan turant add karein — ye Monthly Accounts ke hisaab mein khud shamil ho jayenge.</div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Month</label><select id="expTabSel">'+opts+'</select></div>'
         + '<div><label>Date</label><input type="date" id="expTabDate" value="'+today()+'"></div></div>';
@@ -1611,7 +1621,7 @@ function viewExpenses(){
   html += '<button class="btn primary" id="expTabAdd" style="margin-top:8px;">Add Expense</button>';
   html += '<div class="hint" id="expTabStatus" style="color:var(--green);"></div>';
   html += '</div>';
-  html += '<div class="card"><h2>'+esc(monthLabel(mid))+' ki expenses</h2>';
+  html += '<div class="card" data-collapse="explist"><h2>'+esc(monthLabel(mid))+' ki expenses</h2>';
   if(list.length){
     html += '<div class="grid2"><div class="stat"><div class="t">'+list.length+' kharchay</div><div class="v">'+list.length+'</div></div>'
           + '<div class="stat"><div class="t">Total</div><div class="v neg">'+money(tot)+'</div></div></div>';
@@ -1867,6 +1877,78 @@ document.getElementById("tabs").addEventListener("click", function(e){
   document.addEventListener("keydown", function(e){ if(e.key === "Escape") closeNav(); });
 }());
 
+/* ---------- Collapsible cards (arrow to minimize / expand) ---------- */
+var CARD_STATE_KEY = "ab_card_state";
+function cardState(){
+  try{ return JSON.parse(localStorage.getItem(CARD_STATE_KEY) || "{}") || {}; }catch(e){ return {}; }
+}
+function saveCardState(id, open){
+  var s = cardState();
+  s[id] = !!open;
+  try{ localStorage.setItem(CARD_STATE_KEY, JSON.stringify(s)); }catch(e){}
+}
+function setCardOpen(id, open){
+  var cards = document.querySelectorAll('.card[data-collapse="' + id + '"]');
+  for(var i = 0; i < cards.length; i++){
+    var card = cards[i];
+    card.classList.toggle("collapsed", !open);
+    var head = card.querySelector(".card-head");
+    if(!head) continue;
+    head.title = open ? "Minimize" : "Expand";
+    var b = head.querySelector(".collapse-arrow");
+    if(b){
+      b.setAttribute("aria-expanded", open ? "true" : "false");
+      b.setAttribute("aria-label", open ? "Minimize" : "Expand");
+    }
+  }
+  saveCardState(id, open);
+}
+function setupCollapsibleCards(root){
+  var state = cardState();
+  var cards = root.querySelectorAll(".card[data-collapse]");
+  for(var i = 0; i < cards.length; i++){
+    var card = cards[i];
+    var id = card.getAttribute("data-collapse");
+    var open = state[id] === undefined ? (card.getAttribute("data-open") === "1") : !!state[id];
+
+    var h2 = null;
+    for(var c = 0; c < card.children.length; c++){
+      if(card.children[c].tagName === "H2"){ h2 = card.children[c]; break; }
+    }
+    if(!h2){ h2 = document.createElement("h2"); h2.textContent = "Details"; }
+    else { h2.parentNode.removeChild(h2); }
+
+    var head = document.createElement("div");
+    head.className = "card-head";
+    head.title = open ? "Minimize" : "Expand";
+    head.appendChild(h2);
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "collapse-arrow";
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    btn.setAttribute("aria-label", open ? "Minimize" : "Expand");
+    btn.innerHTML = "&#9660;";
+    head.appendChild(btn);
+
+    var body = document.createElement("div");
+    body.className = "card-body";
+    body.id = "card-body-" + id;
+    btn.setAttribute("aria-controls", body.id);
+    while(card.firstChild) body.appendChild(card.firstChild);
+
+    card.appendChild(head);
+    card.appendChild(body);
+    card.classList.add("collapsible");
+    card.classList.toggle("collapsed", !open);
+    (function(cardEl, cardId){
+      head.onclick = function(){
+        setCardOpen(cardId, cardEl.classList.contains("collapsed"));
+      };
+    }(card, id));
+  }
+}
+
 function render(){
   _monthAgg = null; // data may have changed since the last calculation
   var app = document.getElementById("app");
@@ -1882,6 +1964,7 @@ function render(){
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
   else if(currentTab==="airids") app.innerHTML = viewAirIds();
   else app.innerHTML = viewSettings();
+  setupCollapsibleCards(app);
   bind();
   // Sale se aayi invoice values form mein bhar dein
   if(currentTab === "invoice" && invPrefill){
@@ -2223,7 +2306,7 @@ function viewTickets(){
   var html = "";
 
   // Add New Sale — sab se oper
-  html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
+  html += '<div class="card" data-collapse="tkadd"><h2>'+esc(T("newtk"))+'</h2>';
   html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div>';
@@ -2253,7 +2336,7 @@ function viewTickets(){
   var tc=0, ts=0;
   list.forEach(function(t){ tc += Number(t.cost)||0; ts += Number(t.sale)||0; });
   var tp = ts - tc;
-  html += '<div class="card"><h2>'+esc(T("tkhul"))+(ticketFilter==="all" ? "" : ' — '+esc(monthLabel(ticketFilter)))+'</h2><div class="grid2">'
+  html += '<div class="card" data-collapse="tksum"><h2>'+esc(T("tkhul"))+(ticketFilter==="all" ? "" : ' — '+esc(monthLabel(ticketFilter)))+'</h2><div class="grid2">'
         + '<div class="stat"><div class="t">'+esc(T("kulcost"))+'</div><div class="v">'+money(tc)+'</div></div>'
         + '<div class="stat"><div class="t">'+esc(T("kulsale"))+'</div><div class="v">'+money(ts)+'</div></div>'
         + '<div class="stat" style="grid-column:1/-1;"><div class="t">'+esc(T("kulprofit"))+'</div><div class="v '+(tp>=0?"pos":"neg")+'">'+money(tp)+'</div></div>'
@@ -2265,7 +2348,7 @@ function viewTickets(){
 
   if(list.length){
     var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
-    html += '<div class="card"><h2>'+esc(T("tkhist"))+'</h2><table id="tkList"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
+    html += '<div class="card" data-collapse="tkhist"><h2>'+esc(T("tkhist"))+'</h2><table id="tkList"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
     sorted.forEach(function(t){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
       var costPending = !(Number(t.cost) > 0) && (Number(t.sale) > 0);
@@ -2290,7 +2373,7 @@ function viewTickets(){
 
   if(months.length){
     var shiftMids = Object.keys(S.months || {}).concat(months).filter(function(m,i,a){ return /^\d{4}-\d{2}$/.test(m) && a.indexOf(m) === i; }).sort();
-    html += '<div class="card"><h2>Move tickets to another month</h2>';
+    html += '<div class="card" data-collapse="tkmove"><h2>Move tickets to another month</h2>';
     html += '<div class="hint" style="margin-top:0;">If an import brought tickets with the wrong month, move all tickets of one month to another month here (the day stays the same). To change a single ticket&rsquo;s date, press 📅 in the table.</div>';
     html += '<div class="row"><select id="tkFrom">'+shiftMids.map(function(m){ return '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+monthLabel(m)+' — from</option>'; }).join("")+'</select>'
           + '<select id="tkTo">'+shiftMids.map(function(m){ return '<option value="'+m+'">'+monthLabel(m)+' — to</option>'; }).join("")+'</select></div>';
@@ -2299,7 +2382,7 @@ function viewTickets(){
   }
 
   if(all.length){
-    html += '<div class="card"><h2>Remove duplicate tickets</h2>';
+    html += '<div class="card" data-collapse="tkdedupe"><h2>Remove duplicate tickets</h2>';
     html += '<div class="hint" style="margin-top:0;">If the same ticket appears in two months (same client + cost + sale), the oldest date is kept and the other copies are removed.</div>';
     html += '<button class="btn small" id="dedupeTickets" style="width:100%; background:var(--red); color:#fff;">Check duplicates</button>';
     html += '</div>';
@@ -2564,7 +2647,7 @@ function viewBakaya(){
   var mf = monthFilterCard("BAK", "Pick a month to see that month&rsquo;s pending amount (unpaid tickets + clients). <b>All months</b> shows everything pending.");
   var html = mf.html;
   var htmlX = "";
-  htmlX += '<div class="card"><h2>'+esc(T("newcl"))+'</h2>';
+  htmlX += '<div class="card" data-collapse="rvadd"><h2>'+esc(T("newcl"))+'</h2>';
   htmlX += '<label>'+esc(T("cliname"))+'</label><input id="rvClient" placeholder="Name">';
   htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("tafseel"))+'</label><input id="rvNote" placeholder="e.g. Umrah package booking"></div>';
   htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
@@ -2575,7 +2658,7 @@ function viewBakaya(){
   // Unpaid tickets — bakaya mein khud aate hain
   var unpaidT = S.tickets.filter(function(x){ return x.paid === false; });
   if(mf.cur!=="all") unpaidT = unpaidT.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
-  html += '<div class="card"><h2>'+esc(T("unpaidtkh"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
+  html += '<div class="card" data-collapse="rvunpaid"><h2>'+esc(T("unpaidtkh"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
   if(!unpaidT.length){
     html += '<div class="empty">'+esc(T("emptyub"))+'</div>';
   } else {
@@ -2602,7 +2685,7 @@ function viewBakaya(){
     shownTotal += Math.max(0, (Number(r.total)||0) - p);
   });
 
-  html += '<div class="card"><h2>'+esc(T("baklist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
+  html += '<div class="card" data-collapse="rvlist"><h2>'+esc(T("baklist"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
   if(!recs.length){
     html += '<div class="empty">'+esc(T("emptybak"))+'</div>';
   } else {
@@ -2754,7 +2837,7 @@ function bind(){
   if(sel) sel.onchange = function(){ selectedMonth = sel.value; render(); };
 
   var tmf = document.getElementById("tkMonthFilter");
-  if(tmf) tmf.onchange = function(){ ticketFilter = tmf.value; render(); };
+  if(tmf) tmf.onchange = function(){ ticketFilter = tmf.value; render(); setCardOpen("tkhist", true); };
 
   ["DASH","A","B","ABBU","WS","BAK"].forEach(function(k){
     var fm = document.getElementById(k+"MonthFilter");
@@ -2917,6 +3000,7 @@ function bind(){
     S.receivables.push({ id:uid(), client:name, note:document.getElementById("rvNote").value.trim(), total:total, date:dd, payments:[] });
     monthFilter.BAK = String(dd).slice(0,7);
     save(); render();
+    setCardOpen("rvlist", true);
   };
   app.querySelectorAll(".rv-paybtn").forEach(function(b){
     b.onclick = function(){
@@ -2963,6 +3047,7 @@ function bind(){
                      commission:Number(document.getElementById("tkComm").value) || 0 });
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
+    setCardOpen("tkhist", true);
   };
   // Sales search — client ke naam se tickets/umrah dhoondein
   var tks = document.getElementById("tkSearch");
@@ -2977,6 +3062,7 @@ function bind(){
       if(ok) shown++;
     });
     if(cnt) cnt.textContent = q ? (shown + " result(s) for '" + this.value.trim() + "'") : "";
+    if(q) setCardOpen("tkhist", true);
   };
   // Invoice generator
   var gi = document.getElementById("genInv");
@@ -3206,7 +3292,7 @@ function bind(){
   };
   // Day-to-day expenses tab
   var exs = document.getElementById("expTabSel");
-  if(exs) exs.onchange = function(){ selectedMonth = exs.value; render(); };
+  if(exs) exs.onchange = function(){ selectedMonth = exs.value; render(); setCardOpen("explist", true); };
   var exa = document.getElementById("expTabAdd");
   if(exa) exa.onclick = function(){
     var desc = (document.getElementById("expTabDesc")||{}).value||"";
@@ -3216,9 +3302,10 @@ function bind(){
     var mid = String(dd).slice(0,7);
     if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
     S.months[mid].expenses.push({ id:uid(), desc:desc.trim(), amount:amt, added:dd });
+    save(); render();
     var st = document.getElementById("expTabStatus");
     if(st) st.textContent = "✓ "+desc.trim()+" ("+money(amt)+") add ho gaya";
-    save(); render();
+    setCardOpen("explist", true);
   };
   app.querySelectorAll(".del[data-type='ticket']").forEach(function(b){
     b.onclick = function(){
