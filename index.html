@@ -115,6 +115,7 @@
   .ayat{background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1px solid #fde68a; text-align:center; padding:16px 14px;}
   .ayat .ar{font-size:25px; line-height:1.95; color:#78350f; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px;}
   .ayat .tr{font-size:12.5px; color:#92400e; margin-top:8px; line-height:1.6;}
+  .ayat .ur{font-size:13px; color:#78350f; margin-top:7px; line-height:2; direction:rtl; text-align:center; font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq","Noto Naskh Arabic","Segoe UI",serif;}
 
   /* ---------- Dark mode ---------- */
   body.dark{
@@ -132,6 +133,7 @@
   body.dark .ayat{background:linear-gradient(135deg,#241d0e,#2f2611); border-color:#4a3a14;}
   body.dark .ayat .ar{color:#fcd34d;}
   body.dark .ayat .tr{color:#e7c873;}
+  body.dark .ayat .ur{color:#fcd34d;}
   body.dark .btn.green{background:#047857; color:#fff;}
   body.dark .btn[style*="var(--gold)"]{background:#b45309 !important; color:#fff !important;}
   body.dark .btn[style*="var(--green)"]{background:#047857 !important; color:#fff !important;}
@@ -151,6 +153,7 @@
   .ayat-head{flex:1 1 auto; text-align:center; min-width:0; line-height:1.35; font-family:"Traditional Arabic","Amiri","Scheherazade New",serif; word-spacing:2px; padding:0 10px;}
   .ayat-head .ar{font-size:14px; color:#f5ead7; text-shadow:0 1px 2px rgba(0,0,0,.45);}
   .ayat-head .tr{font-size:9.5px; color:#8fa3bb; margin-top:1px; line-height:1.35; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .ayat-head .ur{font-size:10.5px; color:#9db0c6; margin-top:1px; line-height:1.7; direction:rtl; text-align:center; font-family:"Noto Nastaliq Urdu","Noto Naskh Arabic","Segoe UI",serif;}
 
   /* ---------- Mobile ---------- */
   @media (max-width: 860px){
@@ -162,6 +165,7 @@
     .ayat-head{order:5; flex:0 0 100%; padding:3px 0 0; border-top:1px solid rgba(255,255,255,.06); margin-top:1px;}
     .ayat-head .ar{font-size:11.5px; line-height:1.65; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .ayat-head .tr{display:none;}
+    .ayat-head .ur{font-size:10px; line-height:1.6;}
     .hints-btn{padding:5px 9px; font-size:10.5px;}
     /* Invoice form — mobile par fields ek column mein */
     .inv-form .row{flex-direction:column; align-items:stretch;}
@@ -187,13 +191,14 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.57</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.58</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
   <div class="ayat-head">
     <div class="ar" dir="rtl" lang="ar">وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا ۞ وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ</div>
     <div class="tr">&ldquo;And whoever fears Allah &mdash; He will make for him a way out, and provide for him from where he does not expect.&rdquo; &mdash; At-Talaq 65:2&ndash;3</div>
+    <div class="ur" dir="rtl" lang="ur">اور جو اللہ سے ڈرے، اللہ اس کے لیے نکلنے کا راستہ بنا دیتا ہے اور اسے ایسی جگہ سے رزق دیتا ہے جہاں سے اسے گمان بھی نہ ہو۔</div>
   </div>
   <button id="themeBtn" class="hints-btn" title="Switch to dark mode" aria-label="Toggle dark mode">🌙</button>
 <button id="hintsBtn" class="hints-btn">Hints: ON</button>
@@ -240,7 +245,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.57";
+var APP_VER = "1.58";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1548,7 +1553,7 @@ function invHtml(d, bw){
          + invRowAlways("NIC / Passport", d.nic)
          + (d.seat ? invRow(d.trip === "round" ? "Outbound seat" : "Seat", d.seat) : "")
          + (d.retSeat ? invRow("Return seat", d.retSeat) : "")
-         + invRowAlways("Ticket number", d.tkNo)
+         + (d.tkNo ? invRowAlways("Ticket number", d.tkNo) : "")
          + '</table>';
     } else {
       var names2 = (d.paxNames||[]), nics2 = (d.paxNics||[]), seats = (d.paxSeats||[]), rseats = (d.paxRetSeats||[]);
@@ -1712,7 +1717,9 @@ function viewInvoice(){
   html += '<div class="hint umrah-hide" id="nrHint" style="margin-top:2px;"></div>';
   html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
   html += '<button class="btn" id="invPrintBtn" style="display:none; background:var(--gold); color:#fff;">🖨 Print / Save as PDF (A4)</button>';
-  html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
+  html += '<button class="btn" id="invShareBtn" style="display:none; background:#25D366; color:#fff;">📲 Share on WhatsApp / PDF</button>';
+  html += '<div class="hint" id="invShareHint" style="display:none;">Phone par ye button PDF bana kar seedha WhatsApp (ya kisi bhi app) mein bhej deta hai. Computer par PDF download ho jati hai — usko WhatsApp mein attach kar dein.</div>';
+  html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. On a phone, <b>Share on WhatsApp / PDF</b> bhi use kar sakte hain. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
   html += '</div>';
   html += '<div id="invOut"></div>';
   return html;
@@ -1843,6 +1850,103 @@ function printInvoice(){
       setTimeout(go, 6000); // failsafe: internet slow ho to 6 second baad bhi print
     }
   }catch(e){ go(); }
+}
+
+/* ---------- Invoice → PDF → WhatsApp / any app ---------- */
+var INV_LIBS = [
+  "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+];
+function loadScriptOnce(src){
+  return new Promise(function(res, rej){
+    var old = document.querySelector('script[data-src="'+src+'"]');
+    if(old){ if(old.getAttribute("data-done") === "1") res(); else { old.addEventListener("load", res); old.addEventListener("error", rej); } return; }
+    var s = document.createElement("script");
+    s.src = src; s.async = true;
+    s.setAttribute("data-src", src);
+    s.onload = function(){ s.setAttribute("data-done", "1"); res(); };
+    s.onerror = function(){ rej(new Error("Could not load " + src)); };
+    document.head.appendChild(s);
+  });
+}
+function ensureInvLibs(){
+  if(window.html2canvas && window.jspdf) return Promise.resolve();
+  return loadScriptOnce(INV_LIBS[0]).then(function(){ return loadScriptOnce(INV_LIBS[1]); });
+}
+function invPdfName(d){
+  d = d || {};
+  var nm = d.name || (d.paxNames||[])[0] || "invoice";
+  nm = String(nm).replace(/[\\/:*?"<>|]+/g, "").trim().replace(/\s+/g, "-");
+  var pnr = (d.pnr && d.pnr !== "UMRAH") ? String(d.pnr) : "";
+  return (nm || "invoice") + (pnr ? "-" + pnr : "") + ".pdf";
+}
+function invCaption(d){
+  d = d || {};
+  var nm = d.name || (d.paxNames||[])[0] || "";
+  var company = (S.settings.invCompany || "AB Travels").trim();
+  var bits = [];
+  if(nm) bits.push(nm);
+  if(d.docType === "umrah") bits.push("Umrah package");
+  return company + (bits.length ? " — " + bits.join(" — ") : "") + " — invoice attached.";
+}
+function invPdfBlob(){
+  return ensureInvLibs().then(function(){
+    var src = document.getElementById("invPrint");
+    if(!src) throw new Error("Generate the invoice first.");
+    var node = src.cloneNode(true);
+    node.style.margin = "0"; node.style.width = "640px"; node.style.borderRadius = "0";
+    var holder = document.createElement("div");
+    holder.style.cssText = "position:fixed; left:-20000px; top:0; width:640px; background:#fff; z-index:-1;";
+    holder.appendChild(node);
+    document.body.appendChild(holder);
+    return window.html2canvas(node, { scale: 2, backgroundColor:"#ffffff", useCORS:true, logging:false, windowWidth:640 })
+      .then(function(canvas){
+        var JS = window.jspdf.jsPDF;
+        var pdf = new JS({ unit:"mm", format:"a4", orientation:"portrait" });
+        var maxW = 194, maxH = 281;
+        var w = maxW, h = canvas.height * (maxW / canvas.width);
+        if(h > maxH){ w = canvas.width * (maxH / canvas.height); h = maxH; }
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", (210 - w) / 2, 8, w, h);
+        if(holder.parentNode) holder.parentNode.removeChild(holder);
+        return pdf.output("blob");
+      }, function(err){ if(holder.parentNode) holder.parentNode.removeChild(holder); throw err; });
+  });
+}
+function shareInvoice(){
+  if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
+  var d = lastInv || {};
+  var btn = document.getElementById("invShareBtn");
+  var label = btn ? btn.textContent : "";
+  if(btn){ btn.disabled = true; btn.textContent = "PDF ban rahi hai…"; }
+  var finish = function(){ if(btn){ btn.disabled = false; btn.textContent = label || "📲 Share on WhatsApp / PDF"; } };
+
+  invPdfBlob().then(function(blob){
+    var name = invPdfName(d);
+    var text = invCaption(d);
+    var file = null;
+    try{ file = new File([blob], name, { type:"application/pdf" }); }catch(e){ file = null; }
+    var canFiles = !!(file && navigator.canShare && navigator.canShare({ files:[file] }));
+    if(navigator.share && canFiles){
+      return navigator.share({ files:[file], title:name, text:text }).then(finish, function(err){
+        finish();
+        if(err && err.name !== "AbortError") alert("Share nahi ho saka — PDF download kar ke bhej dein.");
+      });
+    }
+    // Desktop ya purana browser: PDF download + WhatsApp Web kholein
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); if(a.parentNode) a.parentNode.removeChild(a); }, 2000);
+    try{ window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener"); }catch(e){}
+    finish();
+  }).catch(function(err){
+    finish();
+    if(err && err.name === "AbortError") return;
+    console.error(err);
+    alert("PDF nahi ban saki (internet check karein).\nAap Print / Save as PDF se bhi invoice bhej sakte hain.");
+    try{ printInvoice(); }catch(e){}
+  });
 }
 
 /* ================= TABS ================= */
@@ -2043,27 +2147,35 @@ function totals(){
 var AYAT = [
   { ar:"وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا ۞ وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ",
     tr:"And whoever fears Allah — He will make for him a way out, and provide for him from where he does not expect.",
+    ur:"اور جو اللہ سے ڈرے، اللہ اس کے لیے نکلنے کا راستہ بنا دیتا ہے اور اسے ایسی جگہ سے رزق دیتا ہے جہاں سے اسے گمان بھی نہ ہو۔",
     ref:"At-Talaq 65:2–3" },
   { ar:"فَإِنَّ مَعَ الْعُسْرِ يُسْرًا ۞ إِنَّ مَعَ الْعُسْرِ يُسْرًا",
     tr:"For indeed, with hardship comes ease. Indeed, with hardship comes ease.",
+    ur:"پس بے شک مشکل کے ساتھ آسانی ہے، بے شک مشکل کے ساتھ آسانی ہے۔",
     ref:"Ash-Sharh 94:5–6" },
   { ar:"فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ",
     tr:"So remember Me; I will remember you. And be grateful to Me and do not deny Me.",
+    ur:"پس تم مجھے یاد کرو، میں تمہیں یاد رکھوں گا، اور میرا شکر کرو اور ناشکری نہ کرو۔",
     ref:"Al-Baqarah 2:152" },
   { ar:"لَئِن شَكَرْتُمْ لَأَزِيدَنَّكُمْ",
     tr:"If you are grateful, I will surely increase you in favour.",
+    ur:"اگر تم شکر کرو گے تو میں تمہیں اور زیادہ دوں گا۔",
     ref:"Ibrahim 14:7" },
   { ar:"قُل لَّن يُصِيبَنَا إِلَّا مَا كَتَبَ اللَّهُ لَنَا",
     tr:"Say: never will we be struck except by what Allah has decreed for us.",
+    ur:"کہہ دو: ہمیں کبھی کوئی تکلیف نہیں پہنچ سکتی مگر جو اللہ نے ہمارے لیے لکھ دی ہو۔",
     ref:"At-Tawbah 9:51" },
   { ar:"إِنَّ اللَّهَ لَا يُغَيِّرُ مَا بِقَوْمٍ حَتَّىٰ يُغَيِّرُوا مَا بِأَنفُسِهِمْ",
     tr:"Indeed, Allah will not change the condition of a people until they change what is in themselves.",
+    ur:"بے شک اللہ کسی قوم کی حالت نہیں بدلتا جب تک وہ خود اپنی حالت نہ بدلیں۔",
     ref:"Ar-Ra'd 13:11" },
   { ar:"حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
     tr:"Allah is sufficient for us, and He is the best Disposer of affairs.",
+    ur:"اللہ ہمیں کافی ہے اور وہی بہترین کارساز ہے۔",
     ref:"Al-Imran 3:173" },
   { ar:"وَالَّذِينَ جَاهَدُوا فِينَا لَنَهْدِيَنَّهُمْ سُبُلَنَا",
     tr:"And those who strive for Us — We will surely guide them to Our ways.",
+    ur:"اور جو لوگ ہماری راہ میں جدوجہد کرتے ہیں، ہم انہیں اپنے راستے ضرور دکھائیں گے۔",
     ref:"Al-Ankabut 29:69" }
 ];
 function ayatPick(){
@@ -2075,8 +2187,10 @@ function applyAyat(){
   var a = ayatPick();
   var ar = document.querySelector(".ayat-head .ar");
   var tr = document.querySelector(".ayat-head .tr");
+  var ur = document.querySelector(".ayat-head .ur");
   if(ar) ar.textContent = a.ar;
   if(tr) tr.textContent = "\u201c" + a.tr + "\u201d \u2014 " + a.ref;
+  if(ur) ur.textContent = a.ur || "";
 }
 function themeDark(){
   var t = S.settings.theme;
@@ -2095,6 +2209,7 @@ function ayatCard(){
   return '<div class="card ayat">'
     + '<div class="ar" dir="rtl" lang="ar">'+esc(a.ar)+'</div>'
     + '<div class="tr">&ldquo;'+esc(a.tr)+'&rdquo; &mdash; '+esc(a.ref)+'</div>'
+    + (a.ur ? '<div class="ur" dir="rtl" lang="ur">'+esc(a.ur)+'</div>' : '')
     + '</div>';
 }
 function viewDash(){
@@ -2789,7 +2904,9 @@ function viewSettings(){
   var aCur = ayatPick();
   html += '<div class="ayat" style="border-radius:10px; margin-bottom:10px;">'
         + '<div class="ar" dir="rtl" lang="ar">'+esc(aCur.ar)+'</div>'
-        + '<div class="tr">&ldquo;'+esc(aCur.tr)+'&rdquo; &mdash; '+esc(aCur.ref)+'</div></div>';
+        + '<div class="tr">&ldquo;'+esc(aCur.tr)+'&rdquo; &mdash; '+esc(aCur.ref)+'</div>'
+        + (aCur.ur ? '<div class="ur" dir="rtl" lang="ur">'+esc(aCur.ur)+'</div>' : '')
+        + '</div>';
   html += '<div class="row" style="margin-top:8px;">'
         + '<button class="btn small primary" id="ayatNext" style="margin-top:0;">Next ayat</button>'
         + '<button class="btn small" id="ayatReset" style="margin-top:0;">Daily (auto)</button>'
@@ -3162,6 +3279,10 @@ function bind(){
     if(out){ out.innerHTML = invHtml(d); out.scrollIntoView({behavior:"smooth", block:"start"}); }
     var pb = document.getElementById("invPrintBtn");
     if(pb) pb.style.display = "block";
+    var sb = document.getElementById("invShareBtn");
+    if(sb) sb.style.display = "block";
+    var sh = document.getElementById("invShareHint");
+    if(sh) sh.style.display = "block";
   };
   var invAirSel = document.getElementById("invAir");
   if(invAirSel){
@@ -3238,6 +3359,8 @@ function bind(){
   ["invFrom","invTo","invRetFrom","invRetTo"].forEach(function(id){ bindAirportField(id); });
   var ipb = document.getElementById("invPrintBtn");
   if(ipb) ipb.onclick = printInvoice;
+  var isb = document.getElementById("invShareBtn");
+  if(isb) isb.onclick = shareInvoice;
   // Invoice ko sale ke sath link karein
   var ls = document.getElementById("invLinkSale");
   if(ls) ls.onchange = function(){
