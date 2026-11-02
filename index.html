@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.85</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.86</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -319,7 +319,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.85";
+var APP_VER = "1.86";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -3397,15 +3397,20 @@ function clCropBottom(canvas){
   ctx.drawImage(canvas, 0, canvas.height - h, canvas.width, h, 0, 0, cv.width, cv.height);
   return cv;
 }
-/* Passport ki MRZ lines (P<PKSURNAME<<GIVEN... / PKNUM...<) se details */
+/* Passport ki MRZ lines (P<PKSURNAME<<GIVEN... / PKNUM...<) se details.
+   Note: pehli line mein << hota he, doosri line (info line) mein sirf akela < — dono alag filter se guzarti hein */
 function clParseMrzText(raw){
   var lines = String(raw||"").toUpperCase().split(/\n+/).map(function(s){ return s.replace(/[^A-Z0-9<]/g,""); })
-    .filter(function(s){ return s.length >= 20 && s.indexOf("<<") >= 0; });
+    .filter(function(s){ return s.length >= 20; });
   var nameLine = null, infoLine = null;
   for(var i = 0; i < lines.length; i++){
     if(lines[i].charAt(0) === "P" && lines[i].charAt(1) === "<"){
       nameLine = lines[i];
-      if(lines[i+1]){ infoLine = lines[i+1]; break; }
+      for(var j = i+1; j < Math.min(i+3, lines.length); j++){
+        var digits = (lines[j].match(/[0-9]/g) || []).length;
+        if(lines[j].length >= 30 && digits >= 12){ infoLine = lines[j]; break; }
+      }
+      break;
     }
   }
   if(!nameLine || !infoLine) return null;
@@ -3419,15 +3424,49 @@ function clParseMrzText(raw){
     var y = always20 ? (yy + 2000) : (yy >= 30 ? yy + 1900 : yy + 2000);
     return y + "-" + String(mm).padStart(2,"0") + "-" + String(dd).padStart(2,"0");
   }
-  var passportNo = infoLine.slice(0,9).replace(/</g,"");
+  /* Positions OCR ke "<" fillers gir jane se khisakti hein — is liye nationality code
+     (3 letters jin ke aage 6 digits = date of birth) se anchor karte hein */
+  var passportNo = "", passExp = "";
+  var reNat = /[A-Z]{3}(?=\d{6})/g, nat;
+  while((nat = reNat.exec(infoLine)) !== null){
+    if(nat.index >= 8){
+      passportNo = infoLine.slice(0, nat.index - 1).replace(/</g,"");
+      passExp = ymd(infoLine.substr(nat.index + 11, 6), true);
+      break;
+    }
+  }
+  if(!passportNo){
+    passportNo = infoLine.slice(0,9).replace(/</g,"");
+    passExp = ymd(infoLine.slice(21,27), true);
+  }
   if(!/^[A-Z0-9]{6,9}$/.test(passportNo)) return null;
-  return { name:(given + " " + surname).trim(), passportNo:passportNo, passExp:ymd(infoLine.slice(21,27), true) };
+  return { name:(given + " " + surname).trim(), passportNo:passportNo, passExp:passExp };
 }
-/* CNIC ka number pattern: 42101-1234567-1 */
-function clCnicFrom(text){
+/* CNIC se number + naam + expiry (aapke bheje hue sample cards ke hisab se tune kiya hua) */
+function clCnicDetails(text){
   var t = String(text||"").replace(/[–—]/g,"-");
-  var m = t.match(/(\d{5})[-\s](\d{7})[-\s](\d)/);
-  return m ? (m[1]+"-"+m[2]+"-"+m[3]) : "";
+  var res = { nic:"", name:"", passExp:"" };
+  var m = t.match(/(\d{5})\s*[-\s]\s*(\d{7})\s*[-\s]\s*(\d)/);
+  if(m) res.nic = m[1]+"-"+m[2]+"-"+m[3];
+  var de = t.match(/expiry\D{0,12}(\d{2})[.\/\-](\d{2})[.\/\-](\d{4})/i);
+  if(de) res.passExp = de[3]+"-"+de[2]+"-"+de[1];
+  // Naam: standalone "Name" label ki agli saaf line (Father Name se pehle)
+  var lines = t.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  for(var i = 0; i < lines.length; i++){
+    if(/^(name)\s*:?\s*$/i.test(lines[i]) || /^name\s*:/i.test(lines[i])){
+      var inline = lines[i].replace(/^name\s*:?\s*/i,"").trim();
+      if(/^[A-Za-z -]{3,60}$/.test(inline)){ res.name = inline; break; }
+      for(var j = i+1; j < Math.min(i+4, lines.length); j++){
+        var cand = lines[j].replace(/[^A-Za-z -]/g," ").replace(/\s+/g," ").trim();
+        if(/^[A-Za-z -]{3,60}$/.test(cand) && !/father|gender|country|identity|date|pakistan|name/i.test(cand)){
+          res.name = cand; break;
+        }
+        if(/father/i.test(lines[j])) break;
+      }
+      break;
+    }
+  }
+  return res;
 }
 function clScanFile(file){
   var stEl = document.getElementById("clScanStatus");
@@ -3444,18 +3483,25 @@ function clScanFile(file){
       .then(function(T){ return T.createWorker("eng"); })
       .then(function(w){
         msg("Parha ja raha he… (10-40 second)");
+        // 1) Poori tasveer parhein
         return w.recognize(base).then(function(res){
-          var text = (res && res.data && res.data.text) || "";
-          var mrz = clParseMrzText(text);
-          if(mrz && mrz.passportNo){ w.terminate(); return { mrz:mrz, nic:null }; }
-          var nic = clCnicFrom(text);
-          if(nic){ w.terminate(); return { mrz:null, nic:nic }; }
-          // Passport ki MRZ poori tasveer se na mile to neeche wala hissa bara kar ke dobara parhein
+          var fullText = (res && res.data && res.data.text) || "";
+          var mrz = clParseMrzText(fullText);
+          if(mrz && mrz.passportNo){ w.terminate(); return { mrz:mrz, cnic:null }; }
+          // Passport ki pehchaan: "passport" lafz ya P< (MRZ) — Pakistani passport par CNIC number bhi likha hota he,
+          // is liye passport kabhi CNIC fallback nahi karega
+          var looksPassport = /passport/i.test(fullText) || fullText.indexOf("P<") >= 0;
+          if(!looksPassport){
+            // NIC — MRZ nahi hoti: number + naam + expiry
+            w.terminate();
+            return { mrz:null, cnic:clCnicDetails(fullText), looksPassport:false };
+          }
+          // 2) Passport — MRZ neeche wali 2 chhoti lines hoti hain, unhe bara kar ke dobara parhein
           var crop = clCropBottom(base);
           return w.recognize(crop).then(function(res2){
             w.terminate();
             var mrz2 = clParseMrzText((res2 && res2.data && res2.data.text) || "");
-            return { mrz:(mrz2 && mrz2.passportNo) ? mrz2 : null, nic:null };
+            return { mrz:(mrz2 && mrz2.passportNo) ? mrz2 : null, cnic:null, looksPassport:true };
           });
         });
       })
@@ -3465,9 +3511,13 @@ function clScanFile(file){
           document.getElementById("clNic").value = r.mrz.passportNo;
           if(r.mrz.passExp) document.getElementById("clPassExp").value = r.mrz.passExp;
           msg("✓ Passport se parha: " + r.mrz.name + " · " + r.mrz.passportNo + " · expiry " + dmy(r.mrz.passExp) + ". Ghalat ho to theek kar dein, phone khud likhein.");
-        } else if(r.nic){
-          document.getElementById("clNic").value = r.nic;
-          msg("✓ NIC number parha: " + r.nic + ". Naam aur phone check/likh lein.");
+        } else if(r.cnic && r.cnic.nic){
+          if(r.cnic.name) document.getElementById("clName").value = r.cnic.name.toUpperCase();
+          document.getElementById("clNic").value = r.cnic.nic;
+          if(r.cnic.passExp) document.getElementById("clPassExp").value = r.cnic.passExp;
+          msg("✓ NIC se parha: " + (r.cnic.name || "naam nahi mila") + " · " + r.cnic.nic + (r.cnic.passExp ? " · expiry " + dmy(r.cnic.passExp) : "") + ". Ghalat ho to theek kar dein, phone khud likhein.");
+        } else if(r.looksPassport){
+          msg("⚠ Passport ki MRZ lines (neeche wali 2 lines) nahi parhi ja sakein. Aisi photo lein jin mein neeche wali 2 lines seedhi aur roshan hon. (Tasveer save nahi hui)");
         } else {
           msg("⚠ Tasveer se details nahi parh sake — manually likh dein. (Tasveer save nahi hui)");
         }
@@ -3487,10 +3537,10 @@ function viewClients(){
         + '<div class="row"><div><label>Name *</label><input id="clName" placeholder="Client / passenger name" autocomplete="off"></div>'
         + '<div><label>Phone / WhatsApp</label><input id="clPhone" inputmode="tel" placeholder="0300-1234567"></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>NIC / Passport no</label><input id="clNic" style="text-transform:uppercase;" placeholder="42101-1234567-1 / AB1234567"></div>'
-        + '<div><label>Passport expiry</label><input type="date" id="clPassExp"><div class="hint" style="margin-top:2px;">6 mahine se kam baqi ho to warning milegi.</div></div></div>';
+        + '<div><label>Passport / NIC expiry</label><input type="date" id="clPassExp"><div class="hint" style="margin-top:2px;">6 mahine se kam baqi ho to warning milegi.</div></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Note</label><input id="clNote" placeholder="e.g. office client, sirf Umrah"></div></div>';
   html += '<div style="margin-top:10px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px;">'
-        + '<div style="font-size:12.5px;"><b>📷 NIC / Passport scan</b> — tasveer sirf parhne ke liye he, save nahi hoti. Passport ki MRZ lines (neeche wali 2 lines) se naam, number aur expiry khud bhar jata he.</div>'
+        + '<div style="font-size:12.5px;"><b>📷 NIC / Passport scan</b> — tasveer sirf parhne ke liye he, save nahi hoti. Passport ki MRZ lines (neeche wali 2 lines) se naam + passport number + expiry, aur NIC se naam + NIC number + expiry khud bhar jata he. Passport ke andar likha CNIC number use nahi hota — passport number hi aata he.</div>'
         + '<div style="display:flex; gap:8px; margin-top:6px; align-items:center;">'
         + '<button class="btn small" id="clScanBtn">📷 Scan NIC / Passport</button>'
         + '<input type="file" id="clScan" accept="image/*" style="display:none;">'
