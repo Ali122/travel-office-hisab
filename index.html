@@ -73,6 +73,10 @@
   .row.dt-row > *{display:contents;}
   .row.dt-row .hint{margin-top:2px; font-size:11px; line-height:1.4;}
   .inv-arrow{align-self:flex-end; padding-bottom:10px;}
+  /* Return / connecting flight ka dabba thora dark — card se alag nazar aata hai */
+  .inv-sub{background:var(--stat-b);}
+  body.dark .inv-sub{background:rgba(0,0,0,.30);}
+  body.oled .inv-sub{background:rgba(255,255,255,.045);}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px; font-weight:600;}
   input,select,textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:var(--field); color:var(--ink);}
@@ -180,7 +184,7 @@
   body.oled .btn.primary{background:#3b3bd8; box-shadow:none; text-shadow:none;}
   body.oled .btn.primary:hover{background:#4545e0; box-shadow:none;}
   body.oled .btn.green{background:#047857; box-shadow:none;}
-  body.oled input, body.oled select, body.oled textarea{background:var(--field); border-color:#2a2a33;}
+  body.oled input, body.oled select, body.oled textarea{background-color:var(--field); border-color:#2a2a33;}
   body.oled input:focus, body.oled select:focus, body.oled textarea:focus{border-color:#5c5c6e; outline:1px solid #3d3d4a;}
   body.oled .card-head .collapse-arrow{background:var(--field);}
   body.oled .sum-btn{background:var(--card);}
@@ -220,12 +224,21 @@
     input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select{height:42px; min-height:42px;}
     textarea{min-height:76px;}
     input[type="date"], input[type="time"], select{min-width:0 !important; width:100% !important; overflow:hidden;}
-    /* iPhone/Android ka native date/time box apni height fix kar deta hai — usay 42px par lock karein */
-    input[type="date"], input[type="time"]{height:42px !important; min-height:42px !important; max-height:42px !important; line-height:20px; padding-top:0; padding-bottom:0;}
+    /* Date/time ka native look hata kar normal input jaisa fix size — har phone par bilkul same */
+    input[type="date"], input[type="time"]{
+      -webkit-appearance:none; appearance:none;
+      height:42px !important; min-height:42px !important; max-height:42px !important;
+      padding:10px 34px 10px 12px !important; line-height:20px;
+      background-repeat:no-repeat; background-position:right 10px center; background-size:17px 17px;
+    }
+    input[type="date"]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='16' rx='2'/><path d='M8 3v4M16 3v4M3 10h18'/></svg>");}
+    input[type="time"]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/></svg>");}
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator{display:none !important;}
     input[type="date"]::-webkit-date-and-time-value,
     input[type="time"]::-webkit-date-and-time-value{line-height:20px; min-height:20px; text-align:left;}
-    input[type="date"]::-webkit-calendar-picker-indicator,
-    input[type="time"]::-webkit-calendar-picker-indicator{height:16px; width:16px; margin-left:2px; padding:0;}
+    /* Invoice ki compact 3-column date/time rows — jagah bachane ke liye icon hata dein */
+    .row.dt-row input[type="date"], .row.dt-row input[type="time"]{padding:10px 6px !important; background-image:none !important;}
     /* Date/time rows: 3 boxes ek line par, teeno columns ke label/input/hint align */
     .row.dt-row{grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:6px;}
     .row.dt-row input{font-size:12.5px; padding-left:7px; padding-right:3px;}
@@ -252,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.80</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.81</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -305,7 +318,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.80";
+var APP_VER = "1.81";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -2034,7 +2047,7 @@ function viewInvoice(){
         + '<div><label>Departure time</label><input type="time" id="invTime"><div class="hint"></div></div>'
         + '<div><label>Arrival time (optional)</label><input type="time" id="invArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>';
   html += '<div style="margin-top:8px;"><button type="button" class="btn small" id="invCxToggle">＋ Add connection / layover (optional)</button>'
-        + '<div id="invCxWrap" style="display:none; border:1px dashed var(--line); border-radius:10px; padding:9px; margin-top:6px;">'
+        + '<div id="invCxWrap" class="inv-sub" style="display:none; border:1px dashed var(--line); border-radius:10px; padding:9px; margin-top:6px;">'
         + '<div class="row" style="margin-top:0; align-items:flex-end;"><div><label>Connecting from (airport)</label><input id="invCxFrom" placeholder="e.g. DXB — where you change planes" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
         + '<div class="row dt-row" style="margin-top:8px; align-items:flex-start;"><div><label>Connection date</label><input type="date" id="invCxDate"><div class="hint">Follows the departure date — change only if next day.</div></div>'
         + '<div><label>First flight arrival (at connection)</label><input type="time" id="invCxArr1"><div class="hint">Layover is calculated from this.</div></div>'
@@ -2042,7 +2055,7 @@ function viewInvoice(){
         + '<div class="hint">Second leg flies from the connection airport to the main destination — its arrival time is the main arrival. Both legs and the layover print like a real airline itinerary.</div>'
         + '</div></div>';
   html += '</div>';
-  html += '<div id="invRetWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
+  html += '<div id="invRetWrap" class="inv-sub" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🔁 Return flight</div>'
         + '<div class="row"><div><label>From (airport)</label><input id="invRetFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted);">→</div>'
@@ -2051,7 +2064,7 @@ function viewInvoice(){
         + '<div><label>Return time</label><input type="time" id="invRetTime"><div class="hint"></div></div>'
         + '<div><label>Arrival time (optional)</label><input type="time" id="invRetArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>'
         + '<div style="margin-top:8px;"><button type="button" class="btn small" id="invRetCxToggle">＋ Add return connection / layover (optional)</button>'
-        + '<div id="invRetCxWrap" style="display:none; border:1px dashed var(--line); border-radius:10px; padding:9px; margin-top:6px;">'
+        + '<div id="invRetCxWrap" class="inv-sub" style="display:none; border:1px dashed var(--line); border-radius:10px; padding:9px; margin-top:6px;">'
         + '<div class="row" style="margin-top:0; align-items:flex-end;"><div><label>Connecting from (airport)</label><input id="invRetCxFrom" placeholder="e.g. DXB — where you change planes" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
         + '<div class="row dt-row" style="margin-top:8px; align-items:flex-start;"><div><label>Connection date</label><input type="date" id="invRetCxDate"><div class="hint">Follows the return date — change only if next day.</div></div>'
         + '<div><label>First flight arrival (at connection)</label><input type="time" id="invRetCxArr1"><div class="hint">Layover is calculated from this.</div></div>'
