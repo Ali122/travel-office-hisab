@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.84</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.85</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -319,7 +319,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.84";
+var APP_VER = "1.85";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -3365,6 +3365,120 @@ function bindClientSuggest(inputId, fillNicId){
   inp.addEventListener("input", openDrop);
   inp.addEventListener("blur", function(){ setTimeout(closeDrop, 150); });
 }
+/* NIC / Passport scan — OCR sirf browser mein chalta he, tasveer save nahi hoti */
+function loadTesseract(){
+  if(!clOcrLib) clOcrLib = new Promise(function(resolve, reject){
+    if(window.Tesseract) return resolve(window.Tesseract);
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload = function(){ resolve(window.Tesseract); };
+    s.onerror = function(){ reject(new Error("tesseract load failed")); };
+    document.head.appendChild(s);
+  });
+  return clOcrLib;
+}
+var clOcrLib = null;
+function clDownscale(img, maxW){
+  var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  var k = Math.min(1, maxW / w);
+  var cv = document.createElement("canvas");
+  cv.width = Math.round(w * k);
+  cv.height = Math.round(h * k);
+  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  return cv;
+}
+function clCropBottom(canvas){
+  var h = Math.max(40, Math.floor(canvas.height * 0.3));
+  var cv = document.createElement("canvas");
+  cv.width = canvas.width * 2;
+  cv.height = h * 2;
+  var ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(canvas, 0, canvas.height - h, canvas.width, h, 0, 0, cv.width, cv.height);
+  return cv;
+}
+/* Passport ki MRZ lines (P<PKSURNAME<<GIVEN... / PKNUM...<) se details */
+function clParseMrzText(raw){
+  var lines = String(raw||"").toUpperCase().split(/\n+/).map(function(s){ return s.replace(/[^A-Z0-9<]/g,""); })
+    .filter(function(s){ return s.length >= 20 && s.indexOf("<<") >= 0; });
+  var nameLine = null, infoLine = null;
+  for(var i = 0; i < lines.length; i++){
+    if(lines[i].charAt(0) === "P" && lines[i].charAt(1) === "<"){
+      nameLine = lines[i];
+      if(lines[i+1]){ infoLine = lines[i+1]; break; }
+    }
+  }
+  if(!nameLine || !infoLine) return null;
+  var p1 = nameLine.slice(2).split("<<");
+  var surname = (p1[0]||"").replace(/</g," ").trim();
+  var given = (p1[1]||"").replace(/</g," ").trim();
+  function ymd(s, always20){
+    if(!/^\d{6}$/.test(s)) return "";
+    var yy = Number(s.slice(0,2)), mm = Number(s.slice(2,4)), dd = Number(s.slice(4,6));
+    if(mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
+    var y = always20 ? (yy + 2000) : (yy >= 30 ? yy + 1900 : yy + 2000);
+    return y + "-" + String(mm).padStart(2,"0") + "-" + String(dd).padStart(2,"0");
+  }
+  var passportNo = infoLine.slice(0,9).replace(/</g,"");
+  if(!/^[A-Z0-9]{6,9}$/.test(passportNo)) return null;
+  return { name:(given + " " + surname).trim(), passportNo:passportNo, passExp:ymd(infoLine.slice(21,27), true) };
+}
+/* CNIC ka number pattern: 42101-1234567-1 */
+function clCnicFrom(text){
+  var t = String(text||"").replace(/[–—]/g,"-");
+  var m = t.match(/(\d{5})[-\s](\d{7})[-\s](\d)/);
+  return m ? (m[1]+"-"+m[2]+"-"+m[3]) : "";
+}
+function clScanFile(file){
+  var stEl = document.getElementById("clScanStatus");
+  if(!file) return;
+  function msg(t){ if(stEl) stEl.textContent = t; }
+  msg("Tasveer load ho rahi he…");
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function(){
+    var base = clDownscale(img, 1400);
+    URL.revokeObjectURL(url); // tasveer memory se bhi nikaal di — kahin save nahi hoti
+    msg("OCR engine load ho raha he… (pehli dafa thora waqt lagta he)");
+    loadTesseract()
+      .then(function(T){ return T.createWorker("eng"); })
+      .then(function(w){
+        msg("Parha ja raha he… (10-40 second)");
+        return w.recognize(base).then(function(res){
+          var text = (res && res.data && res.data.text) || "";
+          var mrz = clParseMrzText(text);
+          if(mrz && mrz.passportNo){ w.terminate(); return { mrz:mrz, nic:null }; }
+          var nic = clCnicFrom(text);
+          if(nic){ w.terminate(); return { mrz:null, nic:nic }; }
+          // Passport ki MRZ poori tasveer se na mile to neeche wala hissa bara kar ke dobara parhein
+          var crop = clCropBottom(base);
+          return w.recognize(crop).then(function(res2){
+            w.terminate();
+            var mrz2 = clParseMrzText((res2 && res2.data && res2.data.text) || "");
+            return { mrz:(mrz2 && mrz2.passportNo) ? mrz2 : null, nic:null };
+          });
+        });
+      })
+      .then(function(r){
+        if(r.mrz){
+          if(r.mrz.name) document.getElementById("clName").value = r.mrz.name.toUpperCase();
+          document.getElementById("clNic").value = r.mrz.passportNo;
+          if(r.mrz.passExp) document.getElementById("clPassExp").value = r.mrz.passExp;
+          msg("✓ Passport se parha: " + r.mrz.name + " · " + r.mrz.passportNo + " · expiry " + dmy(r.mrz.passExp) + ". Ghalat ho to theek kar dein, phone khud likhein.");
+        } else if(r.nic){
+          document.getElementById("clNic").value = r.nic;
+          msg("✓ NIC number parha: " + r.nic + ". Naam aur phone check/likh lein.");
+        } else {
+          msg("⚠ Tasveer se details nahi parh sake — manually likh dein. (Tasveer save nahi hui)");
+        }
+      })
+      .catch(function(){
+        msg("⚠ OCR load nahi ho saka (internet check karein). Tasveer save nahi hui — details khud likhein.");
+      });
+  };
+  img.onerror = function(){ URL.revokeObjectURL(url); msg("⚠ Tasveer khuli nahi. Dobara koshish karein."); };
+  img.src = url;
+}
 function viewClients(){
   var cs = (S.clients||[]).slice().sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
   var html = "";
@@ -3375,6 +3489,14 @@ function viewClients(){
   html += '<div class="row" style="margin-top:8px;"><div><label>NIC / Passport no</label><input id="clNic" style="text-transform:uppercase;" placeholder="42101-1234567-1 / AB1234567"></div>'
         + '<div><label>Passport expiry</label><input type="date" id="clPassExp"><div class="hint" style="margin-top:2px;">6 mahine se kam baqi ho to warning milegi.</div></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Note</label><input id="clNote" placeholder="e.g. office client, sirf Umrah"></div></div>';
+  html += '<div style="margin-top:10px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px;">'
+        + '<div style="font-size:12.5px;"><b>📷 NIC / Passport scan</b> — tasveer sirf parhne ke liye he, save nahi hoti. Passport ki MRZ lines (neeche wali 2 lines) se naam, number aur expiry khud bhar jata he.</div>'
+        + '<div style="display:flex; gap:8px; margin-top:6px; align-items:center;">'
+        + '<button class="btn small" id="clScanBtn">📷 Scan NIC / Passport</button>'
+        + '<input type="file" id="clScan" accept="image/*" style="display:none;">'
+        + '</div>'
+        + '<div class="hint" id="clScanStatus" style="margin-top:6px; font-weight:600;"></div>'
+        + '</div>';
   html += '<div style="display:flex; gap:8px; margin-top:6px;">'
         + '<button class="btn primary" id="clSave" style="flex:2;">'+(clEditId ? "Save changes" : "Add client")+'</button>'
         + (clEditId ? '<button class="btn" id="clCancel" style="flex:1;">Cancel</button>' : '');
@@ -4869,6 +4991,11 @@ function bind(){
   // Client name likhne par purane clients ki suggestion (NIC khud bhar jata he)
   bindClientSuggest("tkClient", "tkNic");
   bindClientSuggest("invClient", "invNic1");
+  // ===== NIC / Passport scan =====
+  var cScanBtn = document.getElementById("clScanBtn");
+  var cScan = document.getElementById("clScan");
+  if(cScanBtn && cScan) cScanBtn.onclick = function(){ cScan.value = ""; cScan.click(); };
+  if(cScan) cScan.onchange = function(){ if(this.files && this.files[0]) clScanFile(this.files[0]); };
 }
 
 migrateAutoQarza();
