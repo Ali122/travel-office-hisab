@@ -285,7 +285,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.74";
+var APP_VER = "1.75";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1636,20 +1636,16 @@ function invToCache(d){
     invPkg: d.pkg || 0,
     invPaid: d.paid || 0,
     invCxFrom: (d.out && d.out.cx && d.out.cx.from) || "",
-    invCxTo: (d.out && d.out.cx && d.out.cx.to) || "",
     invCxDate: (d.out && d.out.cx && d.out.cx.date) || "",
     invCxTime: (d.out && d.out.cx && d.out.cx.time) || "",
-    invCxArr: (d.out && d.out.cx && d.out.cx.arr) || "",
     invRetFrom: (d.ret && d.ret.from) || "",
     invRetTo: (d.ret && d.ret.to) || "",
     invRetDate: (d.ret && d.ret.date) || "",
     invRetTime: (d.ret && d.ret.time) || "",
     invRetArr: (d.ret && d.ret.arr) || "",
     invRetCxFrom: (d.ret && d.ret.cx && d.ret.cx.from) || "",
-    invRetCxTo: (d.ret && d.ret.cx && d.ret.cx.to) || "",
     invRetCxDate: (d.ret && d.ret.cx && d.ret.cx.date) || "",
-    invRetCxTime: (d.ret && d.ret.cx && d.ret.cx.time) || "",
-    invRetCxArr: (d.ret && d.ret.cx && d.ret.cx.arr) || ""
+    invRetCxTime: (d.ret && d.ret.cx && d.ret.cx.time) || ""
   };
 }
 function openInvoiceForSale(id){
@@ -1676,13 +1672,13 @@ function invTimeTxt(t){
 }
 var INV_NR_ALWAYS = ["9P","G9"];
 function invAlwaysNR(code){ return INV_NR_ALWAYS.indexOf(String(code||"").toUpperCase()) >= 0; }
-function invFlightBlock(leg, title){
+function invFlightBlock(leg, title, seats){
   if(!leg || !leg.from || !leg.to) return "";
   var cx = (leg.cx && leg.cx.from && leg.cx.to) ? leg.cx : null;
   var air = leg.air ? invAirline(leg.air) : null;
   function legDateTxt(l){
-    if(l.date) return dmyLong(l.date);
-    if(l.dateTxt) return dmyLong(isoDate(l.dateTxt) || l.dateTxt);
+    if(l.date) return dmy(l.date);
+    if(l.dateTxt) return dmy(isoDate(l.dateTxt) || l.dateTxt);
     return "";
   }
   function legTable(l){
@@ -1745,6 +1741,13 @@ function invFlightBlock(leg, title){
        + '<div style="flex:1; border-top:1px dashed #cbd5e1;"></div>'
        + '</div>';
     h += legTable(cx);
+  }
+  var seatList = (seats || []).map(function(s){ return String(s || "").trim().toUpperCase(); }).filter(Boolean);
+  if(seatList.length){
+    h += '<div style="margin-top:9px; padding-top:7px; border-top:1px solid #f1f5f9; display:flex; gap:8px; align-items:baseline;">'
+       + '<span style="font-size:9.5px; font-weight:800; letter-spacing:1.4px; color:#94a3b8;">'+(seatList.length > 1 ? "SEATS" : "SEAT")+'</span>'
+       + '<span style="font-size:11.5px; font-weight:800; color:#334155; letter-spacing:0.6px;">'+esc(seatList.join(" &middot; "))+'</span>'
+       + '</div>';
   }
   if(leg.meal){
     h += '<div style="margin-top:9px; text-align:center;">'
@@ -1836,9 +1839,11 @@ function invHtml(d, bw){
     }
     h += '</div>';
   } else {
+    var outSeats = (d.paxSeats && d.paxSeats.length) ? d.paxSeats : (d.seat ? [d.seat] : []);
+    var retSeats = (d.paxRetSeats && d.paxRetSeats.length) ? d.paxRetSeats : (d.retSeat ? [d.retSeat] : []);
     h += '<div style="text-align:center; margin-top:8px;"><span style="display:inline-block; background:'+pnrBg+'; border:'+pnrBrd+'; border-radius:10px; padding:6px 18px; font-weight:800; font-size:22px; letter-spacing:3px; color:'+pnrTx+';">'+up(d.pnr)+'</span></div>'
-    + invFlightBlock(d.out, "DEPARTURE FLIGHT")
-    + invFlightBlock(d.ret, "RETURN FLIGHT");
+    + invFlightBlock(d.out, "DEPARTURE FLIGHT", outSeats)
+    + invFlightBlock(d.ret, "RETURN FLIGHT", retSeats);
     // Passengers
     h += '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-top:12px;">'
        + '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:8px;">PASSENGERS ('+d.pax+')</div>';
@@ -1846,20 +1851,16 @@ function invHtml(d, bw){
       h += '<table style="width:100%; border-collapse:collapse; font-size:13.5px;">'
          + invRow("Passenger", d.name)
          + invRowAlways("NIC / Passport", d.nic)
-         + (d.seat ? invRow(d.trip === "round" ? "Outbound seat" : "Seat", d.seat) : "")
-         + (d.retSeat ? invRow("Return seat", d.retSeat) : "")
          + (d.tkNo ? invRowAlways("Ticket number", d.tkNo) : "")
          + '</table>';
     } else {
-      var names2 = (d.paxNames||[]), nics2 = (d.paxNics||[]), seats = (d.paxSeats||[]), rseats = (d.paxRetSeats||[]);
-      var n2 = Math.max(names2.length, nics2.length, seats.length, rseats.length);
+      var names2 = (d.paxNames||[]), nics2 = (d.paxNics||[]);
+      var n2 = Math.max(names2.length, nics2.length);
       h += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
       for(var j = 0; j < n2; j++){
-        var nm2 = names2[j]||"—", idn2 = nics2[j]||"—", stn = seats[j]||"", rst = rseats[j]||"";
+        var nm2 = names2[j]||"—", idn2 = nics2[j]||"—";
         h += '<tr><td style="padding:6px 4px; border-bottom:1px solid #f3f4f6; text-align:left; white-space:normal;"><b>'+up(nm2)+'</b>'
            + '<div style="font-size:11.5px; color:#64748b;">'+up(idn2)+'</div>'
-           + (stn ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">'+(d.trip === "round" ? "Outbound seat " : "Seat ")+up(stn)+'</div>' : '')
-           + (rst ? '<div style="font-size:11.5px; color:#2563eb; font-weight:700;">Return seat '+up(rst)+'</div>' : '')
            + '</td></tr>';
       }
       h += '</table>';
@@ -1997,13 +1998,10 @@ function viewInvoice(){
         + '<div><label>Arrival time (optional)</label><input type="time" id="invArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>';
   html += '<div style="margin-top:8px;"><button type="button" class="btn small" id="invCxToggle">＋ Add connection / layover (optional)</button>'
         + '<div id="invCxWrap" style="display:none; border:1px dashed var(--line); border-radius:10px; padding:9px; margin-top:6px;">'
-        + '<div class="row" style="margin-top:0; align-items:flex-end;"><div><label>Connecting from (airport)</label><input id="invCxFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
-        + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
-        + '<div><label>Connecting to (airport)</label><input id="invCxTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
-        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Connection date</label><input type="date" id="invCxDate"></div>'
-        + '<div><label>Departure time</label><input type="time" id="invCxTime"></div>'
-        + '<div><label>Arrival time (optional)</label><input type="time" id="invCxArr"></div></div>'
-        + '<div class="hint">Second flight of the same journey — the invoice will print both legs with the layover time.</div>'
+        + '<div class="row" style="margin-top:0; align-items:flex-end;"><div><label>Connecting from (airport)</label><input id="invCxFrom" placeholder="e.g. DXB — where you change planes" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
+        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Connection date</label><input type="date" id="invCxDate"><div class="hint">Follows the departure date — change only if the connection is next day.</div></div>'
+        + '<div><label>Connection departure time</label><input type="time" id="invCxTime"></div></div>'
+        + '<div class="hint">Destination and arrival time are taken from the main flight. Both legs and the layover time print on the invoice.</div>'
         + '</div></div>';
   html += '</div>';
   html += '<div id="invRetWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
@@ -2016,13 +2014,10 @@ function viewInvoice(){
         + '<div><label>Arrival time (optional)</label><input type="time" id="invRetArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>'
         + '<div style="margin-top:8px;"><button type="button" class="btn small" id="invRetCxToggle">＋ Add return connection / layover (optional)</button>'
         + '<div id="invRetCxWrap" style="display:none; border:1px dashed var(--line); border-radius:10px; padding:9px; margin-top:6px;">'
-        + '<div class="row" style="margin-top:0; align-items:flex-end;"><div><label>Connecting from (airport)</label><input id="invRetCxFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
-        + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
-        + '<div><label>Connecting to (airport)</label><input id="invRetCxTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
-        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Connection date</label><input type="date" id="invRetCxDate"></div>'
-        + '<div><label>Departure time</label><input type="time" id="invRetCxTime"></div>'
-        + '<div><label>Arrival time (optional)</label><input type="time" id="invRetCxArr"></div></div>'
-        + '<div class="hint">Second flight of the return journey — both legs and the layover will print on the invoice.</div>'
+        + '<div class="row" style="margin-top:0; align-items:flex-end;"><div><label>Connecting from (airport)</label><input id="invRetCxFrom" placeholder="e.g. DXB — where you change planes" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
+        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Connection date</label><input type="date" id="invRetCxDate"><div class="hint">Follows the return date — change only if the connection is next day.</div></div>'
+        + '<div><label>Connection departure time</label><input type="time" id="invRetCxTime"></div></div>'
+        + '<div class="hint">Destination and arrival time are taken from the return flight. Both legs and the layover time print on the invoice.</div>'
         + '</div></div></div>';
   html += '<div class="row umrah-hide" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
         + '<div><label>Checked-in bag (kg)</label><input type="number" id="invBag" min="0" value="0" inputmode="decimal"><div class="hint">0 = None (default)</div></div></div>';
@@ -2147,21 +2142,39 @@ function invCxSet(which, open){
     : "＋ Add " + (isOut ? "" : "return ") + "connection / layover (optional)";
 }
 function invCxAuto(){
-  [["out","invCx"],["ret","invRetCx"]].forEach(function(p){
-    var f = document.getElementById(p[1]+"From"), t = document.getElementById(p[1]+"To");
-    if((f && String(f.value||"").trim()) || (t && String(t.value||"").trim())) invCxSet(p[0], true);
+  [["out","invCx","invDate"],["ret","invRetCx","invRetDate"]].forEach(function(p){
+    var f = document.getElementById(p[1]+"From"), cd = document.getElementById(p[1]+"Date"), md = document.getElementById(p[2]);
+    if(f && String(f.value||"").trim()) invCxSet(p[0], true);
+    if(cd){
+      if(!cd.value && md && md.value) cd.value = md.value;
+      else if(cd.value && md && md.value && cd.value !== md.value) cd.setAttribute("data-manual","1");
+    }
   });
 }
-function readInvCx(prefix){
+/* Connection date follows the main departure/return date unless the user changed it */
+function invCxSyncDate(which){
+  var pre = which === "out" ? "invCx" : "invRetCx";
+  var md = document.getElementById(which === "out" ? "invDate" : "invRetDate");
+  var cd = document.getElementById(pre + "Date");
+  if(!md || !cd) return;
+  if(cd.getAttribute("data-manual") === "1") return;
+  cd.value = md.value || "";
+}
+function readInvCx(prefix, mainLeg){
   var from = String(((document.getElementById(prefix+"From")||{}).value||"")).trim().toUpperCase();
-  var to   = String(((document.getElementById(prefix+"To")||{}).value||"")).trim().toUpperCase();
-  if(!from && !to) return null;
-  if(!from || !to){ alert("Please fill both airports of the connecting flight."); return undefined; }
+  if(!from) return null;
   var dt = readDate(prefix+"Date", false); if(dt === null) return undefined;
   var tm = readTime(prefix+"Time"); if(tm === null) return undefined;
-  var ar = readTime(prefix+"Arr"); if(ar === null) return undefined;
-  return { from:from, to:to, date:dt||"", time:tm, arr:ar,
-           dateTxt: dt ? dmyLong(dt) : "", timeTxt: invTimeTxt(tm), arrTxt: invTimeTxt(ar) };
+  if(!tm){
+    alert("Please enter the connecting flight's departure time.");
+    var te = document.getElementById(prefix+"Time"); if(te) te.focus();
+    return undefined;
+  }
+  var to = (mainLeg && mainLeg.to) || "";
+  var arr = (mainLeg && mainLeg.arr) || "";
+  var date = dt || (mainLeg && mainLeg.date) || "";
+  return { from:from, to:to, date:date, time:tm, arr:arr,
+           dateTxt: date ? dmy(date) : "", timeTxt: invTimeTxt(tm), arrTxt: invTimeTxt(arr) };
 }
 function printInvoice(){
   if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
@@ -3683,13 +3696,13 @@ function bind(){
       if(!d.from || !d.to){ alert("Please enter both From and To airports."); return; }
     } else if(!d.name){ alert("Passenger name is required."); return; }
     var dt = new Date(d.date + "T00:00:00");
-    d.dateTxt = d.date ? dmyLong(d.date) : "";
+    d.dateTxt = d.date ? dmy(d.date) : "";
     d.timeTxt = invTimeTxt(d.time);
     d.arrTxt = invTimeTxt(d.arr);
     if(invAlwaysNR(d.air)) d.nr = true;
     d.out = { from:d.from, to:d.to, date:d.date, time:d.time, arr:invAr, dateTxt:d.dateTxt, timeTxt:d.timeTxt, arrTxt:d.arrTxt, meal:d.meal, air:d.air };
     if(d.docType !== "umrah"){
-      var ocx = readInvCx("invCx");
+      var ocx = readInvCx("invCx", d.out);
       if(ocx === undefined) return;
       if(ocx) d.out.cx = ocx;
     }
@@ -3705,12 +3718,12 @@ function bind(){
       };
       if(d.ret.date){
         var rt = new Date(d.ret.date + "T00:00:00");
-        d.ret.dateTxt = dmyLong(d.ret.date);
+        d.ret.dateTxt = dmy(d.ret.date);
       }
       d.ret.timeTxt = invTimeTxt(d.ret.time);
       d.ret.arrTxt = invTimeTxt(d.retArr);
       if(!d.ret.from || !d.ret.to){ alert("Please enter the return airports too (or choose One-way)."); return; }
-      var rcx = readInvCx("invRetCx");
+      var rcx = readInvCx("invRetCx", d.ret);
       if(rcx === undefined) return;
       if(rcx) d.ret.cx = rcx;
     } else { d.ret = null; }
@@ -3824,7 +3837,7 @@ function bind(){
     if(px){ try{ px.focus({preventScroll:true}); px.setSelectionRange(px.value.length, px.value.length); }catch(e){ px.focus(); } }
   };
   // Airports — country/city/code se dhoondein (internet se list)
-  ["invFrom","invTo","invCxFrom","invCxTo","invRetFrom","invRetTo","invRetCxFrom","invRetCxTo"].forEach(function(id){ bindAirportField(id); });
+  ["invFrom","invTo","invCxFrom","invRetFrom","invRetTo","invRetCxFrom"].forEach(function(id){ bindAirportField(id); });
   // Connecting flight toggles
   [["out","invCx"],["ret","invRetCx"]].forEach(function(p){
     var k = p[0], pre = p[1];
@@ -3834,15 +3847,33 @@ function bind(){
       var w = document.getElementById(pre + "Wrap");
       var open = !(w && w.style.display === "block");
       invCxSet(k, open);
-      if(!open){
+      if(open){
+        var cd0 = document.getElementById(pre + "Date"), md0 = document.getElementById(k === "out" ? "invDate" : "invRetDate");
+        if(cd0 && !cd0.value && md0 && md0.value) cd0.value = md0.value;
+      } else {
         ["From","To","Date","Time","Arr"].forEach(function(s){
           var el = document.getElementById(pre + s);
-          if(el) el.value = "";
+          if(el){ el.value = ""; if(s === "Date") el.removeAttribute("data-manual"); }
         });
       }
     };
   });
   invCxAuto();
+  // Connection date live-follows departure/return date unless user changed it manually
+  var idt = document.getElementById("invDate");
+  if(idt) idt.onchange = function(){ invCxSyncDate("out"); };
+  var rdt = document.getElementById("invRetDate");
+  if(rdt) rdt.onchange = function(){ invCxSyncDate("ret"); };
+  var icd = document.getElementById("invCxDate");
+  if(icd) icd.onchange = function(){
+    var md = document.getElementById("invDate");
+    if(md && this.value === md.value) this.removeAttribute("data-manual"); else this.setAttribute("data-manual","1");
+  };
+  var rcd = document.getElementById("invRetCxDate");
+  if(rcd) rcd.onchange = function(){
+    var md2 = document.getElementById("invRetDate");
+    if(md2 && this.value === md2.value) this.removeAttribute("data-manual"); else this.setAttribute("data-manual","1");
+  };
   var ipb = document.getElementById("invPrintBtn");
   if(ipb) ipb.onclick = printInvoice;
   var isb = document.getElementById("invShareBtn");
