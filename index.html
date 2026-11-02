@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.89</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.90</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -320,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.89";
+var APP_VER = "1.90";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -401,7 +401,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true,
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -3316,7 +3316,7 @@ function loadDocx(){
 }
 function viewPdfToWord(){
   var html = '<div class="card"><h2>📄 PDF to Word (OCR reader)</h2>';
-  html += '<div class="hint">PDF upload karein — andar likha hua text ho to bilkul sahi nikaal legi, aur scanned PDF (tasveer wali) ho to har page ka OCR hoga. Kuch bhi save nahi hota — sab kuch aapke device par. Pehli dafa OCR engine internet se download hota he.</div>';
+  html += '<div class="hint">PDF upload karein — andar likha hua text ho to bilkul sahi nikaal legi, aur scanned PDF (tasveer wali) ho to har page ka OCR hoga. Kuch bhi save nahi hota — sab kuch aapke device par. <b>Behtar scanned result ke liye Settings me free AI OCR key (OCR.space) dalein.</b> Pehli dafa engine internet se download hota he.</div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>OCR ki zubaan (sirf scanned PDF ke liye)</label><select id="pwLang"><option value="eng">English</option><option value="eng+urd">English + Urdu (dheema, bara download)</option></select></div></div>';
   html += '<div style="display:flex; gap:8px; margin-top:8px; align-items:center;"><button class="btn primary small" id="pwPickBtn">📄 PDF chunein</button><input type="file" id="pwFile" accept="application/pdf,.pdf" style="display:none;"></div>';
   html += '<div class="hint" id="pwStatus" style="font-weight:600;"></div>';
@@ -3358,22 +3358,32 @@ async function pwProcess(file){
       pg1.cleanup();
     }
     var ocrCount = needOcr.filter(Boolean).length;
+    var ocrKey = String(S.settings.ocrApiKey||"").trim();
     var worker = null;
-    if(ocrCount > 0){
-      msg("OCR engine load ho raha he… (pehli dafa thora waqt lagta he)");
-      worker = await (await loadTesseract()).createWorker(lang === "eng+urd" ? "eng+urd" : "eng");
-    }
     var result = [];
     for(p = 1; p <= n; p++){
       if(needOcr[p-1]){
-        msg("Page " + p + "/" + n + " — OCR chal raha he… (scanned page)");
         var pg = await pdf.getPage(p);
         var vp = pg.getViewport({ scale: 2 });
         var cv = document.createElement("canvas");
         cv.width = vp.width; cv.height = vp.height;
         await pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
-        var r = await worker.recognize(cv);
-        result.push("— Page " + p + " —\n" + ((r && r.data && r.data.text) || "").trim());
+        var txt2 = null;
+        if(ocrKey){
+          msg("Page " + p + "/" + n + " — AI OCR (OCR.space) se parha ja raha he…");
+          txt2 = await ocrSpaceRecognize(cv, lang);
+        }
+        if(txt2 === null){
+          // AI na ho ya fail ho — offline Tesseract
+          if(!worker){
+            msg("Offline OCR engine load ho raha he… (pehli dafa thora waqt lagta he)");
+            worker = await (await loadTesseract()).createWorker(lang === "eng+urd" ? "eng+urd" : "eng");
+          }
+          msg("Page " + p + "/" + n + " — offline OCR chal raha he…");
+          var r = await worker.recognize(cv);
+          txt2 = (r && r.data && r.data.text) || "";
+        }
+        result.push("— Page " + p + " —\n" + txt2.trim());
       } else {
         result.push("— Page " + p + " —\n" + pagesText[p-1]);
       }
@@ -3656,6 +3666,28 @@ function clCnicDetails(text){
   }
   return res;
 }
+/* AI OCR — OCR.space free API (key Settings me). Key na ho ya fail ho to null — offline Tesseract fallback */
+async function ocrSpaceRecognize(canvas, lang){
+  var key = String((S.settings && S.settings.ocrApiKey) || "").trim();
+  if(!key) return null;
+  try{
+    var fd = new FormData();
+    fd.append("base64Image", canvas.toDataURL("image/jpeg", 0.85));
+    fd.append("apikey", key);
+    fd.append("OCREngine", "2");
+    fd.append("scale", "true");
+    fd.append("detectScale", "true");
+    fd.append("isTable", "false");
+    fd.append("language", (lang === "eng+urd" || lang === "urdu") ? "urdu" : "eng");
+    var r = await fetch("https://api.ocr.space/parse/image", { method: "POST", body: fd });
+    var j = await r.json();
+    if(j && !j.IsErroredOnProcessing && j.ParsedResults && j.ParsedResults.length){
+      var out = j.ParsedResults.map(function(x){ return x.ParsedText || ""; }).join("\n");
+      return out.trim() ? out : null;
+    }
+    return null;
+  }catch(e){ return null; }
+}
 function clScanFile(file){
   var stEl = document.getElementById("clScanStatus");
   if(!file) return;
@@ -3669,7 +3701,7 @@ function clScanFile(file){
     msg("OCR engine load ho raha he… (pehli dafa thora waqt lagta he)");
     loadTesseract()
       .then(function(T){ return T.createWorker("eng"); })
-      .then(function(w){
+      .then(async function(w){
         msg("Parha ja raha he… (10-40 second)");
         // 1) Poori tasveer parhein
         return w.recognize(base).then(function(res){
@@ -3680,9 +3712,18 @@ function clScanFile(file){
           // is liye passport kabhi CNIC fallback nahi karega
           var looksPassport = /passport/i.test(fullText) || fullText.indexOf("P<") >= 0;
           if(!looksPassport){
-            // NIC — MRZ nahi hoti. Pehle photo ko saaf black & white banayein (roshni/shadow/tilt theek hoti he),
-            // phir dono readings (rangi + b&w) mila kar parse karein
+            // NIC — MRZ nahi hoti. Pehle AI OCR (OCR.space, agar key Settings me he) — Tesseract se behtar.
+            // Warna photo saaf black & white bana kar offline Tesseract.
             var bw = clBinarize(base);
+            if(String(S.settings.ocrApiKey||"").trim()){
+              msg("AI OCR (OCR.space) se parha ja raha he…");
+              var aiText = await ocrSpaceRecognize(bw, "urdu");
+              if(aiText){
+                w.terminate();
+                return { mrz:null, cnic:clCnicDetails(aiText + "\n" + fullText), rawText:(aiText + " " + fullText), looksPassport:false };
+              }
+              msg("AI OCR se nahi hua — offline Tesseract se parha ja raha he…");
+            }
             return w.recognize(bw).then(function(resB){
               w.terminate();
               var t2 = (resB && resB.data && resB.data.text) || "";
@@ -3921,6 +3962,8 @@ function viewSettings(){
 
   html += '<div class="card"><h2>'+esc(T("synch"))+'</h2>';
   html += '<label>Sync URL (Google Apps Script web app)</label><input id="setSyncUrl" value="'+esc(st.syncUrl||"")+'" placeholder="https://script.google.com/.../exec">';
+  html += '<label style="margin-top:8px;">🤖 AI OCR key — OCR.space (free, behtar scanned reading)</label><input id="setOcrKey" value="'+esc(st.ocrApiKey||"")+'" placeholder="K h… (ocr.space/ocrapi se free key lein)" autocomplete="off">';
+  html += '<div class="hint">Ye free key NIC/Passport scan aur scanned PDF ke pages ko AI engine se parhne deti he — offline Tesseract se kafi behtar (Urdu bhi). Free key: <b>ocr.space/ocrapi</b> par email se register karein. Khaali chhorein to offline Tesseract hi chalega.</div>';
   html += '<label style="margin-top:8px;">Sheet File ID (data is read from and saved to this file)</label><input id="setImportId" value="'+esc(st.importId||"")+'" placeholder="Enter the File ID of the file for each month">';
   html += '<div class="hint">File ID = the long part of the file URL between /d/ and /edit. Enter the <b>January</b> file ID and save, and the data will come from the January file. If left empty, the app uses the file the script is deployed in — that is why the wrong file&rsquo;s data appeared before.</div>';
   html += '<div class="row" style="margin-top:8px; align-items:center;">'
@@ -4862,6 +4905,8 @@ function bind(){
     var prevUrl = String(S.settings.syncUrl || "");
     S.settings.syncUrl = document.getElementById("setSyncUrl").value.trim();
     S.settings.importId = document.getElementById("setImportId").value.trim();
+    var okEl = document.getElementById("setOcrKey");
+    if(okEl) S.settings.ocrApiKey = okEl.value.trim();
     var newId = extractFileId(S.settings.importId || "");
     var changedFile = (newId !== prevId) || (S.settings.syncUrl !== prevUrl);
     if(changedFile){
