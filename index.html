@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.88</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.89</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -289,6 +289,7 @@
       <button data-tab="clients"><span class="ic">👥</span><span class="lbl">Clients</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
       <button data-tab="lookup"><span class="ic">🔎</span><span class="lbl">PNR Lookup</span></button>
+      <button data-tab="pdftoword"><span class="ic">📄</span><span class="lbl">PDF to Word</span></button>
       <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
       <button data-tab="dash"><span class="ic">📊</span><span class="lbl">Summary</span></button>
       <button data-tab="qarza"><span class="ic">🏦</span><span class="lbl">Loan</span></button>
@@ -319,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.88";
+var APP_VER = "1.89";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -2579,6 +2580,7 @@ function render(){
   else if(currentTab==="invoice") app.innerHTML = viewInvoice();
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
   else if(currentTab==="clients") app.innerHTML = viewClients();
+  else if(currentTab==="pdftoword") app.innerHTML = viewPdfToWord();
   else if(currentTab==="airids") app.innerHTML = viewAirIds();
   else app.innerHTML = viewSettings();
   setupCollapsibleCards(app);
@@ -3281,6 +3283,130 @@ function viewQarza(){
     html += '<div class="card"><div class="empty">'+esc(T("emptynik"))+'</div></div>';
   }
   return html;
+}
+
+/* ================= PDF TO WORD (OCR reader) ================= */
+var pwText = "", pwBusy = false;
+var pwPdfLib = null;
+function loadPdfJs(){
+  if(!pwPdfLib) pwPdfLib = new Promise(function(resolve, reject){
+    if(window.pdfjsLib) return resolve(window.pdfjsLib);
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
+    s.onload = function(){
+      try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js"; }catch(e){}
+      resolve(window.pdfjsLib);
+    };
+    s.onerror = function(){ reject(new Error("pdf.js load nahi hui")); };
+    document.head.appendChild(s);
+  });
+  return pwPdfLib;
+}
+var pwDocxLib = null;
+function loadDocx(){
+  if(!pwDocxLib) pwDocxLib = new Promise(function(resolve, reject){
+    if(window.docx && window.docx.Packer) return resolve(window.docx);
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js";
+    s.onload = function(){ resolve(window.docx); };
+    s.onerror = function(){ reject(new Error("docx library load nahi hui")); };
+    document.head.appendChild(s);
+  });
+  return pwDocxLib;
+}
+function viewPdfToWord(){
+  var html = '<div class="card"><h2>📄 PDF to Word (OCR reader)</h2>';
+  html += '<div class="hint">PDF upload karein — andar likha hua text ho to bilkul sahi nikaal legi, aur scanned PDF (tasveer wali) ho to har page ka OCR hoga. Kuch bhi save nahi hota — sab kuch aapke device par. Pehli dafa OCR engine internet se download hota he.</div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>OCR ki zubaan (sirf scanned PDF ke liye)</label><select id="pwLang"><option value="eng">English</option><option value="eng+urd">English + Urdu (dheema, bara download)</option></select></div></div>';
+  html += '<div style="display:flex; gap:8px; margin-top:8px; align-items:center;"><button class="btn primary small" id="pwPickBtn">📄 PDF chunein</button><input type="file" id="pwFile" accept="application/pdf,.pdf" style="display:none;"></div>';
+  html += '<div class="hint" id="pwStatus" style="font-weight:600;"></div>';
+  html += '<div id="pwBarWrap" style="height:8px; background:var(--line-soft); border-radius:99px; overflow:hidden; margin-top:8px; display:none;"><div id="pwBar" style="height:100%; width:0%; background:var(--blue);"></div></div>';
+  html += '<div id="pwOutWrap" style="display:' + (pwText ? "block" : "none") + '; margin-top:10px;">'
+        + '<textarea id="pwOut" rows="12" spellcheck="false" style="font-size:13px; white-space:pre; overflow:auto;"></textarea>'
+        + '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"><button class="btn green small" id="pwDocBtn">⬇ Download Word (.docx)</button><button class="btn small" id="pwCopyBtn">📋 Copy text</button></div>'
+        + '</div>';
+  html += '</div>';
+  return html;
+}
+async function pwProcess(file){
+  if(pwBusy) return;
+  if(!file || !/\.pdf$/i.test(file.name) && file.type !== "application/pdf"){ alert("Sirf PDF file chunein."); return; }
+  pwBusy = true;
+  var st = document.getElementById("pwStatus");
+  var barWrap = document.getElementById("pwBarWrap");
+  var bar = document.getElementById("pwBar");
+  function msg(t){ if(st) st.textContent = t; }
+  function prog(p){ if(bar) bar.style.width = Math.round(p * 100) + "%"; }
+  msg("PDF khul rahi he…");
+  if(barWrap) barWrap.style.display = "block";
+  prog(0);
+  try{
+    var pdfjs = await loadPdfJs();
+    var buf = await file.arrayBuffer();
+    var pdf = await pdfjs.getDocument({ data: buf }).promise;
+    var n = pdf.numPages;
+    var lang = (document.getElementById("pwLang")||{}).value || "eng";
+    // 1) Har page ki text layer check karo — text wali PDF ho to OCR ki zaroorat hi nahi
+    var pagesText = [], needOcr = [];
+    for(var p = 1; p <= n; p++){
+      msg("Text layer check: page " + p + "/" + n + "…");
+      var pg1 = await pdf.getPage(p);
+      var tc = await pg1.getTextContent();
+      var txt = tc.items.map(function(it){ return it.str + (it.hasEOL ? "\n" : ""); }).join("").trim();
+      pagesText.push(txt);
+      needOcr.push(txt.replace(/\s+/g,"").length < 30);
+      pg1.cleanup();
+    }
+    var ocrCount = needOcr.filter(Boolean).length;
+    var worker = null;
+    if(ocrCount > 0){
+      msg("OCR engine load ho raha he… (pehli dafa thora waqt lagta he)");
+      worker = await (await loadTesseract()).createWorker(lang === "eng+urd" ? "eng+urd" : "eng");
+    }
+    var result = [];
+    for(p = 1; p <= n; p++){
+      if(needOcr[p-1]){
+        msg("Page " + p + "/" + n + " — OCR chal raha he… (scanned page)");
+        var pg = await pdf.getPage(p);
+        var vp = pg.getViewport({ scale: 2 });
+        var cv = document.createElement("canvas");
+        cv.width = vp.width; cv.height = vp.height;
+        await pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+        var r = await worker.recognize(cv);
+        result.push("— Page " + p + " —\n" + ((r && r.data && r.data.text) || "").trim());
+      } else {
+        result.push("— Page " + p + " —\n" + pagesText[p-1]);
+      }
+      prog(p / n);
+    }
+    if(worker) worker.terminate();
+    pwText = result.join("\n\n");
+    var out = document.getElementById("pwOut"); if(out) out.value = pwText;
+    var ow = document.getElementById("pwOutWrap"); if(ow) ow.style.display = "block";
+    var db = document.getElementById("pwDocBtn"), cb = document.getElementById("pwCopyBtn");
+    if(db) db.style.display = ""; if(cb) cb.style.display = "";
+    msg("✓ " + n + " page(s) convert ho gaye." + (ocrCount ? " (" + ocrCount + " scanned page(s) OCR se parhe)" : " (text layer se — bilkul sahi)"));
+  }catch(e){
+    msg("⚠ PDF convert nahi ho saki: " + ((e && e.message) ? e.message : "unknown error") + " — internet check karein.");
+  }
+  pwBusy = false;
+}
+async function pwDownload(){
+  try{
+    var D = await loadDocx();
+    var paras = pwText.split(/\n/).map(function(line){
+      return new D.Paragraph({ children: [ new D.TextRun(line || " ") ] });
+    });
+    var doc = new D.Document({ sections: [{ properties: {}, children: paras }] });
+    var blob = await D.Packer.toBlob(doc);
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "converted-" + dmy(today()).replace(/\//g,"-") + ".docx";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+  }catch(e){
+    alert("Word file nahi ban saki (internet check karein): " + e);
+  }
 }
 
 /* ================= CLIENTS (CUSTOMERS) ================= */
@@ -5116,6 +5242,26 @@ function bind(){
   var cScan = document.getElementById("clScan");
   if(cScanBtn && cScan) cScanBtn.onclick = function(){ cScan.value = ""; cScan.click(); };
   if(cScan) cScan.onchange = function(){ if(this.files && this.files[0]) clScanFile(this.files[0]); };
+  // ===== PDF to Word =====
+  var pwPick = document.getElementById("pwPickBtn");
+  var pwFile = document.getElementById("pwFile");
+  if(pwPick && pwFile) pwPick.onclick = function(){ pwFile.value = ""; pwFile.click(); };
+  if(pwFile) pwFile.onchange = function(){ if(this.files && this.files[0]) pwProcess(this.files[0]); };
+  var pwDocBtn = document.getElementById("pwDocBtn");
+  if(pwDocBtn) pwDocBtn.onclick = function(){ if(pwText) pwDownload(); };
+  var pwCopyBtn = document.getElementById("pwCopyBtn");
+  if(pwCopyBtn) pwCopyBtn.onclick = function(){
+    if(!pwText) return;
+    var done = function(){ var s = document.getElementById("pwStatus"); if(s) s.textContent = "✓ Text copy ho gaya."; };
+    var fallback = function(){
+      var ta = document.createElement("textarea");
+      ta.value = pwText; document.body.appendChild(ta);
+      ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ alert("Copy nahi hua."); }
+      document.body.removeChild(ta);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(pwText).then(done, fallback);
+    else fallback();
+  };
 }
 
 migrateAutoQarza();
