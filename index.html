@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.83</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.84</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -286,6 +286,7 @@
       <button data-tab="tickets" class="active"><span class="ic">🎫</span><span class="lbl">Sales</span></button>
       <button data-tab="exp"><span class="ic">💸</span><span class="lbl">Expenses</span></button>
       <button data-tab="invoice"><span class="ic">🧾</span><span class="lbl">Invoice</span></button>
+      <button data-tab="clients"><span class="ic">👥</span><span class="lbl">Clients</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
       <button data-tab="lookup"><span class="ic">🔎</span><span class="lbl">PNR Lookup</span></button>
       <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
@@ -318,7 +319,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.83";
+var APP_VER = "1.84";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -417,7 +418,8 @@ function blankState(){
     qarzaPaid: [],     // {id, date, amount, note} — qarza ki payments
     bills: [],         // {id, label, amount, due:"2025-09-15", paid:false}
     invoices: [],      // {id, date, savedAt, d} — sale se link na ho to yahan save hoti hai
-    airlineIds: []     // {id, name, login, pass, note} — password protected section
+    airlineIds: [],    // {id, name, login, pass, note} — password protected section
+    clients: []        // {id, name, phone, nic, passExp, note} — Customers tab
   };
 }
 function load(){
@@ -437,6 +439,7 @@ function load(){
     if(!s.charityPaid) s.charityPaid = [];
     if(!s.qarzaPayments) s.qarzaPayments = [];
     if(!s.qarzaPaid) s.qarzaPaid = [];
+    if(!s.clients) s.clients = [];
     ensureSettings(s);
     // One-time: default the invoice print style to black & white (ink saving)
     if(!s.settings.invBWv2){ s.settings.invBW = true; s.settings.invBWv2 = true; }
@@ -2575,6 +2578,7 @@ function render(){
   else if(currentTab==="exp") app.innerHTML = viewExpenses();
   else if(currentTab==="invoice") app.innerHTML = viewInvoice();
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
+  else if(currentTab==="clients") app.innerHTML = viewClients();
   else if(currentTab==="airids") app.innerHTML = viewAirIds();
   else app.innerHTML = viewSettings();
   setupCollapsibleCards(app);
@@ -3279,6 +3283,167 @@ function viewQarza(){
   return html;
 }
 
+/* ================= CLIENTS (CUSTOMERS) ================= */
+var clEditId = null;
+function clDaysLeft(dstr){
+  var m = String(dstr||"").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+  var d0 = new Date(m[1]+"-"+m[2]+"-"+m[3]+"T00:00:00");
+  return Math.round((d0 - new Date()) / 86400000);
+}
+function clPassBadge(c){
+  var dl = clDaysLeft(c.passExp);
+  if(dl === null) return "";
+  if(dl < 0) return '<span class="pill" style="background:var(--red-bg); color:var(--red);">PASSPORT EXPIRED</span>';
+  if(dl <= 180){ var mo = Math.max(1, Math.round(dl/30)); return '<span class="pill pending">Passport: '+mo+' mahine baqi</span>'; }
+  return "";
+}
+function clientStats(name){
+  var key = String(name||"").trim().toLowerCase();
+  var tk = (S.tickets||[]).filter(function(t){ return String(t.client||"").trim().toLowerCase() === key; });
+  var sale = 0, unpaid = 0;
+  tk.forEach(function(t){ sale += Number(t.sale)||0; if(t.paid === false) unpaid++; });
+  var bak = 0;
+  (S.receivables||[]).forEach(function(r){
+    if(String(r.client||"").trim().toLowerCase() === key){
+      var paid = (r.payments||[]).reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
+      bak += Math.max(0, (Number(r.total)||0) - paid);
+    }
+  });
+  return { count:tk.length, sale:sale, unpaid:unpaid, bak:bak };
+}
+/* Sales/Invoice mein naam likhte hi client khud-ba-khud yahan save ho jaye */
+function ensureClientRecord(name, nic){
+  var nm = String(name||"").trim();
+  if(!nm) return;
+  var key = nm.toLowerCase();
+  var list = S.clients || (S.clients = []);
+  for(var i = 0; i < list.length; i++){
+    if(String(list[i].name||"").trim().toLowerCase() === key){
+      if(nic && !String(list[i].nic||"").trim()) list[i].nic = nic;
+      return;
+    }
+  }
+  list.push({ id:uid(), name:nm, phone:"", nic:String(nic||"").trim(), passExp:"", note:"" });
+}
+/* Client name likhte hi purane clients ki suggestions (Sales + Invoice) */
+function bindClientSuggest(inputId, fillNicId){
+  var inp = document.getElementById(inputId);
+  if(!inp) return;
+  var drop = null;
+  function closeDrop(){ if(drop && drop.parentNode) drop.parentNode.removeChild(drop); drop = null; }
+  function openDrop(){
+    var q = String(inp.value||"").trim().toLowerCase();
+    if(q.length < 2){ closeDrop(); return; }
+    var matches = (S.clients||[]).filter(function(c){ return String(c.name||"").trim().toLowerCase().indexOf(q) >= 0; }).slice(0, 6);
+    if(!matches.length){ closeDrop(); return; }
+    closeDrop();
+    drop = document.createElement("div");
+    drop.style.cssText = "position:absolute; border:1px solid var(--line); border-radius:10px; max-height:190px; overflow-y:auto; background:var(--card); color:var(--ink); box-shadow:0 8px 24px rgba(0,0,0,.28); z-index:45;";
+    matches.forEach(function(c){
+      var row = document.createElement("div");
+      row.style.cssText = "padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--line-soft); font-size:13px;";
+      row.innerHTML = "<b>"+esc(c.name||"")+"</b>" + (c.phone ? " <span style='color:var(--muted); font-size:11px;'>"+esc(c.phone)+"</span>" : "");
+      row.onmousedown = function(ev){
+        ev.preventDefault();
+        inp.value = c.name || "";
+        if(fillNicId && c.nic){
+          var n = document.getElementById(fillNicId);
+          if(n && !n.value) n.value = c.nic;
+        }
+        closeDrop();
+      };
+      drop.appendChild(row);
+    });
+    var host = inp.parentNode;
+    if(getComputedStyle(host).position === "static") host.style.position = "relative";
+    host.appendChild(drop);
+    drop.style.top = (inp.offsetTop + inp.offsetHeight + 4) + "px";
+    drop.style.left = inp.offsetLeft + "px";
+    drop.style.width = inp.offsetWidth + "px";
+  }
+  inp.addEventListener("input", openDrop);
+  inp.addEventListener("blur", function(){ setTimeout(closeDrop, 150); });
+}
+function viewClients(){
+  var cs = (S.clients||[]).slice().sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
+  var html = "";
+  // Add / Edit form
+  html += '<div class="card"><h2>'+(clEditId ? "✏ Edit client" : "＋ New client")+'</h2>'
+        + '<div class="row"><div><label>Name *</label><input id="clName" placeholder="Client / passenger name" autocomplete="off"></div>'
+        + '<div><label>Phone / WhatsApp</label><input id="clPhone" inputmode="tel" placeholder="0300-1234567"></div></div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>NIC / Passport no</label><input id="clNic" style="text-transform:uppercase;" placeholder="42101-1234567-1 / AB1234567"></div>'
+        + '<div><label>Passport expiry</label><input type="date" id="clPassExp"><div class="hint" style="margin-top:2px;">6 mahine se kam baqi ho to warning milegi.</div></div></div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Note</label><input id="clNote" placeholder="e.g. office client, sirf Umrah"></div></div>';
+  html += '<div style="display:flex; gap:8px; margin-top:6px;">'
+        + '<button class="btn primary" id="clSave" style="flex:2;">'+(clEditId ? "Save changes" : "Add client")+'</button>'
+        + (clEditId ? '<button class="btn" id="clCancel" style="flex:1;">Cancel</button>' : '');
+  html += '</div></div>';
+  // List
+  var totalBiz = 0, totalBak = 0;
+  var rowsHtml = "";
+  cs.forEach(function(c){
+    var st = clientStats(c.name);
+    totalBiz += st.sale; totalBak += st.bak;
+    var key = String(c.name||"").trim().toLowerCase();
+    var hist = "";
+    var tks = (S.tickets||[]).filter(function(t){ return String(t.client||"").trim().toLowerCase() === key; })
+      .sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
+    if(tks.length){
+      hist += '<div style="margin-top:6px;"><table><tr><th>Date</th><th>Type</th><th>Detail</th><th>Sale</th><th>Pay</th></tr>';
+      tks.forEach(function(t){
+        hist += '<tr><td>'+esc(dmy(t.date))+'</td><td>'+esc(t.kind||"Ticket")+'</td><td>'+esc(t.detail||"—")+'</td><td>'+money(t.sale)+'</td><td>'+(t.paid === false ? '<span class="pill pending">Unpaid</span>' : '<span class="pill done">Paid</span>')+'</td></tr>';
+      });
+      hist += '</table></div>';
+    }
+    var bakList = (S.receivables||[]).filter(function(r){ return String(r.client||"").trim().toLowerCase() === key && r.payments; });
+    if(bakList.length){
+      hist += '<div style="margin-top:6px;"><b style="font-size:12.5px;">Bakaya entries</b>';
+      bakList.forEach(function(r){
+        var paid = (r.payments||[]).reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
+        var rem = Math.max(0, (Number(r.total)||0) - paid);
+        hist += '<div style="font-size:12.5px; color:var(--muted);">'+esc(dmy(r.date))+' — '+money(r.total)+' (baqi '+money(rem)+')</div>';
+      });
+      hist += '</div>';
+    }
+    if(!hist) hist = '<div class="empty" style="padding:8px;">Is client ki koi sale abhi nahi.</div>';
+    rowsHtml += '<div data-search="'+esc(String(c.name||"").toLowerCase()+' '+(c.phone||"")+' '+(c.nic||""))+'" style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">'
+      + '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">'
+      + '<div style="min-width:0;"><b>'+esc(c.name)+'</b> '+clPassBadge(c)
+      + '<div style="font-size:12.5px; color:var(--muted);">'
+      + (c.phone ? esc(c.phone)+' · ' : '')
+      + (c.nic ? esc(c.nic)+' · ' : '')
+      + st.count+' sale(s) · '+money(st.sale)
+      + (st.unpaid ? ' · <b style="color:var(--gold);">'+st.unpaid+' unpaid</b>' : '')
+      + '</div>'
+      + (st.bak ? '<div style="font-size:12.5px; color:var(--red); font-weight:700;">Bakaya: '+money(st.bak)+'</div>' : '')
+      + (c.note ? '<div style="font-size:12px; color:var(--muted);">'+esc(c.note)+'</div>' : '')
+      + '</div>'
+      + '<div style="display:flex; gap:6px; flex:0 0 auto; align-items:center;">'
+      + '<button class="btn small cl-open" data-id="'+esc(c.id)+'">History</button>'
+      + '<button class="btn small cl-edit" data-id="'+esc(c.id)+'">✏</button>'
+      + '<button class="del cl-del" data-id="'+esc(c.id)+'">✕</button>'
+      + '</div></div>'
+      + '<div id="clHist-'+esc(c.id)+'" style="display:none;">'+hist+'</div>'
+      + '</div>';
+  });
+  html += '<div class="card"><h2>All clients ('+cs.length+')</h2>';
+  if(cs.length){
+    html += '<input id="clSearch" placeholder="Naam / phone / NIC se dhoondein…" style="margin-bottom:8px;">'
+          + '<div id="clSearchCount" class="hint" style="display:none; margin:0 0 6px;"></div>';
+    html += '<div style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">'
+          + '<div style="flex:1;"><b>'+money(totalBiz)+'</b><div style="font-size:11.5px; color:var(--muted);">total business (sales)</div></div>'
+          + '<div style="flex:1;"><b>'+money(totalBak)+'</b><div style="font-size:11.5px; color:var(--muted);">bakaya (pending)</div></div>'
+          + '<button class="btn small" id="clCsv">⬇ CSV</button></div>';
+    html += '<div id="clList">'+rowsHtml+'</div>';
+  } else {
+    html += '<div class="empty">Abhi koi client nahi. Sales ya Invoice mein naam likhte hi khud add ho jayega.</div>';
+  }
+  html += '<div class="hint">Client khud-ba-khud judta he: Sales ya Invoice mein naam likho to yahan save ho jata he. Yahan phone, NIC/Passport aur passport ki expiry bhi save kar sakte hain — 6 mahine se kam baqi ho to client par warning nazar aayegi.</div>';
+  html += '</div>';
+  return html;
+}
+
 /* ================= BAKAYA (RECEIVABLES) ================= */
 function viewBakaya(){
   var mf = monthFilterCard("BAK", "Pick a month to see that month&rsquo;s pending amount (unpaid tickets + clients). <b>All months</b> shows everything pending.");
@@ -3726,6 +3891,7 @@ function bind(){
                      detail:((document.getElementById("tkDetail")||{}).value||"").trim(), cost:cost, sale:sale,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
+    ensureClientRecord(client, ((document.getElementById("tkNic")||{}).value||"").trim());
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
     setCardOpen("tkhist", true);
@@ -3818,6 +3984,7 @@ function bind(){
       if(!d.pnr || !d.name){ alert("PNR and passenger name are both required."); return; }
       if(!d.from || !d.to){ alert("Please enter both From and To airports."); return; }
     } else if(!d.name){ alert("Passenger name is required."); return; }
+    ensureClientRecord(d.name, d.nic || (d.paxNics||[])[0] || "");
     var dt = new Date(d.date + "T00:00:00");
     d.dateTxt = d.date ? dmy(d.date) : "";
     d.timeTxt = invTimeTxt(d.time);
@@ -4589,6 +4756,7 @@ function bind(){
         if(!S.charityPaid) S.charityPaid = [];
         if(!S.qarzaPayments) S.qarzaPayments = [];
         if(!S.qarzaPaid) S.qarzaPaid = [];
+        if(!S.clients) S.clients = [];
         // Is device ka sync connection barqarar rakhein (purane backup mein ye fields khaali hoti hain)
         if(!bakUrl && keepUrl) S.settings.syncUrl = keepUrl;
         if(!bakId && keepId) S.settings.importId = keepId;
@@ -4617,6 +4785,90 @@ function bind(){
       }
     }
   };
+  // ===== Clients (customers) tab =====
+  var cSave = document.getElementById("clSave");
+  if(cSave) cSave.onclick = function(){
+    var nm = document.getElementById("clName").value.trim();
+    if(!nm){ alert("Client ka naam likhein."); return; }
+    var list = S.clients || (S.clients = []);
+    var dupe = null;
+    for(var i = 0; i < list.length; i++){
+      if(list[i].id !== clEditId && String(list[i].name||"").trim().toLowerCase() === nm.toLowerCase()) dupe = list[i];
+    }
+    if(dupe){ alert("Yeh naam pehle se mojood he: " + (dupe.name||"")); return; }
+    var rec = { name:nm,
+                phone:document.getElementById("clPhone").value.trim(),
+                nic:document.getElementById("clNic").value.trim(),
+                passExp:document.getElementById("clPassExp").value || "",
+                note:document.getElementById("clNote").value.trim() };
+    if(clEditId){
+      var ex = list.filter(function(x){ return x.id === clEditId; })[0];
+      if(ex){ ex.name = rec.name; ex.phone = rec.phone; ex.nic = rec.nic; ex.passExp = rec.passExp; ex.note = rec.note; }
+      clEditId = null;
+    } else {
+      rec.id = uid();
+      list.push(rec);
+    }
+    save(); render();
+  };
+  var cCancel = document.getElementById("clCancel");
+  if(cCancel) cCancel.onclick = function(){ clEditId = null; render(); };
+  app.querySelectorAll(".cl-edit").forEach(function(b){
+    b.onclick = function(){
+      var c = (S.clients||[]).filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
+      if(!c) return;
+      clEditId = c.id;
+      render();
+      var fill = function(id, v){ var e = document.getElementById(id); if(e) e.value = v || ""; };
+      fill("clName", c.name); fill("clPhone", c.phone); fill("clNic", c.nic); fill("clPassExp", c.passExp); fill("clNote", c.note);
+      var e2 = document.getElementById("clName"); if(e2) e2.focus();
+    };
+  });
+  app.querySelectorAll(".cl-del").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-id");
+      var c = (S.clients||[]).filter(function(x){ return x.id === id; })[0];
+      if(!c) return;
+      if(!confirm("Delete client \""+(c.name||"")+"\"?\n\nUski sales delete nahi hongi — sirf yeh entry hat jayegi.")) return;
+      if(!takeAutoBackup("1 client deleted")){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
+      S.clients = (S.clients||[]).filter(function(x){ return x.id !== id; });
+      if(clEditId === id) clEditId = null;
+      save(); render();
+    };
+  });
+  app.querySelectorAll(".cl-open").forEach(function(b){
+    b.onclick = function(){
+      var d = document.getElementById("clHist-"+b.getAttribute("data-id"));
+      if(!d) return;
+      var open = d.style.display !== "none";
+      d.style.display = open ? "none" : "block";
+      b.textContent = open ? "History" : "Hide";
+    };
+  });
+  var cSearch = document.getElementById("clSearch");
+  if(cSearch) cSearch.oninput = function(){
+    var q = this.value.trim().toLowerCase();
+    var cnt = document.getElementById("clSearchCount");
+    var shown = 0;
+    document.querySelectorAll("#clList [data-search]").forEach(function(r){
+      var ok = !q || (r.getAttribute("data-search")||"").indexOf(q) >= 0;
+      r.style.display = ok ? "" : "none";
+      if(ok) shown++;
+    });
+    if(cnt){ cnt.style.display = q ? "block" : "none"; cnt.textContent = q ? (shown + " result(s) for '" + this.value.trim() + "'") : ""; }
+  };
+  var cCsv = document.getElementById("clCsv");
+  if(cCsv) cCsv.onclick = function(){
+    var rows = [["Name","Phone","NIC/Passport","Passport expiry","Sales","Total sale","Unpaid","Bakaya","Note"]];
+    (S.clients||[]).forEach(function(c){
+      var st = clientStats(c.name);
+      rows.push([c.name||"", c.phone||"", c.nic||"", c.passExp||"", st.count, st.sale, st.unpaid, st.bak, c.note||""]);
+    });
+    downloadCsv(rows, "clients-" + dmy(today()).replace(/\//g,"-") + ".csv");
+  };
+  // Client name likhne par purane clients ki suggestion (NIC khud bhar jata he)
+  bindClientSuggest("tkClient", "tkNic");
+  bindClientSuggest("invClient", "invNic1");
 }
 
 migrateAutoQarza();
