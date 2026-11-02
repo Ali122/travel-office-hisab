@@ -75,7 +75,6 @@
   input[type="checkbox"], input[type="radio"]{width:auto;}
   /* Date/time/select ke native boxes apni intrinsic width se card se bahar na niklein */
   input[type="date"], input[type="time"], select{min-width:0; max-width:100%; overflow:hidden;}
-  input.dt, input.tm{font-variant-numeric:tabular-nums; letter-spacing:.4px;}
   textarea{resize:vertical; min-height:76px; line-height:1.5;}
   input:focus,select:focus{outline:2px solid var(--blue); border-color:var(--blue);}
   .btn{display:inline-block; border:none; border-radius:10px; padding:11px 16px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:10px; transition:background .15s, box-shadow .15s, transform .05s;}
@@ -210,7 +209,7 @@
     .row > *{width:100% !important; max-width:100% !important; min-width:0 !important; flex:0 0 auto !important;}
     .inv-arrow{display:none !important;}
     input,select,textarea{max-width:100%;}
-    input[type="date"], input[type="time"], select{min-width:0 !important; width:100% !important; overflow:hidden;}
+    input[type="date"], input[type="time"], select{min-width:0 !important; width:100% !important; overflow:hidden; min-height:42px;}
     /* Koi bhi box card se bahar na nikle (scroll ki jagah hide) */
     .card{overflow-x:hidden !important;}
     .shell{display:block;}
@@ -233,7 +232,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.72</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.73</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -286,7 +285,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.72";
+var APP_VER = "1.73";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -937,6 +936,12 @@ function money(n){
 }
 function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function dmy(s){ var m = String(s==null?"":s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[3]+"/"+m[2]+"/"+m[1].slice(-2)) : String(s==null?"":s); }
+/* Invoice date style: 16-Nov-2026 */
+function dmyLong(s){
+  var m = String(s==null?"":s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return String(s==null?"":s);
+  return String(Number(m[3])) + "-" + MONTH_NAMES[Number(m[2])-1] + "-" + m[1];
+}
 /* Text date/time inputs (class="dt" / "tm") — user types dd/mm/yy, we store ISO */
 function isoDate(v){
   var s = String(v==null?"":v).trim();
@@ -999,21 +1004,6 @@ function readTime(id){
   }
   return t;
 }
-document.addEventListener("input", function(e){
-  var t = e.target;
-  if(!t || !t.classList || !t.classList.contains("dt")) return;
-  if(/[^\d]/.test(t.value)) return; // slashes already typed/pasted
-  var d = t.value.replace(/\D/g, "").slice(0, 8);
-  t.value = d.length === 8 ? (d.slice(0,2) + "/" + d.slice(2,4) + "/" + d.slice(4))
-          : d.length > 4 ? (d.slice(0,2) + "/" + d.slice(2,4) + "/" + d.slice(4))
-          : d.length > 2 ? (d.slice(0,2) + "/" + d.slice(2)) : d;
-}, true);
-document.addEventListener("blur", function(e){
-  var t = e.target;
-  if(!t || !t.classList) return;
-  if(t.classList.contains("dt")) t.value = fmtDmy(t.value);
-  else if(t.classList.contains("tm")) t.value = fmtTime(t.value);
-}, true);
 function monthLabel(m){ var p=m.split("-"); return MONTH_NAMES[Number(p[1])-1] + " " + p[0]; }
 function esc(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function up(t){ return esc(String(t==null?"":t).toUpperCase()); }
@@ -1680,9 +1670,10 @@ function invFlightBlock(leg, title){
   if(!leg || !leg.from || !leg.to) return "";
   var air = leg.air ? invAirline(leg.air) : null;
   var fromCity = airportCity(leg.from), toCity = airportCity(leg.to);
-  var fromTxt = fromCity ? (fromCity + " (" + leg.from + ")") : leg.from;
-  var toTxt = toCity ? (toCity + " (" + leg.to + ")") : leg.to;
-  var dateTxt = leg.dateTxt || (leg.date ? dmy(leg.date) : "");
+  var fromAir = airportFind(leg.from), toAir = airportFind(leg.to);
+  var fromTxt = fromAir ? (fromAir.name + " (" + leg.from + ")") : (fromCity ? (fromCity + " (" + leg.from + ")") : leg.from);
+  var toTxt = toAir ? (toAir.name + " (" + leg.to + ")") : (toCity ? (toCity + " (" + leg.to + ")") : leg.to);
+  var dateTxt = leg.date ? dmyLong(leg.date) : (leg.dateTxt ? dmyLong(isoDate(leg.dateTxt) || leg.dateTxt) : "");
   var h = '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:11px 14px 12px; margin-top:12px; page-break-inside:avoid;">';
   // Header: leg title on the left, airline logo + name on the right
   h += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:9px;">'
@@ -1714,7 +1705,7 @@ function invFlightBlock(leg, title){
      + '</tr></table>';
   if(leg.meal){
     h += '<div style="margin-top:9px; text-align:center;">'
-       + '<span style="display:inline-block; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:999px; padding:2px 10px; font-size:10.5px; font-weight:800;">&#127869; Meal included</span>'
+       + '<span style="display:inline-block; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; border-radius:999px; padding:2px 10px; font-size:10.5px; font-weight:700;">&#127869; Meal included</span>'
        + '</div>';
   }
   h += '</div>';
@@ -1751,11 +1742,12 @@ function invHtml(d, bw){
     + '<div>'+esc(p1)+'</div>'
     + '<div>'+esc(p2)+'</div>'
     + '</div></div>'
-    + (d.nr ? '<div style="position:absolute; top:112px; right:-26px; transform:rotate(35deg); background:#fff; border:1px solid #94a3b8; color:#475569; font-weight:700; font-size:9px; letter-spacing:1px; padding:3px 30px; pointer-events:none;">NON-REFUNDABLE</div>' : '')
     + '<div style="padding:18px;">'
     + '<div style="display:flex; align-items:center; justify-content:flex-start; gap:10px;">'
     + '<div style="font-weight:800; letter-spacing:2px; font-size:12px; color:#64748b;">'+(d.docType === "umrah" ? "UMRAH PACKAGE — BOOKING CONFIRMATION" : "PNR / BOOKING REFERENCE NO:")+'</div>'
     + (d.trip === "round" && d.docType !== "umrah" ? '<span style="background:'+tripBg+'; color:'+tripTx+'; border:'+tripBrd+'; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800;">Round Trip</span>' : '')
+    + '<div style="flex:1; min-width:0;"></div>'
+    + (d.nr ? '<span style="display:inline-block; transform:rotate(-8deg); background:#fff; border:2px solid #475569; color:#334155; border-radius:4px; padding:3px 12px; font-weight:800; font-size:9px; letter-spacing:1.5px; white-space:nowrap;">NON-REFUNDABLE</span>' : '')
     + '</div>';
   if(d.docType === "umrah"){
     var uPax = Math.max(1, Number(d.pax)||1);
@@ -1804,7 +1796,7 @@ function invHtml(d, bw){
     h += '</div>';
   } else {
     h += '<div style="text-align:center; margin-top:8px;"><span style="display:inline-block; background:'+pnrBg+'; border:'+pnrBrd+'; border-radius:10px; padding:6px 18px; font-weight:800; font-size:22px; letter-spacing:3px; color:'+pnrTx+';">'+up(d.pnr)+'</span></div>'
-    + invFlightBlock(d.out, "OUTBOUND FLIGHT")
+    + invFlightBlock(d.out, "DEPARTURE FLIGHT")
     + invFlightBlock(d.ret, "RETURN FLIGHT");
     // Passengers
     h += '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-top:12px;">'
@@ -1882,7 +1874,7 @@ function viewExpenses(){
   html += '<div class="card inv-form"><h2>Day-to-day Expenses</h2>';
   html += '<div class="hint" style="margin-top:0;">Rozana kharche yahan turant add karein — ye Monthly Accounts ke hisaab mein khud shamil ho jayenge.</div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Month</label><select id="expTabSel">'+opts+'</select></div>'
-        + '<div><label>Date</label><input type="text" class="dt" id="expTabDate" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric"></div></div>';
+        + '<div><label>Date</label><input type="date" id="expTabDate" value="'+today()+'"></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Description</label><input id="expTabDesc" placeholder="e.g. Lunch, taxi, tea" autocomplete="off"></div>'
         + '<div><label>Amount (Rs)</label><input type="number" id="expTabAmt" min="0" inputmode="decimal" placeholder="Amount"></div></div>';
   html += '<button class="btn primary" id="expTabAdd" style="margin-top:8px;">Add Expense</button>';
@@ -1959,18 +1951,18 @@ function viewInvoice(){
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
-  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Departure date</label><input type="text" class="dt" id="invDate" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric"></div>'
-        + '<div><label>Departure time</label><input type="text" class="tm" id="invTime" placeholder="e.g. 14:30"></div>'
-        + '<div><label>Arrival time (optional)</label><input type="text" class="tm" id="invArr" placeholder="e.g. 18:45"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>';
+  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Departure date</label><input type="date" id="invDate" value="'+today()+'"></div>'
+        + '<div><label>Departure time</label><input type="time" id="invTime"></div>'
+        + '<div><label>Arrival time (optional)</label><input type="time" id="invArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>';
   html += '</div>';
   html += '<div id="invRetWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🔁 Return flight</div>'
         + '<div class="row"><div><label>From (airport)</label><input id="invRetFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invRetTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
-        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="text" class="dt" id="invRetDate" placeholder="dd/mm/yy" inputmode="numeric"></div>'
-        + '<div><label>Return time</label><input type="text" class="tm" id="invRetTime" placeholder="e.g. 09:15"></div>'
-        + '<div><label>Arrival time (optional)</label><input type="text" class="tm" id="invRetArr" placeholder="e.g. 12:40"><div class="hint">Local time at destination — leave empty to hide.</div></div></div></div>';
+        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="date" id="invRetDate"></div>'
+        + '<div><label>Return time</label><input type="time" id="invRetTime"></div>'
+        + '<div><label>Arrival time (optional)</label><input type="time" id="invRetArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div></div>';
   html += '<div class="row umrah-hide" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
         + '<div><label>Checked-in bag (kg)</label><input type="number" id="invBag" min="0" value="0" inputmode="decimal"><div class="hint">0 = None (default)</div></div></div>';
   html += '<div class="row umrah-hide" style="margin-top:8px; align-items:center;">'
@@ -2388,7 +2380,7 @@ function render(){
       var x = document.getElementById(id);
       if(!x) return;
       var pv = pf[id];
-      if(id === "invDate" || id === "invRetDate") pv = dmy(pv);
+      
       if(x.type === "checkbox") x.checked = !!pf[id];
       else x.value = pv;
     });
@@ -2605,7 +2597,7 @@ function viewDash(){
   if(mf.cur !== "all") chL = chL.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
   chL.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
   html += '<div class="card"><h2>'+esc(T("chled"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
-  html += '<div class="row"><input id="chAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="chDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="chAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="chDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="chNote" placeholder="'+esc(T("thw"))+'" style="margin-top:8px;">';
   html += '<button class="btn small primary" id="addCh" style="width:100%;">'+esc(T("savek"))+'</button>';
   if(chL.length){
@@ -2738,7 +2730,7 @@ function viewTickets(){
 
   // Add New Sale — sab se oper
   html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
-  html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric">';
+  html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
@@ -2901,7 +2893,7 @@ function viewPartner(which){
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("nikrec"))+'</h2>';
-  html += '<div class="row"><input id="drawAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="drawDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="drawAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="drawDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="drawNote" placeholder="'+esc(T("noteph"))+'" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addDraw" data-p="'+key+'">'+esc(T("savek"))+'</button></div>';
 
@@ -2956,7 +2948,7 @@ function viewAbbu(){
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("abbunik"))+'</h2>';
-  html += '<div class="row"><input id="abbuAmt" type="number" min="0" inputmode="decimal" placeholder="Amount (Rs)"><input id="abbuDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="abbuAmt" type="number" min="0" inputmode="decimal" placeholder="Amount (Rs)"><input id="abbuDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="abbuNote" placeholder="Reason / note" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addAbbu">Save</button></div>';
 
@@ -3029,7 +3021,7 @@ function viewWaseem(){
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("payrec"))+'</h2>';
-  html += '<div class="row"><select id="wsKind" style="max-width:200px;"><option value="commission">'+esc(T("kcomm"))+'</option><option value="salary">'+esc(T("ksal"))+'</option></select><input id="wsAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="wsDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
+  html += '<div class="row"><select id="wsKind" style="max-width:200px;"><option value="commission">'+esc(T("kcomm"))+'</option><option value="salary">'+esc(T("ksal"))+'</option></select><input id="wsAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="wsDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="wsNote" placeholder="'+esc(T("wsnote"))+'" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addWs">'+esc(T("savek"))+'</button></div>';
 
@@ -3057,7 +3049,7 @@ function viewQarza(){
   html += '</div></div>';
 
   html += '<div class="card"><h2>'+esc(T("qzadd"))+'</h2>';
-  html += '<div class="row"><input id="qzAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="qzDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="qzAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="qzDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   html += '<input id="qzNote" placeholder="'+esc(T("qznote"))+'" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addQz">'+esc(T("savek"))+'</button></div>';
 
@@ -3081,7 +3073,7 @@ function viewBakaya(){
   htmlX += '<div class="card"><h2>'+esc(T("newcl"))+'</h2>';
   htmlX += '<label>'+esc(T("cliname"))+'</label><input id="rvClient" placeholder="Name">';
   htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("tafseel"))+'</label><input id="rvNote" placeholder="e.g. Umrah package booking"></div>';
-  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
+  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   htmlX += '<button class="btn small primary" id="addRv" style="width:100%;">'+esc(T("addk"))+'</button>';
   htmlX += '</div>';
   html += htmlX;
@@ -3131,7 +3123,7 @@ function viewBakaya(){
       if(rem > 0){
         html += '<div class="row" style="margin-top:10px;">';
         html += '<input class="rv-pay" data-id="'+r.id+'" type="number" min="0" inputmode="decimal" placeholder="Payment amount">';
-        html += '<input class="rv-date dt" data-id="'+r.id+'" type="text" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;">';
+        html += '<input class="rv-date" data-id="'+r.id+'" type="date" value="'+today()+'" style="max-width:160px;">';
         html += '<button class="btn small green rv-paybtn" data-id="'+r.id+'" style="flex:0 0 auto; margin-top:0;">Payment received</button>';
         html += '</div>';
       } else {
@@ -3600,7 +3592,7 @@ function bind(){
       if(!d.from || !d.to){ alert("Please enter both From and To airports."); return; }
     } else if(!d.name){ alert("Passenger name is required."); return; }
     var dt = new Date(d.date + "T00:00:00");
-    d.dateTxt = d.date ? dt.toLocaleDateString("en-GB", { day:"2-digit", month:"2-digit", year:"2-digit" }) : "";
+    d.dateTxt = d.date ? dmyLong(d.date) : "";
     d.timeTxt = invTimeTxt(d.time);
     d.arrTxt = invTimeTxt(d.arr);
     if(invAlwaysNR(d.air)) d.nr = true;
@@ -3617,7 +3609,7 @@ function bind(){
       };
       if(d.ret.date){
         var rt = new Date(d.ret.date + "T00:00:00");
-        d.ret.dateTxt = rt.toLocaleDateString("en-GB", { day:"2-digit", month:"2-digit", year:"2-digit" });
+        d.ret.dateTxt = dmyLong(d.ret.date);
       }
       d.ret.timeTxt = invTimeTxt(d.ret.time);
       d.ret.arrTxt = invTimeTxt(d.retArr);
@@ -3774,7 +3766,7 @@ function bind(){
         var cn = document.getElementById("invClient");
         if(cn && !cn.value) cn.value = tk.client || "";
         var dtx = document.getElementById("invDate");
-        if(dtx && tk.date) dtx.value = dmy(tk.date);
+        if(dtx && tk.date) dtx.value = tk.date;
       }
     } else if(stt) stt.textContent = "Not every client needs an invoice — leave this empty if not needed.";
   };
