@@ -75,6 +75,7 @@
   input[type="checkbox"], input[type="radio"]{width:auto;}
   /* Date/time/select ke native boxes apni intrinsic width se card se bahar na niklein */
   input[type="date"], input[type="time"], select{min-width:0; max-width:100%; overflow:hidden;}
+  input.dt, input.tm{font-variant-numeric:tabular-nums; letter-spacing:.4px;}
   textarea{resize:vertical; min-height:76px; line-height:1.5;}
   input:focus,select:focus{outline:2px solid var(--blue); border-color:var(--blue);}
   .btn{display:inline-block; border:none; border-radius:10px; padding:11px 16px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:10px; transition:background .15s, box-shadow .15s, transform .05s;}
@@ -232,7 +233,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.71</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.72</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -285,7 +286,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.71";
+var APP_VER = "1.72";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -936,6 +937,83 @@ function money(n){
 }
 function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function dmy(s){ var m = String(s==null?"":s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[3]+"/"+m[2]+"/"+m[1].slice(-2)) : String(s==null?"":s); }
+/* Text date/time inputs (class="dt" / "tm") — user types dd/mm/yy, we store ISO */
+function isoDate(v){
+  var s = String(v==null?"":v).trim();
+  if(!s) return "";
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var r = sheetDate(s);
+  return /^\d{4}-\d{2}-\d{2}$/.test(r) ? r : "";
+}
+function fmtDmy(v){
+  var s = String(v==null?"":v).trim();
+  if(!s) return "";
+  var iso = isoDate(s);
+  return iso ? dmy(iso) : s;
+}
+function parseTimeInput(v){
+  var s = String(v==null?"":v).trim().toLowerCase().replace(/\./g, ":");
+  if(!s) return "";
+  function p2(n){ return String(n).padStart(2,"0"); }
+  if(/^\d{3,4}$/.test(s)){
+    var mi0 = Number(s.slice(-2)), hh0 = Number(s.slice(0, s.length-2));
+    return (hh0 <= 23 && mi0 <= 59) ? (p2(hh0)+":"+p2(mi0)) : "";
+  }
+  var m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+  if(!m) return "";
+  var hh = Number(m[1]), mi = m[2] ? Number(m[2]) : 0, ap = m[3] || "";
+  if(ap === "pm" && hh < 12) hh += 12;
+  if(ap === "am" && hh === 12) hh = 0;
+  if(hh > 23 || mi > 59) return "";
+  return p2(hh) + ":" + p2(mi);
+}
+function fmtTime(v){
+  var s = String(v==null?"":v).trim();
+  if(!s) return "";
+  var t = parseTimeInput(s);
+  return t || s;
+}
+function readDateEl(el, fallbackToday){
+  var raw = el ? String(el.value||"").trim() : "";
+  if(!raw) return fallbackToday ? today() : "";
+  var iso = isoDate(raw);
+  if(!iso){
+    alert("Date not understood: \"" + raw + "\". Please write it as dd/mm/yy (e.g. " + dmy(today()) + ").");
+    if(el){ el.focus(); try{ el.select(); }catch(e){} }
+    return null;
+  }
+  return iso;
+}
+function readDate(id, fallbackToday){
+  return readDateEl(document.getElementById(id), fallbackToday);
+}
+function readTime(id){
+  var el = document.getElementById(id);
+  var raw = el ? String(el.value||"").trim() : "";
+  if(!raw) return "";
+  var t = parseTimeInput(raw);
+  if(!t){
+    alert("Time not understood: \"" + raw + "\". Please write it like 14:30 or 2:30 PM.");
+    if(el){ el.focus(); try{ el.select(); }catch(e){} }
+    return null;
+  }
+  return t;
+}
+document.addEventListener("input", function(e){
+  var t = e.target;
+  if(!t || !t.classList || !t.classList.contains("dt")) return;
+  if(/[^\d]/.test(t.value)) return; // slashes already typed/pasted
+  var d = t.value.replace(/\D/g, "").slice(0, 8);
+  t.value = d.length === 8 ? (d.slice(0,2) + "/" + d.slice(2,4) + "/" + d.slice(4))
+          : d.length > 4 ? (d.slice(0,2) + "/" + d.slice(2,4) + "/" + d.slice(4))
+          : d.length > 2 ? (d.slice(0,2) + "/" + d.slice(2)) : d;
+}, true);
+document.addEventListener("blur", function(e){
+  var t = e.target;
+  if(!t || !t.classList) return;
+  if(t.classList.contains("dt")) t.value = fmtDmy(t.value);
+  else if(t.classList.contains("tm")) t.value = fmtTime(t.value);
+}, true);
 function monthLabel(m){ var p=m.split("-"); return MONTH_NAMES[Number(p[1])-1] + " " + p[0]; }
 function esc(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function up(t){ return esc(String(t==null?"":t).toUpperCase()); }
@@ -1060,7 +1138,7 @@ function downloadBackup(){
   var blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "hisab-backup-" + today() + ".json";
+  a.download = "hisab-backup-" + dmy(today()).replace(/\//g,"-") + ".json";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1153,7 +1231,7 @@ function reportRows(mid){
     : monthLabel(mid);
   rows.push(["AB Travels (Travel Office Hisab) — " + (all ? "ANNUAL ACCOUNTS LEDGER" : "MONTHLY ACCOUNTS LEDGER")].map(csvVal).join(","));
   rows.push(["Period: " + period].map(csvVal).join(","));
-  rows.push(["Generated: " + today()].map(csvVal).join(","));
+  rows.push(["Generated: " + dmy(today())].map(csvVal).join(","));
   rows.push([""].map(csvVal).join(","));
 
   function sec(t){ rows.push(["=== " + t + " ==="].map(csvVal).join(",")); }
@@ -1207,7 +1285,7 @@ function reportRows(mid){
       sec(monthLabel(m) + " — TICKET / UMRAH SALES");
       line(["Date","Kind","Client","Details","Cost","Sale","Profit","Payment","Note"]);
       tk.forEach(function(t){
-        line([t.date, (t.kind || "Ticket"), t.client||"", t.detail||"", t.cost, t.sale, (Number(t.sale)||0)-(Number(t.cost)||0),
+        line([dmy(t.date), (t.kind || "Ticket"), t.client||"", t.detail||"", t.cost, t.sale, (Number(t.sale)||0)-(Number(t.cost)||0),
           (t.paid === false ? "Unpaid" : "Paid"), (t.commission ? "Waseem commission: " + t.commission : "")]);
       });
       line(["","TOTAL","","", tc, ts, ts - tc, "",""]);
@@ -1218,7 +1296,7 @@ function reportRows(mid){
       sec(monthLabel(m) + " — WITHDRAWALS & OTHER PAYMENTS");
       line(["Date","Description","Note","Amount"]);
       var sw = 0;
-      dw.forEach(function(d){ sw += Number(d.amount)||0; line([d.date, d.label, d.note, d.amount]); });
+      dw.forEach(function(d){ sw += Number(d.amount)||0; line([dmy(d.date), d.label, d.note, d.amount]); });
       line(["","TOTAL","", sw]);
       blank();
     }
@@ -1236,7 +1314,7 @@ function downloadCsv(rows, name){
 }
 function downloadReport(mid){
   mid = mid || "all";
-  downloadCsv(reportRows(mid), "hisab-report-" + (mid==="all" ? "all-" + today() : mid) + ".csv");
+  downloadCsv(reportRows(mid), "hisab-report-" + (mid==="all" ? "all-" + dmy(today()).replace(/\//g,"-") : mid) + ".csv");
 }
 function downloadReportEach(){
   var mids = reportMonthList();
@@ -1268,14 +1346,31 @@ var INV_AIRLINES = [
 function invAirline(code){
   return INV_AIRLINES.filter(function(a){ return a.c === code; })[0] || null;
 }
-/* Per-airline logo overrides — in airlines jinki website ka apna logo hai (Kiwi CDN par ghalat aata hai) */
-var INV_LOGO_OVERRIDE = {
-  XY: "https://icons.duckduckgo.com/ip3/www.flynas.com.ico",
-  XF: "https://icons.duckduckgo.com/ip3/www.flyadeal.com.ico"
-};
+/* Airline logos — local files in airlines/ (with a runtime data-URI cache so print/PDF always has them) */
+var AB_LOGO_MEM = {};
+function absAsset(p){
+  try{ return new URL(p, location.href).href; }catch(e){ return p; }
+}
 function invAirLogo(code){
-  if(INV_LOGO_OVERRIDE[code]) return INV_LOGO_OVERRIDE[code];
-  return "https://images.kiwi.com/airlines/64/" + encodeURIComponent(code) + ".png";
+  code = String(code||"").toUpperCase();
+  return AB_LOGO_MEM[code] || absAsset("airlines/" + encodeURIComponent(code) + ".png");
+}
+function cacheAirLogos(){
+  INV_AIRLINES.forEach(function(a){
+    var c = a.c;
+    if(AB_LOGO_MEM[c]) return;
+    var img = new Image();
+    img.onload = function(){
+      try{
+        var cv = document.createElement("canvas");
+        cv.width = img.naturalWidth || 64;
+        cv.height = img.naturalHeight || 64;
+        cv.getContext("2d").drawImage(img, 0, 0);
+        AB_LOGO_MEM[c] = cv.toDataURL("image/png");
+      }catch(e){ /* canvas tainted (file://) — keep the local file URL */ }
+    };
+    img.src = invAirLogo(c);
+  });
 }
 /* Airports — internet se fetch (country/city/code search), localStorage cache */
 var AB_COUNTRY_NAMES = { PK:"Pakistan", AE:"UAE", SA:"Saudi Arabia", QA:"Qatar", BH:"Bahrain", KW:"Kuwait", OM:"Oman", TR:"Turkey", US:"USA", GB:"UK", IN:"India", BD:"Bangladesh", LK:"Sri Lanka", NP:"Nepal", MY:"Malaysia", SG:"Singapore", TH:"Thailand", ID:"Indonesia", PH:"Philippines", CN:"China", JP:"Japan", KR:"South Korea", VN:"Vietnam", EG:"Egypt", JO:"Jordan", LB:"Lebanon", IQ:"Iraq", IR:"Iran", AF:"Afghanistan", UZ:"Uzbekistan", KZ:"Kazakhstan", AZ:"Azerbaijan", GE:"Georgia", ET:"Ethiopia", KE:"Kenya", NG:"Nigeria", ZA:"South Africa", MA:"Morocco", TN:"Tunisia", DZ:"Algeria", LY:"Libya", SD:"Sudan", CA:"Canada", AU:"Australia", NZ:"New Zealand", DE:"Germany", FR:"France", IT:"Italy", ES:"Spain", NL:"Netherlands", BE:"Belgium", CH:"Switzerland", AT:"Austria", SE:"Sweden", NO:"Norway", DK:"Denmark", FI:"Finland", PL:"Poland", UA:"Ukraine", RU:"Russia", GR:"Greece", PT:"Portugal", IE:"Ireland", HU:"Hungary", CZ:"Czechia", RO:"Romania", IL:"Israel", MV:"Maldives", MM:"Myanmar", KH:"Cambodia", MN:"Mongolia" };
@@ -1315,7 +1410,7 @@ function airportsCache(cb, force){
     })
     .catch(function(){ cb(AB_AIRPORTS_MEM || []); });
 }
-function airportName(iata){
+function airportList(){
   var list = AB_AIRPORTS_MEM;
   if(!list){
     try{
@@ -1323,9 +1418,21 @@ function airportName(iata){
       if(cached && cached.list) list = AB_AIRPORTS_MEM = cached.list;
     }catch(e){}
   }
-  if(!list) return "";
-  var a = list.filter(function(x){ return x.iata === iata; })[0];
+  return list || null;
+}
+function airportFind(iata){
+  var list = airportList();
+  if(!list) return null;
+  iata = String(iata||"").toUpperCase();
+  return list.filter(function(x){ return x.iata === iata; })[0] || null;
+}
+function airportName(iata){
+  var a = airportFind(iata);
   return a ? (a.name + " (" + a.city + ", " + a.country + ")") : "";
+}
+function airportCity(iata){
+  var a = airportFind(iata);
+  return a ? (a.city || a.name || "") : "";
 }
 function bindAirportField(inputId){
   var inp = document.getElementById(inputId);
@@ -1572,27 +1679,45 @@ function invAlwaysNR(code){ return INV_NR_ALWAYS.indexOf(String(code||"").toUppe
 function invFlightBlock(leg, title){
   if(!leg || !leg.from || !leg.to) return "";
   var air = leg.air ? invAirline(leg.air) : null;
-  var fromName = airportName(leg.from), toName = airportName(leg.to);
-  var h = '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-top:12px;">';
-  h += '<div style="font-size:10.5px; font-weight:800; letter-spacing:2px; color:#94a3b8; margin-bottom:8px;">'+esc(title)+'</div>';
-  h += '<div style="display:flex; align-items:center; gap:12px;">';
+  var fromCity = airportCity(leg.from), toCity = airportCity(leg.to);
+  var fromTxt = fromCity ? (fromCity + " (" + leg.from + ")") : leg.from;
+  var toTxt = toCity ? (toCity + " (" + leg.to + ")") : leg.to;
+  var dateTxt = leg.dateTxt || (leg.date ? dmy(leg.date) : "");
+  var h = '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:11px 14px 12px; margin-top:12px; page-break-inside:avoid;">';
+  // Header: leg title on the left, airline logo + name on the right
+  h += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:9px;">'
+     + '<div style="flex:1; min-width:0; font-size:10px; font-weight:800; letter-spacing:2px; color:#94a3b8;">'+esc(title)+'</div>';
   if(air){
-    h += '<img src="'+invAirLogo(air.c)+'" alt="'+esc(air.n)+'" onerror="this.style.display=\'none\';var t=this.nextElementSibling;if(t)t.style.display=\'flex\';" style="width:44px; height:44px; border-radius:10px; object-fit:contain; border:1px solid #e5e7eb; background:#fff; flex:0 0 auto;">'
-       + '<span style="display:none; width:44px; height:44px; border-radius:10px; border:1px solid #e5e7eb; background:#f8fafc; align-items:center; justify-content:center; font-weight:800; color:#2563eb; flex:0 0 auto;">'+esc(air.c)+'</span>';
+    h += '<img src="'+invAirLogo(air.c)+'" alt="'+esc(air.n)+'" onerror="if(this.getAttribute(\'data-fb\')!==\'1\'){this.setAttribute(\'data-fb\',\'1\');this.src=\'https://images.kiwi.com/airlines/64/'+encodeURIComponent(air.c)+'.png\';}else{this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'flex\';}" style="width:26px; height:26px; object-fit:contain; border:1px solid #e5e7eb; border-radius:6px; background:#fff; flex:0 0 auto;">'
+       + '<span style="display:none; width:26px; height:26px; border:1px solid #e5e7eb; border-radius:6px; background:#f8fafc; align-items:center; justify-content:center; font-size:9px; font-weight:800; color:#2563eb; flex:0 0 auto;">'+esc(air.c)+'</span>'
+       + '<div style="font-size:11px; font-weight:800; color:#334155; white-space:nowrap; flex:0 0 auto;">'+esc(air.n)+'</div>';
   }
-  h += '<div style="flex:1; min-width:0;">'
-     + '<div style="font-weight:800; font-size:20px; letter-spacing:1px;">'+esc(leg.from)+' <span style="color:#94a3b8; font-weight:400;">→</span> '+esc(leg.to)+'</div>'
-     + ((fromName || toName) ? '<div style="font-size:11px; color:#64748b; margin-top:2px;">'+esc(fromName||leg.from)+' → '+esc(toName||leg.to)+'</div>' : '')
-     + (air ? '<div style="font-size:11px; color:#64748b; margin-top:2px;">'+esc(air.n)+' ('+esc(air.c)+')</div>' : '')
-     + '</div>';
-  h += '<div style="text-align:right; font-size:12.5px;">'
-     + (leg.dateTxt ? '<div style="font-weight:700;">'+esc(leg.dateTxt)+'</div>' : '')
-     + ((leg.timeTxt || leg.arrTxt) ? '<div style="color:#64748b;">'
-        + (leg.timeTxt ? esc(leg.timeTxt) : '')
-        + (leg.arrTxt ? (leg.timeTxt ? ' <span style="color:#94a3b8;">&rarr;</span> ' : 'Arr ') + esc(leg.arrTxt) : '')
-        + '</div>' : '')
-     + (leg.meal ? '<div style="margin-top:5px; display:inline-block; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:999px; padding:2px 9px; font-size:10.5px; font-weight:800;">&#127869; Meal included</div>' : '')
-     + '</div></div></div>';
+  h += '</div>';
+  // Departure (time / date / airport name) | plane | Arrival (time / date / airport name)
+  h += '<table style="width:100%; border-collapse:collapse;"><tr>'
+     + '<td style="width:41%; vertical-align:top; text-align:left; padding:0;">'
+     + (leg.timeTxt ? '<div style="font-size:20px; font-weight:800; line-height:1.15; color:#0f172a; white-space:nowrap;">'+esc(leg.timeTxt)+'</div>' : '')
+     + (dateTxt ? '<div style="font-size:11.5px; font-weight:700; color:#475569; margin-top:2px;">'+esc(dateTxt)+'</div>' : '')
+     + '<div style="font-size:11.5px; font-weight:700; color:#64748b; margin-top:3px; line-height:1.35; text-transform:uppercase; word-break:break-word;">'+esc(fromTxt)+'</div>'
+     + '</td>'
+     + '<td style="width:18%; vertical-align:middle; text-align:center; padding:0 6px;">'
+     +   '<div style="position:relative; border-top:1px dashed #cbd5e1; height:1px; margin:6px 0;">'
+     +     '<span style="position:absolute; left:50%; top:-10px; transform:translateX(-50%); background:#fff; padding:0 5px; font-size:15px; line-height:1; color:#0f172a;">&#9992;</span>'
+     +   '</div>'
+     + '</td>'
+     + '<td style="width:41%; vertical-align:top; text-align:right; padding:0;">'
+     + (leg.arrTxt ? '<div style="font-size:20px; font-weight:800; line-height:1.15; color:#0f172a; white-space:nowrap;">'+esc(leg.arrTxt)+'</div>'
+                   : (leg.timeTxt ? '<div style="font-size:20px; font-weight:800; line-height:1.15;">&nbsp;</div>' : ''))
+     + (dateTxt ? '<div style="font-size:11.5px; font-weight:700; color:#475569; margin-top:2px;">'+esc(dateTxt)+'</div>' : '')
+     + '<div style="font-size:11.5px; font-weight:700; color:#64748b; margin-top:3px; line-height:1.35; text-transform:uppercase; word-break:break-word;">'+esc(toTxt)+'</div>'
+     + '</td>'
+     + '</tr></table>';
+  if(leg.meal){
+    h += '<div style="margin-top:9px; text-align:center;">'
+       + '<span style="display:inline-block; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:999px; padding:2px 10px; font-size:10.5px; font-weight:800;">&#127869; Meal included</span>'
+       + '</div>';
+  }
+  h += '</div>';
   return h;
 }
 function invHtml(d, bw){
@@ -1757,7 +1882,7 @@ function viewExpenses(){
   html += '<div class="card inv-form"><h2>Day-to-day Expenses</h2>';
   html += '<div class="hint" style="margin-top:0;">Rozana kharche yahan turant add karein — ye Monthly Accounts ke hisaab mein khud shamil ho jayenge.</div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Month</label><select id="expTabSel">'+opts+'</select></div>'
-        + '<div><label>Date</label><input type="date" id="expTabDate" value="'+today()+'"></div></div>';
+        + '<div><label>Date</label><input type="text" class="dt" id="expTabDate" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric"></div></div>';
   html += '<div class="row" style="margin-top:8px;"><div><label>Description</label><input id="expTabDesc" placeholder="e.g. Lunch, taxi, tea" autocomplete="off"></div>'
         + '<div><label>Amount (Rs)</label><input type="number" id="expTabAmt" min="0" inputmode="decimal" placeholder="Amount"></div></div>';
   html += '<button class="btn primary" id="expTabAdd" style="margin-top:8px;">Add Expense</button>';
@@ -1780,6 +1905,7 @@ function viewExpenses(){
 }
 function viewInvoice(){
   var st = S.settings;
+  try{ airportsCache(function(){}); }catch(e){}
   var airOpts = '<option value="">— Select airline (logo + name) —</option>'
               + INV_AIRLINES.map(function(a){ return '<option value="'+esc(a.c)+'">'+esc(a.n)+' ('+esc(a.c)+')</option>'; }).join("")
               + '<option value="other">Other / none</option>';
@@ -1833,18 +1959,18 @@ function viewInvoice(){
   html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>From (airport)</label><input id="invFrom" placeholder="Country / city / code (KHI ya Karachi)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invTo" placeholder="Country / city / code (DXB ya Dubai)" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>';
-  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Departure date</label><input type="date" id="invDate" value="'+today()+'"></div>'
-        + '<div><label>Departure time</label><input type="time" id="invTime"></div>'
-        + '<div><label>Arrival time (optional)</label><input type="time" id="invArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>';
+  html += '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Departure date</label><input type="text" class="dt" id="invDate" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric"></div>'
+        + '<div><label>Departure time</label><input type="text" class="tm" id="invTime" placeholder="e.g. 14:30"></div>'
+        + '<div><label>Arrival time (optional)</label><input type="text" class="tm" id="invArr" placeholder="e.g. 18:45"><div class="hint">Local time at destination — leave empty to hide.</div></div></div>';
   html += '</div>';
   html += '<div id="invRetWrap" style="display:none; border:1px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;">'
         + '<div style="font-weight:800; font-size:13px; margin-bottom:6px;">🔁 Return flight</div>'
         + '<div class="row"><div><label>From (airport)</label><input id="invRetFrom" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div>'
         + '<div class="inv-arrow" style="flex:0 0 auto; text-align:center; color:var(--muted); padding-bottom:10px;">→</div>'
         + '<div><label>To (airport)</label><input id="invRetTo" placeholder="Country / city / code" style="text-transform:uppercase;" autocomplete="off"><div class="hint airport-info" style="margin-top:2px;"></div></div></div>'
-        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="date" id="invRetDate"></div>'
-        + '<div><label>Return time</label><input type="time" id="invRetTime"></div>'
-        + '<div><label>Arrival time (optional)</label><input type="time" id="invRetArr"><div class="hint">Local time at destination — leave empty to hide.</div></div></div></div>';
+        + '<div class="row" style="margin-top:8px; align-items:flex-end;"><div><label>Return date</label><input type="text" class="dt" id="invRetDate" placeholder="dd/mm/yy" inputmode="numeric"></div>'
+        + '<div><label>Return time</label><input type="text" class="tm" id="invRetTime" placeholder="e.g. 09:15"></div>'
+        + '<div><label>Arrival time (optional)</label><input type="text" class="tm" id="invRetArr" placeholder="e.g. 12:40"><div class="hint">Local time at destination — leave empty to hide.</div></div></div></div>';
   html += '<div class="row umrah-hide" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="invHand" min="0" value="7" inputmode="decimal"></div>'
         + '<div><label>Checked-in bag (kg)</label><input type="number" id="invBag" min="0" value="0" inputmode="decimal"><div class="hint">0 = None (default)</div></div></div>';
   html += '<div class="row umrah-hide" style="margin-top:8px; align-items:center;">'
@@ -1956,9 +2082,11 @@ function applyInvDocType(){
 }
 function printInvoice(){
   if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
-  var pnr = ((document.getElementById("invPnr")||{}).value||"").toUpperCase();
+  var pnr = ((document.getElementById("invPnr")||{}).value||"").toUpperCase() || ((lastInv||{}).pnr && (lastInv||{}).pnr !== "UMRAH" ? (lastInv||{}).pnr : "");
   var paxName = ((document.getElementById("invClient")||{}).value||"").trim() || ((lastInv||{}).name||"") || ((lastInv||{}).paxNames||[])[0] || "";
   paxName = String(paxName).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g,"-");
+  var fileName = (paxName ? paxName + "-" : "") + (pnr || "ticket");
+  var oldTitle = document.title;
   // Black & White printer style (Settings > Invoice): ink bachane ke liye plain print
   var html = (S.settings.invBW && lastInv) ? invHtml(lastInv, true) : (document.getElementById("invPrint")||"").outerHTML;
   if(!html){ alert("Press Generate Invoice first."); return; }
@@ -1968,7 +2096,7 @@ function printInvoice(){
   var doc = f.contentWindow.document;
   doc.open();
   // PDF ka suggested filename: PassengerName-PNR
-  doc.write('<html><head><title>'+esc((paxName ? paxName + "-" : "") + (pnr||"ticket"))+'</title><style>@page{size:A4 portrait; margin:12mm;} body{margin:0; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;}</style></head><body>'+html+'</body></html>');
+  doc.write('<html><head><title>'+esc(fileName)+'</title><style>@page{size:A4 portrait; margin:12mm;} body{margin:0; font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;}</style></head><body>'+html+'</body></html>');
   doc.close();
   // Auto-fit: shrink just enough so the invoice always prints on one A4 page
   try{
@@ -1989,8 +2117,15 @@ function printInvoice(){
   var done = false;
   function go(){
     if(done) return; done = true;
+    var restored = false;
+    function restoreTitle(){ if(restored) return; restored = true; document.title = oldTitle; }
+    // Chrome/Edge suggest the PDF filename from the top-level page title
+    document.title = fileName;
+    try{ f.contentWindow.addEventListener("afterprint", restoreTitle); }catch(e){}
+    try{ window.addEventListener("afterprint", restoreTitle, { once:true }); }catch(e){}
     f.contentWindow.focus();
     f.contentWindow.print();
+    setTimeout(restoreTitle, 8000);
     setTimeout(function(){ if(f.parentNode) f.parentNode.removeChild(f); }, 800);
   }
   try{
@@ -2252,8 +2387,10 @@ function render(){
     Object.keys(pf).forEach(function(id){
       var x = document.getElementById(id);
       if(!x) return;
+      var pv = pf[id];
+      if(id === "invDate" || id === "invRetDate") pv = dmy(pv);
       if(x.type === "checkbox") x.checked = !!pf[id];
-      else x.value = pf[id];
+      else x.value = pv;
     });
     var td2 = document.getElementById("invTrip"); if(td2) td2.dispatchEvent(new Event("change"));
     var ad2 = document.getElementById("invAir"); if(ad2) ad2.dispatchEvent(new Event("change"));
@@ -2468,7 +2605,7 @@ function viewDash(){
   if(mf.cur !== "all") chL = chL.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
   chL.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
   html += '<div class="card"><h2>'+esc(T("chled"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
-  html += '<div class="row"><input id="chAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="chDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="chAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="chDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
   html += '<input id="chNote" placeholder="'+esc(T("thw"))+'" style="margin-top:8px;">';
   html += '<button class="btn small primary" id="addCh" style="width:100%;">'+esc(T("savek"))+'</button>';
   if(chL.length){
@@ -2546,7 +2683,7 @@ function viewMonth(){
   html += '</table>';
   if(c.applied){
     var ai = c.appliedInfo||{};
-    html += '<div class="ok-msg">✓ This month was applied on '+(ai.date||"")+'. Loan reduced by '+money(ai.loan||0)+', each partner received '+money(ai.each||0)+', charity '+money(ai.charity||0)+'.</div>';
+    html += '<div class="ok-msg">✓ This month was applied on '+esc(dmy(ai.date||""))+'. Loan reduced by '+money(ai.loan||0)+', each partner received '+money(ai.each||0)+', charity '+money(ai.charity||0)+'.</div>';
     html += '<div class="hint">If this is wrong, first correct this month&rsquo;s income / expenses, then use &ldquo;Re-apply split&rdquo; below to split again with the new rates.</div>';
   } else {
     html += '<div class="hint">When the month ends (as soon as a new month starts), profit is split automatically — charity, loan and partners&rsquo; shares.</div>';
@@ -2601,7 +2738,7 @@ function viewTickets(){
 
   // Add New Sale — sab se oper
   html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
-  html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
+  html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
@@ -2764,7 +2901,7 @@ function viewPartner(which){
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("nikrec"))+'</h2>';
-  html += '<div class="row"><input id="drawAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="drawDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="drawAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="drawDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
   html += '<input id="drawNote" placeholder="'+esc(T("noteph"))+'" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addDraw" data-p="'+key+'">'+esc(T("savek"))+'</button></div>';
 
@@ -2819,7 +2956,7 @@ function viewAbbu(){
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("abbunik"))+'</h2>';
-  html += '<div class="row"><input id="abbuAmt" type="number" min="0" inputmode="decimal" placeholder="Amount (Rs)"><input id="abbuDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="abbuAmt" type="number" min="0" inputmode="decimal" placeholder="Amount (Rs)"><input id="abbuDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
   html += '<input id="abbuNote" placeholder="Reason / note" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addAbbu">Save</button></div>';
 
@@ -2892,7 +3029,7 @@ function viewWaseem(){
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("payrec"))+'</h2>';
-  html += '<div class="row"><select id="wsKind" style="max-width:200px;"><option value="commission">'+esc(T("kcomm"))+'</option><option value="salary">'+esc(T("ksal"))+'</option></select><input id="wsAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="wsDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<div class="row"><select id="wsKind" style="max-width:200px;"><option value="commission">'+esc(T("kcomm"))+'</option><option value="salary">'+esc(T("ksal"))+'</option></select><input id="wsAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="wsDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
   html += '<input id="wsNote" placeholder="'+esc(T("wsnote"))+'" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addWs">'+esc(T("savek"))+'</button></div>';
 
@@ -2920,7 +3057,7 @@ function viewQarza(){
   html += '</div></div>';
 
   html += '<div class="card"><h2>'+esc(T("qzadd"))+'</h2>';
-  html += '<div class="row"><input id="qzAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="qzDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  html += '<div class="row"><input id="qzAmt" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("raqamph"))+'"><input id="qzDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
   html += '<input id="qzNote" placeholder="'+esc(T("qznote"))+'" style="margin-top:8px;">';
   html += '<button class="btn primary" id="addQz">'+esc(T("savek"))+'</button></div>';
 
@@ -2944,7 +3081,7 @@ function viewBakaya(){
   htmlX += '<div class="card"><h2>'+esc(T("newcl"))+'</h2>';
   htmlX += '<label>'+esc(T("cliname"))+'</label><input id="rvClient" placeholder="Name">';
   htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("tafseel"))+'</label><input id="rvNote" placeholder="e.g. Umrah package booking"></div>';
-  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
+  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="text" class="dt" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;"></div>';
   htmlX += '<button class="btn small primary" id="addRv" style="width:100%;">'+esc(T("addk"))+'</button>';
   htmlX += '</div>';
   html += htmlX;
@@ -2959,7 +3096,7 @@ function viewBakaya(){
     unpaidT.forEach(function(x){
       html += '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">';
       html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">';
-      html += '<div><b>'+esc(x.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(x.date||"")+' • '+esc(x.detail||"")+'</div></div>';
+      html += '<div><b>'+esc(x.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(dmy(x.date||""))+' • '+esc(x.detail||"")+'</div></div>';
       html += '<div style="text-align:right;"><div class="gld" style="font-weight:800;">'+money(x.sale)+'</div><div style="font-size:12px; color:var(--muted);">'+esc(T("ublbl2"))+'</div></div>';
       html += '</div>';
       html += '<button class="btn small green tk-toggle" data-id="'+x.id+'" style="margin-top:8px;">'+esc(T("markpaid"))+'</button>';
@@ -2988,13 +3125,13 @@ function viewBakaya(){
       var rem = (Number(r.total)||0) - paid;
       html += '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">';
       html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">';
-      html += '<div><b>'+esc(r.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(r.date || "old entry (no date)")+(r.note ? " • "+esc(r.note) : "")+'</div></div>';
+      html += '<div><b>'+esc(r.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(r.date ? dmy(r.date) : "old entry (no date)")+(r.note ? " • "+esc(r.note) : "")+'</div></div>';
       html += '<div style="text-align:right;"><div class="'+(rem<=0?"pos":"gld")+'" style="font-weight:800;">'+money(rem)+'</div><div style="font-size:12px; color:var(--muted);">Total '+money(r.total)+' • Received '+money(paid)+'</div></div>';
       html += '</div>';
       if(rem > 0){
         html += '<div class="row" style="margin-top:10px;">';
         html += '<input class="rv-pay" data-id="'+r.id+'" type="number" min="0" inputmode="decimal" placeholder="Payment amount">';
-        html += '<input class="rv-date" data-id="'+r.id+'" type="date" value="'+today()+'" style="max-width:160px;">';
+        html += '<input class="rv-date dt" data-id="'+r.id+'" type="text" value="'+dmy(today())+'" placeholder="dd/mm/yy" inputmode="numeric" style="max-width:160px;">';
         html += '<button class="btn small green rv-paybtn" data-id="'+r.id+'" style="flex:0 0 auto; margin-top:0;">Payment received</button>';
         html += '</div>';
       } else {
@@ -3297,7 +3434,7 @@ function bind(){
   if(ad) ad.onclick = function(){
     var amt = Number(document.getElementById("drawAmt").value);
     if(!(amt>0)) return;
-    var dd = document.getElementById("drawDate").value || today();
+    var dd = readDate("drawDate", true); if(!dd) return;
     S.draws.push({ id:uid(), partner:ad.getAttribute("data-p")||"A", amount:amt,
                    note:(document.getElementById("drawNote")||{}).value||"",
                    date:dd });
@@ -3308,7 +3445,7 @@ function bind(){
   if(ab) ab.onclick = function(){
     var amt = Number(document.getElementById("abbuAmt").value);
     if(!(amt>0)) return;
-    var dd = document.getElementById("abbuDate").value || today();
+    var dd = readDate("abbuDate", true); if(!dd) return;
     S.draws.push({ id:uid(), partner:"ABBU", amount:amt,
                    note:(document.getElementById("abbuNote")||{}).value||"",
                    date:dd });
@@ -3321,7 +3458,7 @@ function bind(){
     var name = document.getElementById("rvClient").value.trim();
     var total = Number(document.getElementById("rvTotal").value);
     if(!name || !(total>0)) return;
-    var dd = (document.getElementById("rvDate")||{}).value || today();
+    var dd = readDate("rvDate", true); if(!dd) return;
     S.receivables.push({ id:uid(), client:name, note:document.getElementById("rvNote").value.trim(), total:total, date:dd, payments:[] });
     monthFilter.BAK = String(dd).slice(0,7);
     save(); render();
@@ -3335,7 +3472,8 @@ function bind(){
       var dateEl = app.querySelector(".rv-date[data-id='"+id+"']");
       var amt = Number(amtEl.value);
       if(!(amt>0)) return;
-      r.payments.push({ amount:amt, date:dateEl.value || today() });
+      var payDt = readDateEl(dateEl, true); if(!payDt) return;
+      r.payments.push({ amount:amt, date:payDt });
       save(); render();
     };
   });
@@ -3367,7 +3505,7 @@ function bind(){
     var sale = Number(document.getElementById("tkSale").value) || 0;
     if(!client || !(sale>0 || cost>0)){ alert("Client name and at least one amount (cost or sale) are required."); return; }
     var kind = (document.getElementById("tkKind")||{}).value || "Ticket";
-    var tkDate = document.getElementById("tkDate").value || today();
+    var tkDate = readDate("tkDate", true); if(!tkDate) return;
     S.tickets.push({ id:uid(), date:tkDate, client:client, kind:kind,
                      payMethod:((document.getElementById("tkPayMethod")||{}).value||"Cash"),
                      nic:((document.getElementById("tkNic")||{}).value||"").trim(),
@@ -3396,6 +3534,12 @@ function bind(){
   // Invoice generator
   var gi = document.getElementById("genInv");
   if(gi) gi.onclick = function(){
+    var invDt = readDate("invDate", true); if(!invDt) return;
+    var invTm = readTime("invTime"); if(invTm === null) return;
+    var invAr = readTime("invArr"); if(invAr === null) return;
+    var retDt = readDate("invRetDate", false); if(retDt === null) return;
+    var retTm = readTime("invRetTime"); if(retTm === null) return;
+    var retAr = readTime("invRetArr"); if(retAr === null) return;
     var d = {
       pnr: ((document.getElementById("invPnr")||{}).value||"").trim().toUpperCase(),
       name: ((document.getElementById("invClient")||{}).value||"").trim(),
@@ -3407,8 +3551,8 @@ function bind(){
       paxNics: String(((document.getElementById("invNicMulti")||{}).value||"")).split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean),
       from: ((document.getElementById("invFrom")||{}).value||"").trim().toUpperCase(),
       to: ((document.getElementById("invTo")||{}).value||"").trim().toUpperCase(),
-      date: ((document.getElementById("invDate")||{}).value||""),
-      time: ((document.getElementById("invTime")||{}).value||""),
+      date: invDt,
+      time: invTm,
       hand: Number((document.getElementById("invHand")||{}).value) || 0,
       bag: Number((document.getElementById("invBag")||{}).value) || 0,
       nr: !!((document.getElementById("invNR")||{}).checked),
@@ -3434,8 +3578,8 @@ function bind(){
         while(a.length && !a[a.length-1]) a.pop();
         return a;
       })(),
-      arr: ((document.getElementById("invArr")||{}).value||""),
-      retArr: ((document.getElementById("invRetArr")||{}).value||""),
+      arr: invAr,
+      retArr: retAr,
       retSeat: ((document.getElementById("invRetSeat1")||{}).value||"").trim().toUpperCase(),
       paxRetSeats: (function(){
         var a = String(((document.getElementById("invRetSeats")||{}).value||"")).replace(/\r/g, "").split("\n").map(function(x){ return x.trim().toUpperCase(); });
@@ -3465,9 +3609,9 @@ function bind(){
       d.ret = {
         from: ((document.getElementById("invRetFrom")||{}).value||"").trim().toUpperCase(),
         to: ((document.getElementById("invRetTo")||{}).value||"").trim().toUpperCase(),
-        date: ((document.getElementById("invRetDate")||{}).value||""),
-        time: ((document.getElementById("invRetTime")||{}).value||""),
-        arr: d.retArr,
+        date: retDt,
+        time: retTm,
+        arr: retAr,
         meal: d.meal,
         air: d.air
       };
@@ -3630,7 +3774,7 @@ function bind(){
         var cn = document.getElementById("invClient");
         if(cn && !cn.value) cn.value = tk.client || "";
         var dtx = document.getElementById("invDate");
-        if(dtx && tk.date) dtx.value = tk.date;
+        if(dtx && tk.date) dtx.value = dmy(tk.date);
       }
     } else if(stt) stt.textContent = "Not every client needs an invoice — leave this empty if not needed.";
   };
@@ -3703,7 +3847,7 @@ function bind(){
     var desc = (document.getElementById("expTabDesc")||{}).value||"";
     var amt = Number((document.getElementById("expTabAmt")||{}).value)||0;
     if(!desc.trim() || !(amt>0)){ alert("Description aur amount dono likhein."); return; }
-    var dd = (document.getElementById("expTabDate")||{}).value || today();
+    var dd = readDate("expTabDate", true); if(!dd) return;
     var mid = String(dd).slice(0,7);
     if(!S.months[mid]) S.months[mid] = { incomes:[], expenses:[], applied:false };
     S.months[mid].expenses.push({ id:uid(), desc:desc.trim(), amount:amt, added:dd });
@@ -3728,10 +3872,10 @@ function bind(){
       var id = b.getAttribute("data-id");
       var tk = (S.tickets||[]).filter(function(x){ return x.id === id; })[0];
       if(!tk) return;
-      var ans = prompt("Fix the ticket date (e.g. 2026-02-05)\n\nClient: "+(tk.client||"")+"\nCurrent date: "+(tk.date||"?"), tk.date||"");
+      var ans = prompt("Fix the ticket date (dd/mm/yy, e.g. " + dmy(today()) + ")\n\nClient: "+(tk.client||"")+"\nCurrent date: "+dmy(tk.date||""), dmy(tk.date||"") || dmy(today()));
       if(ans == null) return;
       var nd = sheetDate(ans, "");
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){ alert("Could not understand the date. Example: 2026-02-05"); return; }
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){ alert("Could not understand the date. Example: " + dmy(today())); return; }
       tk.date = nd;
       ticketFilter = nd.slice(0,7);
       save(); render();
@@ -3965,7 +4109,7 @@ function bind(){
   if(aw) aw.onclick = function(){
     var amt = Number(document.getElementById("wsAmt").value);
     if(!(amt>0)) return;
-    var dd = document.getElementById("wsDate").value || today();
+    var dd = readDate("wsDate", true); if(!dd) return;
     S.waseem.push({ id:uid(), date:dd,
                     kind:document.getElementById("wsKind").value,
                     note:document.getElementById("wsNote").value.trim(), amount:amt });
@@ -3986,7 +4130,8 @@ function bind(){
   if(ach) ach.onclick = function(){
     var amt = Number(document.getElementById("chAmt").value);
     if(!(amt>0)) return;
-    S.charityPaid.push({ id:uid(), date:document.getElementById("chDate").value || today(), amount:amt, note:document.getElementById("chNote").value.trim() });
+    var dd = readDate("chDate", true); if(!dd) return;
+    S.charityPaid.push({ id:uid(), date:dd, amount:amt, note:document.getElementById("chNote").value.trim() });
     save(); render();
   };
   app.querySelectorAll(".del[data-type='charity']").forEach(function(b){
@@ -4003,7 +4148,8 @@ function bind(){
   if(aq) aq.onclick = function(){
     var amt = Number(document.getElementById("qzAmt").value);
     if(!(amt>0)) return;
-    S.qarzaPaid.push({ id:uid(), date:document.getElementById("qzDate").value || today(), amount:amt, note:document.getElementById("qzNote").value.trim() });
+    var dd = readDate("qzDate", true); if(!dd) return;
+    S.qarzaPaid.push({ id:uid(), date:dd, amount:amt, note:document.getElementById("qzNote").value.trim() });
     S.settings.loanBalance = Math.max(0, (Number(S.settings.loanBalance)||0) - amt);
     save(); render();
   };
@@ -4190,6 +4336,7 @@ function bind(){
 }
 
 render();
+cacheAirLogos();
 autoDistribute();
 if(S.settings.syncUrl) syncPull(function(){ render(); autoDistribute(); });
 // Jab app dobara khole / tab par wapas aaye — sheet se taaza data khud aa jaye
