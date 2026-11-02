@@ -220,6 +220,12 @@
     input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select{height:42px; min-height:42px;}
     textarea{min-height:76px;}
     input[type="date"], input[type="time"], select{min-width:0 !important; width:100% !important; overflow:hidden;}
+    /* iPhone/Android ka native date/time box apni height fix kar deta hai — usay 42px par lock karein */
+    input[type="date"], input[type="time"]{height:42px !important; min-height:42px !important; max-height:42px !important; line-height:20px; padding-top:0; padding-bottom:0;}
+    input[type="date"]::-webkit-date-and-time-value,
+    input[type="time"]::-webkit-date-and-time-value{line-height:20px; min-height:20px; text-align:left;}
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator{height:16px; width:16px; margin-left:2px; padding:0;}
     /* Date/time rows: 3 boxes ek line par, teeno columns ke label/input/hint align */
     .row.dt-row{grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:6px;}
     .row.dt-row input{font-size:12.5px; padding-left:7px; padding-right:3px;}
@@ -246,7 +252,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.79</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.80</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -299,7 +305,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.79";
+var APP_VER = "1.80";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1978,7 +1984,7 @@ function viewInvoice(){
   html += '<div class="card inv-form"><h2>Invoice / Ticket — for the client</h2>';
   html += '<div class="row"><div><label>Invoice type</label><select id="invDoc"><option value="ticket">Ticket (flight)</option><option value="umrah">Umrah package</option></select></div>'
         + '<div class="umrah-hide"><label>Trip type</label><select id="invTrip"><option value="one">One-way</option><option value="round">Round trip (return flight)</option></select></div>'
-        + '<div><label>Airline</label><select id="invAir">'+airOpts+'</select></div></div>';
+        + '<div class="umrah-hide"><label>Airline</label><select id="invAir">'+airOpts+'</select></div></div>';
   var saleOpts = '<option value="">— Not linked to any sale —</option>';
   (S.tickets||[]).slice().sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }).slice(0,300).forEach(function(t){
     saleOpts += '<option value="'+esc(t.id)+'"'+(t.id===invLinkId?' selected':'')+'>'+esc(dmy(t.date))+' — '+esc(t.client||"")+' — '+money(t.sale)+(t.kind?' ('+esc(t.kind)+')':'')+'</option>';
@@ -2005,9 +2011,9 @@ function viewInvoice(){
         + '<div><label>Advance paid (Rs)</label><input type="number" id="invPaid" min="0" inputmode="decimal" placeholder="e.g. 100000"></div></div>'
         + '<div class="hint">Total and remaining are calculated from the number of passengers.</div>'
         + '</div>';
-  html += '<div class="row" style="margin-top:8px;"><div><label>PNR / Booking ref</label><input id="invPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px; font-weight:700;"></div>'
+  html += '<div class="row" style="margin-top:8px;"><div class="umrah-hide"><label>PNR / Booking ref</label><input id="invPnr" maxlength="8" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px; font-weight:700;"></div>'
         + '<div><label>Number of passengers</label><input type="number" id="invPax" min="1" value="'+invPaxCount+'" inputmode="numeric"></div></div>';
-  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label>Client name</label><input id="invClient" placeholder="Passenger name" autocomplete="off" style="text-transform:uppercase;"></div>'
+  html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invTkRow"><div><label id="invClientLabel">Client name</label><input id="invClient" placeholder="Passenger name" autocomplete="off" style="text-transform:uppercase;"></div>'
         + '<div class="umrah-hide"><label>Ticket number</label><input id="invTk" placeholder="Ticket number" autocomplete="off" style="text-transform:uppercase;"></div></div>';
   html += '<div class="row" style="margin-top:8px;'+(invPaxCount>1?' display:none;':'')+'" id="invNicRow"><div><label>NIC / Passport</label><input id="invNic1" placeholder="NIC or Passport number" autocomplete="off" style="text-transform:uppercase;"></div>'
         + '<div class="umrah-hide"><label>Outbound seat (optional)</label><input id="invSeat1" placeholder="e.g. 12A" autocomplete="off" style="text-transform:uppercase;"></div></div>';
@@ -2076,7 +2082,7 @@ function viewInvoice(){
     invs.slice(0, 80).forEach(function(x){
       var ix = x.d || {};
       html += '<div style="display:flex; gap:8px; align-items:center; border-bottom:1px solid var(--line); padding:7px 0;">'
-            + '<div style="flex:1; min-width:0;"><b>'+esc(ix.name||"")+'</b>'
+            + '<div style="flex:1; min-width:0;"><b>'+esc(ix.name || (ix.paxNames||[])[0] || "")+'</b>'
             + '<div class="hint" style="margin:0;">'+esc(dmy(x.date))+(ix.pnr && ix.pnr !== "UMRAH" ? ' · PNR '+esc(ix.pnr) : '')+(ix.docType === "umrah" ? ' · Umrah' : '')+'</div></div>'
             + '<button class="btn small inv-open" data-id="'+esc(x.id)+'" style="flex:0 0 auto;">Open</button>'
             + '<button class="del inv-del" data-id="'+esc(x.id)+'">✕</button></div>';
@@ -2161,6 +2167,8 @@ function applyInvDocType(){
   var rw = document.getElementById("invRetWrap");
   if(rw) rw.style.display = round ? "block" : "none";
   if(um){ var h = document.getElementById("nrHint"); if(h) h.textContent = ""; }
+  var cl = document.getElementById("invClientLabel");
+  if(cl) cl.textContent = um ? "Passenger name (first passenger — isi naam se invoice save hogi)" : "Client name";
   invCxAuto();
 }
 /* Connecting flight (2nd leg) — show/hide the extra fields */
@@ -3726,11 +3734,16 @@ function bind(){
     };
     // One-way: ignore any stale return-seat values
     if(d.trip !== "round"){ d.retSeat = ""; d.paxRetSeats = []; }
-    // Umrah invoice: flight fields ki zaroorat nahi
-    if(d.docType === "umrah"){ d.pnr = d.pnr || "UMRAH"; d.from = d.from || "—"; d.to = d.to || "—"; }
-    // Multi-passenger form: use the first passenger line when the single client box is hidden
-    if(!d.name && d.paxNames.length) d.name = d.paxNames[0];
-    if(!d.nic && d.paxNics.length) d.nic = d.paxNics[0];
+    // Umrah invoice: koi PNR/airline nahi — pehle passenger ke naam se save hoti hai
+    if(d.docType === "umrah"){ d.pnr = ""; d.air = ""; d.from = d.from || "—"; d.to = d.to || "—"; }
+    // Multi-passenger form: pehla passenger hi invoice ka naam hai (single client box hidden hota hai)
+    if(d.pax > 1){
+      d.name = d.paxNames[0] || "";
+      d.nic = d.paxNics[0] || "";
+    } else {
+      if(!d.name && d.paxNames.length) d.name = d.paxNames[0];
+      if(!d.nic && d.paxNics.length) d.nic = d.paxNics[0];
+    }
     if(d.docType !== "umrah"){
       if(!d.pnr || !d.name){ alert("PNR and passenger name are both required."); return; }
       if(!d.from || !d.to){ alert("Please enter both From and To airports."); return; }
@@ -3781,9 +3794,13 @@ function bind(){
       } else {
         if(!S.invoices) S.invoices = [];
         var exist = null;
+        var isUmrah = (d.docType === "umrah");
         for(var ii = 0; ii < S.invoices.length; ii++){
           var cx = S.invoices[ii].d || {};
-          if(cx.name === d.name && cx.pnr === d.pnr && cx.date === d.date && (cx.docType||"ticket") === (d.docType||"ticket")){ exist = S.invoices[ii]; break; }
+          if(isUmrah){
+            // Umrah: PNR nahi hoti — pehle passenger (name) + date se pehchaan
+            if((cx.docType||"ticket") === "umrah" && cx.name === d.name && cx.date === d.date){ exist = S.invoices[ii]; break; }
+          } else if(cx.name === d.name && cx.pnr === d.pnr && cx.date === d.date && (cx.docType||"ticket") === "ticket"){ exist = S.invoices[ii]; break; }
         }
         if(exist){ exist.d = d; exist.date = d.date; exist.savedAt = Date.now(); }
         else S.invoices.push({ id: uid(), date: d.date, savedAt: Date.now(), d: d });
