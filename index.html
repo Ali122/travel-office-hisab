@@ -73,8 +73,8 @@
   input,select,textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:var(--field); color:var(--ink);}
   /* Checkbox/radio ko full width stretch na karo — warna labels card se bahar nikal jate hain */
   input[type="checkbox"], input[type="radio"]{width:auto;}
-  /* Date/time boxes mobile par squeeze ho sakein — overflow na karein */
-  input[type="date"], input[type="time"]{min-width:0; flex:1 1 120px;}
+  /* Date/time/select ke native boxes apni intrinsic width se card se bahar na niklein */
+  input[type="date"], input[type="time"], select{min-width:0; max-width:100%; overflow:hidden;}
   textarea{resize:vertical; min-height:76px; line-height:1.5;}
   input:focus,select:focus{outline:2px solid var(--blue); border-color:var(--blue);}
   .btn{display:inline-block; border:none; border-radius:10px; padding:11px 16px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:10px; transition:background .15s, box-shadow .15s, transform .05s;}
@@ -204,10 +204,12 @@
     .ayat-head .tr{display:none;}
     .ayat-head .ur{font-size:10px; line-height:1.6;}
     .hints-btn{padding:5px 9px; font-size:10.5px;}
-    /* Mobile par saare .row wale fields ek column mein stack ho jate hain — date/time/inputs card se bahar nahi nikalte */
+    /* Mobile par saare .row wale fields ek column mein stack ho jate hain */
     .row{flex-direction:column; align-items:stretch;}
-    .row > *{min-width:100%;}
+    .row > *{width:100%; max-width:100%; min-width:0;}
     .inv-arrow{display:none !important;}
+    /* Koi bhi box card se bahar na nikle */
+    .card{overflow-x:hidden;}
     .shell{display:block;}
     nav#tabs{position:fixed; left:0; top:0; width:274px; height:100vh; flex:none; transform:translateX(-104%); transition:transform .25s ease; box-shadow:0 12px 40px rgba(15,23,42,.35); z-index:60; padding-top:14px;}
     .nav-head{display:flex;}
