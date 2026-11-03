@@ -320,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.95";
+var APP_VER = "1.96";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -670,6 +670,199 @@ function syncPull(cb){
       setSyncStatus("Could not load data from GitHub — " + msg, true);
       if(cb) cb(false);
     });
+}
+
+/* ===== Password-protected GitHub token setup link (client-side, no server) ===== */
+function ghBytesToB64(bytes){
+  var bin = "";
+  for(var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function ghBytesFromB64(b64){
+  var bin = atob(String(b64 || ""));
+  var out = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function ghBytesToUrlB64(bytes){
+  return ghBytesToB64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function ghBytesFromUrlB64(s){
+  var norm = String(s || "").replace(/-/g, "+").replace(/_/g, "/");
+  var pad = norm.length % 4;
+  if(pad === 2) norm += "==";
+  else if(pad === 3) norm += "=";
+  return ghBytesFromB64(norm);
+}
+function ghDeriveKey(pass, salt, iterations){
+  var enc = new TextEncoder();
+  return crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"])
+    .then(function(baseKey){
+      return crypto.subtle.deriveKey(
+        { name:"PBKDF2", salt:salt, iterations:iterations, hash:"SHA-256" },
+        baseKey,
+        { name:"AES-GCM", length:256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    });
+}
+function ghCreateTokenSetupLink(pat, repo, pass){
+  if(!crypto || !crypto.subtle) return Promise.reject(new Error("This browser does not support secure WebCrypto."));
+  var salt = new Uint8Array(16), iv = new Uint8Array(12);
+  crypto.getRandomValues(salt); crypto.getRandomValues(iv);
+  var iterations = 200000;
+  return ghDeriveKey(pass, salt, iterations).then(function(key){
+    var payload = JSON.stringify({ token: pat, repo: repo || "travel-office-hisab-backup" });
+    return crypto.subtle.encrypt({ name:"AES-GCM", iv:iv }, key, new TextEncoder().encode(payload));
+  }).then(function(enc){
+    var envelope = {
+      v: 1,
+      iter: iterations,
+      salt: ghBytesToB64(salt),
+      iv: ghBytesToB64(iv),
+      data: ghBytesToB64(new Uint8Array(enc))
+    };
+    var encoded = ghBytesToUrlB64(new TextEncoder().encode(JSON.stringify(envelope)));
+    return location.origin + location.pathname + "?tkcfg=" + encodeURIComponent(encoded);
+  });
+}
+function ghDecryptTokenSetupLink(encoded, pass){
+  if(!crypto || !crypto.subtle) return Promise.reject(new Error("This browser does not support secure WebCrypto."));
+  var env;
+  try{
+    env = JSON.parse(new TextDecoder().decode(ghBytesFromUrlB64(encoded)));
+  }catch(e){
+    return Promise.reject(new Error("This setup link is invalid."));
+  }
+  if(!env || !env.salt || !env.iv || !env.data) return Promise.reject(new Error("This setup link is invalid."));
+  var iterations = Number(env.iter) || 200000;
+  var salt = ghBytesFromB64(env.salt), iv = ghBytesFromB64(env.iv), data = ghBytesFromB64(env.data);
+  return ghDeriveKey(pass, salt, iterations).then(function(key){
+    return crypto.subtle.decrypt({ name:"AES-GCM", iv:iv }, key, data);
+  }).then(function(plain){
+    return JSON.parse(new TextDecoder().decode(plain));
+  });
+}
+function ghRemoveTokenSetupParam(){
+  try{
+    var u = new URL(location.href);
+    u.searchParams.delete("tkcfg");
+    history.replaceState(null, "", u.pathname + (u.search ? u.search : "") + (u.hash || ""));
+  }catch(e){}
+}
+function ghGetTokenSetupParam(){
+  var m = location.search.match(/[?&]tkcfg=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+function ghShowPasswordDialog(cfg){
+  var old = document.getElementById("ghSetupOverlay");
+  if(old && old.parentNode) old.parentNode.removeChild(old);
+  var ov = document.createElement("div");
+  ov.id = "ghSetupOverlay";
+  ov.style.cssText = "position:fixed; inset:0; z-index:100000; background:rgba(2,6,23,.72); display:flex; align-items:center; justify-content:center; padding:18px; box-sizing:border-box;";
+  ov.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:16px; width:100%; max-width:460px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,.42); font-family:inherit;">'
+    + '<div style="font-weight:800; font-size:17px; line-height:1.3;">' + esc(cfg.title || "Setup Password") + '</div>'
+    + '<div style="font-size:13px; color:var(--muted); margin-top:5px; line-height:1.45;">' + esc(cfg.hint || "Enter the password for this setup link.") + '</div>'
+    + '<label style="display:block; margin-top:14px; margin-bottom:4px; font-size:13px; font-weight:700; color:var(--muted);">Password</label>'
+    + '<input id="ghSetupPass" type="password" autocomplete="new-password" style="width:100%; box-sizing:border-box;">'
+    + (cfg.confirm ? '<label style="display:block; margin-top:10px; margin-bottom:4px; font-size:13px; font-weight:700; color:var(--muted);">Confirm password</label><input id="ghSetupPass2" type="password" autocomplete="new-password" style="width:100%; box-sizing:border-box;">' : '')
+    + '<div id="ghSetupErr" style="color:var(--red); font-size:12.5px; min-height:17px; margin-top:8px; line-height:1.35;"></div>'
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px;">'
+    +   '<button type="button" class="btn small" id="ghSetupCancel" style="margin-top:0;">Cancel</button>'
+    +   '<button type="button" class="btn small primary" id="ghSetupOk" style="margin-top:0;">' + esc(cfg.button || "Continue") + '</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  var passEl = document.getElementById("ghSetupPass");
+  var pass2El = document.getElementById("ghSetupPass2");
+  var errEl = document.getElementById("ghSetupErr");
+  var okEl = document.getElementById("ghSetupOk");
+  function setErr(msg){
+    if(errEl) errEl.textContent = msg || "";
+  }
+  function close(){
+    if(ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    if(cfg.onCancel) cfg.onCancel();
+  }
+  function submit(){
+    var pass = passEl ? passEl.value : "";
+    var pass2 = pass2El ? pass2El.value : "";
+    setErr("");
+    if(!pass){ setErr("Password is required."); return; }
+    if(cfg.confirm && pass !== pass2){ setErr("Passwords do not match."); return; }
+    if(pass.length < 6){ setErr("Use at least 6 characters."); return; }
+    okEl.disabled = true;
+    var done = Promise.resolve(cfg.onSubmit(pass, close, setErr));
+    done.then(function(){ if(okEl) okEl.disabled = false; }, function(){ if(okEl) okEl.disabled = false; });
+  }
+  okEl.onclick = submit;
+  document.getElementById("ghSetupCancel").onclick = close;
+  passEl.onkeydown = function(e){
+    if(e.key === "Enter") submit();
+    if(e.key === "Escape") close();
+  };
+  if(pass2El) pass2El.onkeydown = passEl.onkeydown;
+  setTimeout(function(){ try{ passEl.focus(); }catch(e){} }, 60);
+}
+function ghCreateSetupLink(){
+  var pat = String(((document.getElementById("setGhPat")||{}).value||"")).trim() || S.settings.githubPat || "";
+  var repo = String(((document.getElementById("setGhRepo")||{}).value||"")).trim() || "travel-office-hisab-backup";
+  if(!pat){ alert("Pehle GitHub token paste ya save karein."); return; }
+  ghShowPasswordDialog({
+    title:"Protect this device setup link",
+    hint:"Ek strong password choose karein. Naye device par ye password daal kar token auto-save ho jayega. Password aur link alag-alag bhejein.",
+    confirm:true,
+    button:"Create link",
+    onCancel:function(){},
+    onSubmit:function(pass, close, setErr){
+      return ghCreateTokenSetupLink(pat, repo, pass).then(function(url){
+        var out = document.getElementById("ghSetupOut");
+        var ta = document.getElementById("ghSetupUrl");
+        if(ta) ta.value = url;
+        if(out) out.style.display = "block";
+        setSyncStatus("✓ Encrypted setup link tayyar hai — password alag bhejkar share karein.");
+        close();
+      }).catch(function(e){
+        setErr("Link nahi ban saka — " + ((e && e.message) || e));
+        throw e;
+      });
+    }
+  });
+}
+function ghSetupFromLink(){
+  var encoded = ghGetTokenSetupParam();
+  if(!encoded) return;
+  setTimeout(function(){
+    ghShowPasswordDialog({
+      title:"Connect this device to GitHub",
+      hint:"Is device par GitHub sync setup karne ke liye wahi password daalein jo setup link banane wale ne diya tha.",
+      confirm:false,
+      button:"Connect this device",
+      onCancel:function(){ ghRemoveTokenSetupParam(); },
+      onSubmit:function(pass, close, setErr){
+        return ghDecryptTokenSetupLink(encoded, pass).then(function(parsed){
+          if(!parsed || !parsed.token) throw new Error("Setup data is incomplete.");
+          var existing = S.settings.githubPat || "";
+          if(existing && existing !== parsed.token){
+            if(!confirm("This device already has a GitHub token. Replace it with the token from this setup link?")){
+              setErr("Setup cancelled."); 
+              return;
+            }
+          }
+          S.settings.githubPat = String(parsed.token).trim();
+          S.settings.githubRepo = String(parsed.repo || "travel-office-hisab-backup").trim() || "travel-office-hisab-backup";
+          saveLocal();
+          ghRemoveTokenSetupParam();
+          setSyncStatus("✓ Token setup complete — loading latest data from GitHub…");
+          close();
+          syncPull(function(){ render(); });
+        }).catch(function(e){
+          setErr("Wrong password ya invalid setup link — " + ((e && e.message) || e));
+          throw e;
+        });
+      }
+    });
+  }, 350);
 }
 
 function testSync(){
@@ -4040,6 +4233,13 @@ function viewSettings(){
         + '</div>'
         + '<div class="hint" id="syncStatus" style="margin-top:8px; font-weight:600;"></div>'
         + '<div class="hint">Naya device: app khol kar same token aur repo paste karein, phir &ldquo;Save token &amp; sync&rdquo; — data khud load ho jayega. Token kisi ko bhi mat bhejein; backup file mein token kabhi nahi jata.</div>'
+        + '<button class="btn small" id="ghSetupLink" style="margin-top:6px; width:100%;">🔐 Create password-protected token setup link</button>'
+        + '<div id="ghSetupOut" style="display:none; margin-top:8px;">'
+        +   '<label>Setup link — send via WhatsApp / SMS</label>'
+        +   '<textarea id="ghSetupUrl" readonly rows="3"></textarea>'
+        +   '<button class="btn small primary" id="ghSetupCopy" style="margin-top:6px; width:100%;">Copy setup link</button>'
+        +   '<div class="hint">Password alag bhejein (call/SMS), link ke saath kabhi nahi. Link mein encrypted token hota hai — jiske paas link + password dono hon, wo token use kar sakta hai.</div>'
+        + '</div>'
         + '</div>';
 
   html += '<div class="card"><h2>Google Sheets — only monthly imports</h2>';
@@ -5350,6 +5550,20 @@ function bind(){
     if(!githubSyncConfigured()){ alert("Pehle GitHub token save karein."); return; }
     syncPull(function(ok){ alert(ok ? "✓ GitHub se latest data load ho gaya." : "GitHub se data load nahi hua — token/repo/internet check karein."); render(); });
   };
+  var ghSetupLink = document.getElementById("ghSetupLink");
+  if(ghSetupLink) ghSetupLink.onclick = ghCreateSetupLink;
+  var ghSetupCopy = document.getElementById("ghSetupCopy");
+  if(ghSetupCopy) ghSetupCopy.onclick = function(){
+    var ta = document.getElementById("ghSetupUrl");
+    var url = ta ? String(ta.value || "") : "";
+    if(!url) return;
+    var done = function(){ alert("Setup link copy ho gayi — password alag bhejein."); };
+    var fallback = function(){
+      if(ta){ ta.focus(); ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ window.prompt("Copy this link:", url); } }
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, fallback);
+    else fallback();
+  };
   var im = document.getElementById("importData");
   if(im) im.onchange = function(){
     var f = im.files[0]; if(!f) return;
@@ -5526,7 +5740,10 @@ migrateAutoQarza();
 render();
 cacheAirLogos();
 autoDistribute();
-if(githubSyncConfigured()) syncPull(function(){ render(); autoDistribute(); });
+// Token setup link (?tkcfg=) khola gaya ho to pehle device connect karne ka prompt dikhayein
+ghSetupFromLink();
+// Setup link open hai to existing token se pehle sync na karein — password se setup hone ke baad hi GitHub se load ho
+if(!ghGetTokenSetupParam() && githubSyncConfigured()) syncPull(function(){ render(); autoDistribute(); });
 // Jab app dobara khole / tab par wapas aaye — GitHub se latest data khud aa jaye
 document.addEventListener("visibilitychange", function(){
   if(document.hidden || !githubSyncConfigured()) return;

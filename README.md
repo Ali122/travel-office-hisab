@@ -15,6 +15,7 @@ open `index.html` in any browser. The whole UI is in English.
 - Client pending payments (bakaya) with per-month filter
 - Month-wise imports from Google Sheets (one file per month) via Apps Script web app
 - Live sync to a private GitHub repo (`HisabData.json`) so phone and PC stay together
+- Password-protected `?tkcfg=` setup links to configure another device without handwriting the token
 - Manual timestamped JSON snapshots to the same private repo for known-good restores
 - Excel (CSV) report: one selected month, all months in one file, or one file per month
 
@@ -26,6 +27,16 @@ open `index.html` in any browser. The whole UI is in English.
 4. The latest data loads automatically (or use **Push now** / **Pull now**). Google Sheet remains only for monthly imports.
 
 The app keeps data in `localStorage`, syncs a JSON copy to the private GitHub repo, and keeps manual backups under `backups/` in that repo.
+
+To connect another device without handwriting the token:
+
+1. Settings → **GitHub Sync** → enter token + repo, or use the token already saved on this device.
+2. Click **Create password-protected token setup link**.
+3. Choose a strong password. The link contains only the encrypted token.
+4. Send the link through one channel (for example WhatsApp) and the password separately (for example a phone call or SMS).
+5. On the other device, open the link, enter the password, and the token is saved there automatically.
+
+The static app cannot enforce a password server-side; anyone with both the link and password can use the token. Delete the setup link after the new device is connected, and keep the password strong.
 
 ## Google Sheets imports
 
