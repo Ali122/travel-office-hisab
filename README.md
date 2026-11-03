@@ -46,7 +46,7 @@ The static app cannot enforce a password server-side; anyone with both the link 
 2. In the app: Settings → paste the deployment URL + the Sheet **File ID** → **Test import**.
 3. Each month has its own Sheet file — change the File ID, then **Import**.
 
-Google Sheets is used for monthly imports only; main app data syncs to GitHub.
+Google Sheets is used for monthly imports only; main app data syncs to GitHub. Old `?sync=...` share links are ignored for safety — use the password-protected token setup link instead.
 
 ## Version
 
