@@ -320,9 +320,9 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.97";
+var APP_VER = "1.98";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
+var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
   en: {
@@ -452,21 +452,21 @@ function ensureSettings(s){
   for(var k in b){ if(s.settings[k] === undefined) s.settings[k] = b[k]; }
 }
 var S = load();
-// Old ?sync= / ?ssid= share links used to auto-configure a device — now they are ignored for safety.
-// A leaked link must never change endpoints or pull data into someone else's browser.
+// ?sync=<url>&ssid=<fileId> ke saath link khola jaye to import setup khud ho jaye.
+// The same link is also the bootstrap for private GitHub sync (trusted deployments only).
 (function(){
   try{
-    if(/[?&](?:sync|ssid)=/.test(location.search)){
-      var u = new URL(location.href);
-      u.searchParams.delete("sync");
-      u.searchParams.delete("ssid");
-      if(history.replaceState){
-        history.replaceState(null, "", u.pathname + (u.search ? u.search : "") + (u.hash || ""));
-      }
-      setTimeout(function(){
-        alert("Old share link was opened.\n\nFor safety, it has been ignored and removed. Use Settings → GitHub Sync → password-protected token setup link instead.");
-      }, 500);
+    var m = location.search.match(/[?&]sync=([^&]+)/);
+    if(m && m[1]){
+      var u = decodeURIComponent(m[1]);
+      if(u && u !== S.settings.syncUrl){ S.settings.syncUrl = u; S.__urlFromLink = true; }
     }
+    var mi = location.search.match(/[?&]ssid=([^&]+)/);
+    if(mi && mi[1]){
+      var fid = decodeURIComponent(mi[1]);
+      if(fid && fid !== S.settings.importId){ S.settings.importId = fid; S.__idFromLink = true; }
+    }
+    if(S.__urlFromLink || S.__idFromLink){ delete S.__urlFromLink; delete S.__idFromLink; saveLocal(); }
   }catch(e){}
 }());
 function saveLocal(){
@@ -864,6 +864,38 @@ function ghSetupFromLink(){
       }
     });
   }, 350);
+}
+
+/* Trusted sync-link bootstrap: GAS se private GitHub credentials fetch karke token auto-configure */
+function ghAutoFromSyncUrl(cb){
+  var url = String(S.settings.syncUrl || "").trim();
+  if(S.settings.githubPat){ if(cb) cb(false); return Promise.resolve(false); }
+  if(!url){ if(cb) cb(false); return Promise.resolve(false); }
+  setSyncStatus("GitHub setup check ho raha hai…");
+  var wantId = selectedSheetId();
+  var req = withQuery(url, wantId, true) + "&action=gh-setup";
+  return fetch(req)
+    .then(function(r){ return r.text().then(function(text){ return { status: r.status, text: text }; }); })
+    .then(function(res){
+      var j;
+      try{ j = JSON.parse(res.text); }catch(e){ j = null; }
+      if(j && j.ok && j.github && (j.github.pat || j.github.token)){
+        S.settings.githubPat = String(j.github.pat || j.github.token).trim();
+        S.settings.githubRepo = String(j.github.repo || "travel-office-hisab-backup").trim();
+        saveLocal();
+        setSyncStatus("✓ GitHub connected automatically from your Google link");
+        if(cb) cb(true);
+        return true;
+      }
+      setSyncStatus("GitHub auto-setup not configured in the script — paste the new GAS code (and set GITHUB_TOKEN) or the token manually.", true);
+      if(cb) cb(false);
+      return false;
+    })
+    .catch(function(){
+      setSyncStatus("GitHub auto-setup failed — check the Google link, or paste the token manually.", true);
+      if(cb) cb(false);
+      return false;
+    });
 }
 
 function testSync(){
@@ -4244,7 +4276,7 @@ function viewSettings(){
         + '</div>';
 
   html += '<div class="card"><h2>Google Sheets — only monthly imports</h2>';
-  html += '<label>Google GAS import endpoint (one time setup)</label><input id="setSyncUrl" value="'+esc(st.syncUrl||"")+'" placeholder="https://script.google.com/.../exec">';
+  html += '<label>Google link (import + auto GitHub setup — trusted people only)</label><input id="setSyncUrl" value="'+esc(st.syncUrl||"")+'" placeholder="https://script.google.com/.../exec">';
   html += '<label style="margin-top:8px;">🤖 AI OCR key — OCR.space (free, behtar scanned reading)</label><input id="setOcrKey" value="'+esc(st.ocrApiKey||"")+'" placeholder="K h… (ocr.space/ocrapi se free key lein)" autocomplete="off">';
   html += '<div class="row" style="margin-top:6px; align-items:center;"><button class="btn small green" id="saveOcrKey" style="flex:0 0 auto; margin-top:0;">💾 Save key</button><span class="hint" id="ocrKeyStatus" style="flex:2; margin-top:0;"></span></div>';
   html += '<div class="hint">Ye free key NIC/Passport scan aur scanned PDF ke pages ko AI engine se parhne deti he — offline Tesseract se kafi behtar (Urdu bhi). Free key: <b>ocr.space/ocrapi</b> par email se register karein. Khaali chhorein to offline Tesseract hi chalega.</div>';
@@ -4257,12 +4289,14 @@ function viewSettings(){
   html += '<button class="btn small green" id="importSheet" style="margin-top:10px; width:100%;">Import old Google Sheet data (tickets + expenses + loan)</button>';
   html += '<textarea id="batchIds" rows="3" placeholder="Optional: paste File IDs, one per line (leave empty to use the list saved in the app)" style="margin-top:8px; width:100%; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px;"></textarea>';
   html += '<button class="btn small green" id="importAll" style="margin-top:8px; width:100%;">Re-import all files (one click — old rows skipped, new duplicates marked)</button>';
+  html += '<button class="btn small primary" id="copyShare" style="margin-top:8px; width:100%;">Copy sync link (trusted people only)</button>';
+  html += '<div class="hint" style="font-weight:600;">Warning: this link grants automatic import + auto GitHub setup on the device that opens it. Share ONLY with people you fully trust — anyone with the link and your Apps Script URL can get the GitHub token and all app data.</div>';
   html += '<div id="syncReport" class="hint" style="margin-top:10px; line-height:1.7; word-break:break-word; background:var(--field); border:1px solid var(--line); border-radius:10px; padding:10px;"></div>';
   html += '<div class="hint">If import fails: (1) the deployment must have <b>Who has access: Anyone</b>, (2) the URL must end with <b>/exec</b> (not …/dev), (3) copy the URL again and paste it. The &ldquo;Test import&rdquo; button will tell you what is wrong. Main sync hamesha GitHub par hota hai.</div>';
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("gascard"))+'</h2>';
-  html += '<div class="hint">Main app data GitHub par sync hota hai — Google script ab sirf monthly Google Sheet se ticket/expense/loan import ke liye chahiye.<br>1) Open the Google Sheet → <b>Extensions → Apps Script</b><br>2) Paste the code below<br>3) <b>Deploy → New deployment → Web app</b> — Execute as: <b>Me</b>, Who has access: <b>Anyone</b><br>4) Copy the URL (…/exec) and paste it into &ldquo;Google GAS import endpoint&rdquo; above, then save</div>';
+  html += '<div class="hint">Main app sync GitHub par hota hai — Google script ab monthly imports ke saath private GitHub credentials bhi trusted devices ko bhejta hai.<br>1) Open the Google Sheet → <b>Extensions → Apps Script</b><br>2) Paste the new code below<br>3) Apps Script → <b>Project Settings → Script Properties</b> → add <b>GITHUB_TOKEN</b> = fine-grained PAT (Contents → Read and write); optional <b>GITHUB_REPO</b><br>4) <b>Deploy → Manage deployments → Edit → New version</b> (same …/exec URL), or <b>New deployment</b> with Execute as: Me, Who has access: Anyone<br>5) Trusted device opens the copied link → GitHub token/repo are saved automatically and latest data loads<br><br><b>WARNING:</b> Anyone who has this URL can call the script and receive the GitHub token. Share the link ONLY with people you fully trust.</div>';
   html += '<textarea id="gasCode" readonly style="width:100%; height:150px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px; margin-top:8px;">'+esc(GAS_CODE)+'</textarea>';
   html += '<button class="btn small primary" id="copyGas" style="margin-top:8px;">Copy code</button>';
   html += '</div>';
@@ -5313,7 +5347,10 @@ function bind(){
     S.settings.importId = document.getElementById("setImportId").value.trim();
     var okEl = document.getElementById("setOcrKey");
     if(okEl) S.settings.ocrApiKey = okEl.value.trim();
-    save(); render(); alert("Settings saved.\n\nMain app data continues syncing to GitHub.\nGoogle File ID is only used for monthly Google Sheet imports.");
+    save(); render();
+    // Google link update ke baad GAS se GitHub bootstrap bhi try karein (trusted link par token auto-setup ho jayega)
+    ghAutoFromSyncUrl().then(function(ok){ if(ok) syncPull(function(){ render(); autoDistribute(); }); });
+    alert("Settings saved.\n\nMain app data continues syncing to GitHub.\nGoogle File ID is only used for monthly Google Sheet imports.");
   };
 
   var fx = document.getElementById("fixBtn");
@@ -5565,6 +5602,23 @@ function bind(){
     if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, fallback);
     else fallback();
   };
+  var cs = document.getElementById("copyShare");
+  if(cs) cs.onclick = function(){
+    var site = location.origin + location.pathname;
+    var link = site + "?sync=" + encodeURIComponent(S.settings.syncUrl || "");
+    var sid = selectedSheetId();
+    if(sid) link += "&ssid=" + encodeURIComponent(sid);
+    if(!S.settings.syncUrl) alert("The Google import link is empty — update Google Sheets → import endpoint first.");
+    var ta = document.createElement("textarea");
+    ta.value = link;
+    document.body.appendChild(ta);
+    ta.select();
+    try{
+      document.execCommand("copy");
+      alert("Link copied! Send only to fully trusted people.\n\nThey will get automatic Google import + automatic GitHub setup (all app data), if your Apps Script is configured with GITHUB_TOKEN.");
+    }catch(e){ window.prompt("Copy this link:", link); }
+    document.body.removeChild(ta);
+  };
   var im = document.getElementById("importData");
   if(im) im.onchange = function(){
     var f = im.files[0]; if(!f) return;
@@ -5742,9 +5796,18 @@ render();
 cacheAirLogos();
 autoDistribute();
 // Token setup link (?tkcfg=) khola gaya ho to pehle device connect karne ka prompt dikhayein
+var hasTokenSetupLink = !!ghGetTokenSetupParam();
 ghSetupFromLink();
-// Setup link open hai to existing token se pehle sync na karein — password se setup hone ke baad hi GitHub se load ho
-if(!ghGetTokenSetupParam() && githubSyncConfigured()) syncPull(function(){ render(); autoDistribute(); });
+// Google sync link hai to us se private GitHub setup bhi auto karo; setup link open hai to hold karo
+if(!hasTokenSetupLink){
+  if(githubSyncConfigured()){
+    syncPull(function(){ render(); autoDistribute(); });
+  } else if(S.settings.syncUrl){
+    ghAutoFromSyncUrl().then(function(ok){
+      if(ok || githubSyncConfigured()) syncPull(function(){ render(); autoDistribute(); });
+    });
+  }
+}
 // Jab app dobara khole / tab par wapas aaye — GitHub se latest data khud aa jaye
 document.addEventListener("visibilitychange", function(){
   if(document.hidden || !githubSyncConfigured()) return;

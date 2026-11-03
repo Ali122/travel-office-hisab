@@ -15,6 +15,7 @@ open `index.html` in any browser. The whole UI is in English.
 - Client pending payments (bakaya) with per-month filter
 - Month-wise imports from Google Sheets (one file per month) via Apps Script web app
 - Live sync to a private GitHub repo (`HisabData.json`) so phone and PC stay together
+- Trusted Google sync links can auto-provision GitHub sync on devices (after Apps Script has a `GITHUB_TOKEN` script property)
 - Password-protected `?tkcfg=` setup links to configure another device without handwriting the token
 - Manual timestamped JSON snapshots to the same private repo for known-good restores
 - Excel (CSV) report: one selected month, all months in one file, or one file per month
@@ -38,15 +39,26 @@ To connect another device without handwriting the token:
 
 The static app cannot enforce a password server-side; anyone with both the link and password can use the token. Delete the setup link after the new device is connected, and keep the password strong.
 
+To auto-configure trusted devices with the existing Google sync link:
+
+1. In Apps Script paste the new code (shown in Settings).
+2. In Apps Script project settings, add script property `GITHUB_TOKEN` (the same fine-grained PAT) and optionally `GITHUB_REPO`.
+3. Update the existing web app deployment (same `/exec` URL).
+4. A device that opens the link with `?sync=...` receives the token/repo automatically and then loads all settings/data from GitHub.
+
+Anyone who has that Apps Script URL can request the token. Share it ONLY with people you fully trust.
+
 ## Google Sheets imports
 
 1. Put the Apps Script code (shown inside the app: Settings → Google Sheets import setup) into
-   the Sheet's **Extensions → Apps Script**, then deploy as a **Web app** (execute as: me,
-   access: anyone).
-2. In the app: Settings → paste the deployment URL + the Sheet **File ID** → **Test import**.
-3. Each month has its own Sheet file — change the File ID, then **Import**.
+   the Sheet's **Extensions → Apps Script**.
+2. Add Apps Script script property `GITHUB_TOKEN` (same fine-grained PAT) and optionally `GITHUB_REPO`.
+3. Deploy/update as a **Web app** (execute as: me, access: anyone).
+4. In the app: Settings → paste the deployment URL + the Sheet **File ID** → **Test import**.
+5. Each month has its own Sheet file — change the File ID, then **Import**.
+6. Use **Copy sync link** to send the trusted link to devices that should auto-import and auto-connect GitHub.
 
-Google Sheets is used for monthly imports only; main app data syncs to GitHub. Old `?sync=...` share links are ignored for safety — use the password-protected token setup link instead.
+Google Sheets now also acts as the trusted bootstrap for GitHub sync: opening the link can fetch the private token from the Apps Script and save it in the browser. Anyone with that link can do the same, so share it only with people you fully trust.
 
 ## Version
 
