@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.94</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.99</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -320,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.98";
+var APP_VER = "1.99";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -536,6 +536,25 @@ function ghSyncBase64Decode(content){
 }
 function githubSyncConfigured(){
   return !!String(S.settings.githubPat || "").trim();
+}
+/* Har render par dikhne wala permanent connection badge — save ke baad green message gayab nahi hota */
+function ghMaskPat(pat){
+  var p = String(pat || "").trim();
+  if(!p) return "";
+  if(p.length <= 10) return p.slice(0,2) + "…" + p.slice(-2);
+  return p.slice(0, 4) + "…" + p.slice(-4);
+}
+function ghConnBadgeHTML(st){
+  var pat = String((st && st.githubPat) || "").trim();
+  var repo = String((st && st.githubRepo) || "").trim() || "travel-office-hisab-backup";
+  if(!pat){
+    return '<div class="hint" id="ghConnInfo" style="margin:6px 0 0; font-weight:600; color:var(--red);">✗ No token attached — GitHub sync is off. Paste the token above and press “Save token &amp; sync”.</div>';
+  }
+  return '<div class="hint" id="ghConnInfo" style="margin:6px 0 0; font-weight:600; color:var(--green);">'
+       + '✓ Token attached and saved on this device: <code>'+esc(ghMaskPat(pat))+'</code>'
+       + ' &nbsp;•&nbsp; Repo: <code>'+esc(repo)+'</code>'
+       + '<br><span style="color:var(--muted); font-weight:400;">Ye badge har page reload ke baad bhi dikhega — token save hai. Live connection test ke liye <b>Push now</b> ya <b>Pull now</b> dabayein.</span>'
+       + '</div>';
 }
 function doPush(after){
   var pat = String(S.settings.githubPat || "").trim();
@@ -4258,6 +4277,7 @@ function viewSettings(){
         + '<div class="hint" style="margin-top:0;">Aapka main app data ab aapke private repo ke <code>HisabData.json</code> mein sync hota hai. Token aur repo backup wale same hain; backup snapshots alag <code>backups/</code> folder mein safe rahtay hain. Google Sheet ab sirf monthly imports ke liye reh gayi hai.</div>'
         + '<label>GitHub Token (PAT)</label>'
         + '<input type="password" id="setGhPat" value="'+esc(st.githubPat||"")+'" placeholder="ghp_… ya github_pat_…" autocomplete="off" style="font-family:monospace;">'
+        + ghConnBadgeHTML(st)
         + '<div class="row" style="margin-top:8px;"><div><label>Repo</label><input id="setGhRepo" value="'+esc(st.githubRepo||"travel-office-hisab-backup")+'" placeholder="travel-office-hisab-backup"></div></div>'
         + '<div class="row" style="margin-top:8px; align-items:center; gap:8px;">'
         +   '<button class="btn small primary" id="ghSave" style="flex:1.35; margin-top:0;">Save token &amp; sync</button>'
@@ -5665,7 +5685,10 @@ function bind(){
       setSyncStatus("Token check ho raha he…");
       ghApi("").then(function(){
         setSyncStatus("✓ Token sahi hai — loading latest data from GitHub…");
-        syncPull(function(){ render(); });
+        syncPull(function(ok){
+          render();
+          setSyncStatus(ok ? "✓ GitHub connected — latest data loaded." : "✓ Token sahi hai — GitHub connected.");
+        });
       }).catch(function(e){
         setSyncStatus("✗ Token/repo problem — "+((e && e.message) || e), true);
       });
