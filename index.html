@@ -320,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.94";
+var APP_VER = "1.95";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -387,7 +387,7 @@ var TXT = {
     bijcard:"Electricity bill (K-Electric)", bijweb:"Website for checking bills (KE page)",
     bijmeter:"Meter / account numbers (one per line)",
     fixkh:"Fixed monthly expenses (added automatically each month)", nfix:"Add new fixed expense",
-    synch:"Sync with other PC (Google Sheet)", copyshare:"Build & copy share link (to send to mobile)", gascard:"Google Sheet setup (one time only)",
+    synch:"GitHub Sync", copyshare:"Build & copy share link (to send to mobile)", gascard:"Google Sheets import setup (monthly files only)",
     backuph:"Backup / Restore", exbtn:"Download data (backup)",
     repbtn:"Download report (Excel file — readable summary)",
     imlbl:"Restore old backup from file",
@@ -489,10 +489,16 @@ function saveLocal(){
 function save(){ S.__ts = Date.now(); saveLocal(); syncPush(); }
 function saveNow(cb){ S.__ts = Date.now(); saveLocal(); if(syncTimer) clearTimeout(syncTimer); doPush(cb); }
 
-/* ================= SYNC (GOOGLE SHEET) ================= */
+/* ================= SYNC (GITHUB PRIVATE REPO) ================= */
 var syncTimer = null;
+var ghSyncSha = null;
+var GH_SYNC_PATH = "HisabData.json";
 function setSyncStatus(msg, bad){
   var el = document.getElementById("syncStatus");
+  if(el){ el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)"; }
+}
+function setImportStatus(msg, bad){
+  var el = document.getElementById("importStatus");
   if(el){ el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)"; }
 }
 /* Shaamil file ID helpers — read + write dono isi file par */
@@ -518,111 +524,163 @@ function ssidWarning(j, wantId){
   return "";
 }
 
+function ghSyncBase64Encode(text){
+  return btoa(unescape(encodeURIComponent(text)));
+}
+function ghSyncBase64Decode(content){
+  var bin = atob(String(content || "").replace(/\n/g, ""));
+  var bytes = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+function githubSyncConfigured(){
+  return !!String(S.settings.githubPat || "").trim();
+}
 function doPush(after){
-  var url = S.settings.syncUrl; if(!url){ if(after) after(false); return; }
-  setSyncStatus("Syncing…");
-  var target = sheetUrl(url, false);
-  fetch(target, { method:"POST", headers:{ "Content-Type":"text/plain" }, body: JSON.stringify({ action:"save", ssid: selectedSheetId(), data: JSON.stringify(ghStripSecretsForSave(S)) }) })
-    .then(function(r){ return r.json(); })
-    .then(function(j){
-      if(j && j.ok === false){ setSyncStatus("Sync failed — "+(j.err || "the sheet refused the request"), true); if(after) after(false); return; }
-      setSyncStatus("✓ Saved to sheet ("+new Date().toLocaleTimeString()+")");
-      if(after) after(true);
-    })
-    .catch(function(){ setSyncStatus("Sync failed — check the URL with 'Test'", true); if(after) after(false); });
+  var pat = String(S.settings.githubPat || "").trim();
+  if(!pat){ if(after) after(false); return; }
+  setSyncStatus("Syncing to GitHub…");
+  var clean = ghStripSecretsForSave(S);
+  var content = ghSyncBase64Encode(JSON.stringify(clean, null, 2));
+  function notFound(e){
+    return /Not Found|404|does not exist|empty/i.test(String((e && e.message) || e));
+  }
+  function shaMismatch(e){
+    return /409|412|422|sha|does not match|conflict|validation failed/i.test(String((e && e.message) || e));
+  }
+  function send(sha){
+    var body = { message:"AB Travels sync " + new Date().toISOString(), content:content };
+    if(sha) body.sha = sha;
+    return ghApi("/contents/" + GH_SYNC_PATH, "PUT", body)
+      .then(function(j){
+        ghSyncSha = (j && j.content && j.content.sha) ? j.content.sha : null;
+        setSyncStatus("✓ Saved to GitHub (" + new Date().toLocaleTimeString() + ")");
+        if(after) after(true);
+      })
+      .catch(function(e){
+        if(sha && shaMismatch(e)){
+          ghSyncSha = null;
+          return fetchAndSend().then(function(){ if(after) after(true); });
+        }
+        throw e;
+      });
+  }
+  function fetchAndSend(){
+    return ghApi("/contents/" + GH_SYNC_PATH)
+      .then(function(j){ ghSyncSha = j && j.sha ? j.sha : null; return send(ghSyncSha); })
+      .catch(function(e){
+        if(notFound(e)){ ghSyncSha = null; return send(null); }
+        throw e;
+      });
+  }
+  var promise = ghSyncSha ? send(ghSyncSha).catch(function(e){
+    if(shaMismatch(e) || notFound(e)){ ghSyncSha = null; return fetchAndSend(); }
+    throw e;
+  }) : fetchAndSend();
+  return promise.catch(function(e){
+    setSyncStatus("Sync failed — " + ((e && e.message) || e), true);
+    if(after) after(false);
+  });
 }
 function syncPush(){
-  var url = S.settings.syncUrl; if(!url) return;
+  var pat = String(S.settings.githubPat || "").trim(); if(!pat) return;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(function(){ doPush(); }, 2000);
 }
 function syncPull(cb){
-  var url = S.settings.syncUrl;
-  if(!url){ if(cb) cb(false); return; }
-  setSyncStatus("Loading data from sheet…");
-  var wantId = selectedSheetId();
-  fetch(sheetUrl(url, true))
-    .then(function(r){ return r.json(); })
+  var pat = String(S.settings.githubPat || "").trim();
+  if(!pat){ if(cb) cb(false); return; }
+  setSyncStatus("Loading latest data from GitHub…");
+  return ghApi("/contents/" + GH_SYNC_PATH)
     .then(function(j){
-      if(!j || j.ok === false){
-        setSyncStatus("✗ "+((j && j.err) || "The sheet did not return a valid response"), true);
-        if(cb) cb(false); return;
+      var text = ghSyncBase64Decode(j.content || "");
+      var data = JSON.parse(text);
+      if(!data || !data.settings){
+        setSyncStatus("The GitHub sync file is not valid app data", true);
+        if(cb) cb(false);
+        return;
       }
-      var warn = ssidWarning(j, wantId);
-      if(warn){ setSyncStatus("✗ "+warn, true); if(cb) cb(false); return; }
-      try{
-        var data = JSON.parse(j.data);
-        if(data && data.settings){
-          var remoteHas = !!(data.months && Object.keys(data.months).length) || !!(data.tickets && data.tickets.length)
-                       || !!(data.draws && data.draws.length) || !!(data.receivables && data.receivables.length);
-          var localHas = Object.keys(S.months || {}).length > 0 || (S.tickets && S.tickets.length > 0)
-                      || (S.draws && S.draws.length > 0) || (S.receivables && S.receivables.length > 0);
-          var remoteTs = Number(data.__ts) || 0;
-          var localTs = Number(S.__ts) || 0;
-
-          // Sheet par purana data hai — local naya hai to sheet ko local se update kar dein
-          if(localTs > remoteTs){
-            setSyncStatus("The sheet had older data — your newer data was sent to the sheet");
-            doPush();
-            if(cb) cb(false);
-            return;
-          }
-          if(!remoteHas){
-            if(localHas){
-              setSyncStatus("The sheet is empty — local data kept and sent to the sheet");
-              doPush();
-            } else {
-              setSyncStatus("The sheet is empty too");
-            }
-            if(cb) cb(false);
-            return;
-          }
-          // Remote purana ya barabar — local data ko chhedna nahi
-          if(localHas && remoteTs <= localTs){
-            setSyncStatus("✓ Local data is newer — old data from the sheet was not loaded");
-            if(cb) cb(false);
-            return;
-          }
-          data.settings.syncUrl = S.settings.syncUrl;
-          data.settings.importId = S.settings.importId || "";
-          if(S.settings.githubPat && !data.settings.githubPat) data.settings.githubPat = S.settings.githubPat;
-          if(!data.months) data.months = {};
-          if(!data.draws) data.draws = [];
-          if(!data.receivables) data.receivables = [];
-          if(!data.tickets) data.tickets = [];
-          if(!data.bills) data.bills = [];
-          if(!data.invoices) data.invoices = [];
-          if(!data.clients) data.clients = [];
-          if(!data.waseem) data.waseem = [];
-          if(!data.charityPaid) data.charityPaid = [];
-          if(!data.qarzaPayments) data.qarzaPayments = [];
-          if(!data.qarzaPaid) data.qarzaPaid = [];
-          S = data;
-          ensureSettings(S);
-          _monthAgg = null;
-          migrateAutoQarza();
-          localStorage.setItem(KEY, JSON.stringify(S));
-          selectedMonth = null;
-          setSyncStatus("✓ Data loaded from the sheet");
-          if(cb) cb(true);
-          return;
+      ghSyncSha = j && j.sha ? j.sha : null;
+      var remoteHas = !!(data.months && Object.keys(data.months).length) || !!(data.tickets && data.tickets.length)
+                    || !!(data.draws && data.draws.length) || !!(data.receivables && data.receivables.length);
+      var localHas = Object.keys(S.months || {}).length > 0 || (S.tickets && S.tickets.length > 0)
+                   || (S.draws && S.draws.length > 0) || (S.receivables && S.receivables.length > 0);
+      var remoteTs = Number(data.__ts) || 0;
+      var localTs = Number(S.__ts) || 0;
+      if(localTs > remoteTs){
+        setSyncStatus("GitHub had older data — your newer data was sent to GitHub");
+        doPush();
+        if(cb) cb(false);
+        return;
+      }
+      if(!remoteHas){
+        if(localHas){
+          setSyncStatus("GitHub sync is empty — local data kept and sent to GitHub");
+          doPush();
+        } else {
+          setSyncStatus("GitHub sync is empty too");
         }
-      }catch(err){}
-      setSyncStatus("No app data found in the sheet — import from that file first", true);
-      if(cb) cb(false);
+        if(cb) cb(false);
+        return;
+      }
+      if(localHas && remoteTs <= localTs){
+        setSyncStatus("✓ Local data is newer — old data from GitHub was not loaded");
+        if(cb) cb(false);
+        return;
+      }
+      data.settings.githubPat = S.settings.githubPat || "";
+      data.settings.githubRepo = S.settings.githubRepo || "";
+      data.settings.syncUrl = S.settings.syncUrl || "";
+      data.settings.importId = S.settings.importId || "";
+      if(!data.months) data.months = {};
+      if(!data.draws) data.draws = [];
+      if(!data.receivables) data.receivables = [];
+      if(!data.tickets) data.tickets = [];
+      if(!data.bills) data.bills = [];
+      if(!data.invoices) data.invoices = [];
+      if(!data.clients) data.clients = [];
+      if(!data.waseem) data.waseem = [];
+      if(!data.charityPaid) data.charityPaid = [];
+      if(!data.qarzaPayments) data.qarzaPayments = [];
+      if(!data.qarzaPaid) data.qarzaPaid = [];
+      S = data;
+      ensureSettings(S);
+      _monthAgg = null;
+      migrateAutoQarza();
+      localStorage.setItem(KEY, JSON.stringify(S));
+      selectedMonth = null;
+      setSyncStatus("✓ Data loaded from GitHub");
+      if(cb) cb(true);
     })
-    .catch(function(){ setSyncStatus("Could not load data from the sheet — check the URL with 'Test'", true); if(cb) cb(false); });
+    .catch(function(e){
+      var msg = String((e && e.message) || e);
+      if(/Not Found|404|does not exist|empty/i.test(msg)){
+        ghSyncSha = null;
+        var localHas = Object.keys(S.months || {}).length > 0 || (S.tickets && S.tickets.length > 0)
+                     || (S.draws && S.draws.length > 0) || (S.receivables && S.receivables.length > 0);
+        if(localHas){
+          setSyncStatus("GitHub sync empty — local data upload ho raha hai…");
+          doPush();
+        } else {
+          setSyncStatus("GitHub sync empty — no data on this device yet");
+        }
+        if(cb) cb(false);
+        return;
+      }
+      setSyncStatus("Could not load data from GitHub — " + msg, true);
+      if(cb) cb(false);
+    });
 }
 
 function testSync(){
   var el = document.getElementById("setSyncUrl");
   var url = el ? el.value.trim() : S.settings.syncUrl;
-  if(!url){ setSyncStatus("Enter the sync URL first", true); return; }
+  if(!url){ setImportStatus("Enter the import URL first", true); return; }
   var wantId = (function(){
     var iid = document.getElementById("setImportId");
     return extractFileId(iid ? iid.value.trim() : (S.settings.importId || ""));
   })();
-  setSyncStatus("Testing…");
+  setImportStatus("Testing…");
   fetch(withQuery(url, wantId, true))
     .then(function(r){
       return r.text().then(function(txt){ return { status:r.status, txt:txt }; });
@@ -632,7 +690,7 @@ function testSync(){
       try{ jj = JSON.parse(res.txt); ok = jj && jj.ok === true; }catch(e){}
       if(ok){
         var w = ssidWarning(jj, wantId);
-        setSyncStatus(w ? "✗ "+w : "✓ URL is correct — sync will work", !!w);
+        setImportStatus(w ? "✗ "+w : "✓ URL is correct — import endpoint ready", !!w);
         try{
           if(jj.debug){
             var dbg = jj.debug;
@@ -649,15 +707,15 @@ function testSync(){
           }
         }catch(e){}
       } else if(jj && jj.ok === false){
-        setSyncStatus("✗ "+(jj.err || "The script returned an error"), true);
+        setImportStatus("✗ "+(jj.err || "The script returned an error"), true);
       } else if(res.txt.toLowerCase().indexOf("<!doctype html") !== -1 || res.txt.indexOf("Sign in") !== -1){
-        setSyncStatus("✗ The URL opened but Google showed a login page — set 'Who has access: Anyone' in the deployment, then copy the new URL", true);
+        setImportStatus("✗ The URL opened but Google showed a login page — set 'Who has access: Anyone' in the deployment, then copy the new URL", true);
       } else {
-        setSyncStatus("✗ The URL did not return a valid response — the URL must end with /exec. Copy the full URL again", true);
+        setImportStatus("✗ The URL did not return a valid response — the URL must end with /exec. Copy the full URL again", true);
       }
     })
     .catch(function(){
-      setSyncStatus("✗ Could not reach the URL — (1) set the deployment to 'Who has access: Anyone', (2) make sure the URL ends with /exec, (3) check your internet", true);
+      setImportStatus("✗ Could not reach the URL — (1) set the deployment to 'Who has access: Anyone', (2) make sure the URL ends with /exec, (3) check your internet", true);
     });
 }
 
@@ -745,21 +803,21 @@ function importFromSheet(opts){
   if(opts.fileId === undefined) url = importUrl();
   else if(opts.fileId) url = withQuery(S.settings.syncUrl, extractFileId(opts.fileId), true);
   else url = withQuery(S.settings.syncUrl, "", true);
-  if(!url){ alert("Set up sync and enter the sync URL first."); if(opts.done) opts.done(null, "Sync URL was empty."); return; }
-  setSyncStatus("Loading old data from the sheet…");
+  if(!url){ alert("Set up Google Sheets import first."); if(opts.done) opts.done(null, "Google import endpoint was empty."); return; }
+  setImportStatus("Loading old data from the sheet…");
   var wantId = opts.fileId ? extractFileId(opts.fileId) : (opts.fileId === "" ? "" : selectedSheetId());
   fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(j){
       if(!j || j.ok === false){
-        setSyncStatus("✗ "+((j && j.err) || "The sheet did not return a valid response"), true);
+        setImportStatus("✗ "+((j && j.err) || "The sheet did not return a valid response"), true);
         if(!quiet) alert("Could not get data from the sheet.\n\n"+((j && j.err) || "Apps Script did not return a valid response."));
         if(opts.done) opts.done(null, "data not found ("+(((j && j.err) || "no response")+""));
         return;
       }
       var warn = ssidWarning(j, wantId);
       if(warn){
-        setSyncStatus("✗ "+warn, true);
+        setImportStatus("✗ "+warn, true);
         if(!quiet) alert("⚠ "+warn+"\n\nFile opened now: "+((j.debug && j.debug.spreadsheet) || "?" )+"\nFile ID you entered: "+(wantId || "(empty)"));
         if(opts.done) opts.done(null, "File ID / deployment problem");
         return;
@@ -826,7 +884,7 @@ function importFromSheet(opts){
       }
       if(!midDefault){
         if(quiet){
-          setSyncStatus("✗ Could not detect the month for one file", true);
+          setImportStatus("✗ Could not detect the month for one file", true);
           if(opts.done) opts.done(null, "month not detected (add the month name in the file name)");
           return;
         }
@@ -982,7 +1040,7 @@ function importFromSheet(opts){
         alert(sumMsg);
       }
     })
-    .catch(function(){ setSyncStatus("Could not get data from the sheet (check URL/internet)", true); if(!quiet) alert("Could not get data from the sheet. Check the sync URL and your internet."); if(opts.done) opts.done(null, "data not found (internet/URL)"); });
+    .catch(function(){ setImportStatus("Could not get data from the sheet (check the import endpoint/internet)", true); if(!quiet) alert("Could not get data from the sheet. Check the Google import endpoint and your internet."); if(opts.done) opts.done(null, "data not found (internet/endpoint)"); });
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 var _moneyFmt = null;
@@ -1265,6 +1323,7 @@ function restoreLastSnapshot(){
   if(!d || !d.settings){ alert("Auto-backup kharab hai — downloaded backup file se restore karein."); return; }
   d.settings.syncUrl = S.settings.syncUrl;
   if(S.settings.githubPat && !d.settings.githubPat) d.settings.githubPat = S.settings.githubPat;
+  if(S.settings.githubRepo && !d.settings.githubRepo) d.settings.githubRepo = S.settings.githubRepo;
   d.settings.importId = S.settings.importId || "";
   S = d;
   ensureSettings(S);
@@ -1279,7 +1338,7 @@ function restoreLastSnapshot(){
   try{ localStorage.removeItem(SNAP_KEY); }catch(e){}
   var _tt = document.getElementById("undoToast"); if(_tt && _tt.parentNode) _tt.parentNode.removeChild(_tt);
   render();
-  if(S.settings.syncUrl) syncPush();
+  if(githubSyncConfigured()) syncPush();
   alert("✓ Pichhli state wapas aa gayi" + (o && o.label ? " — " + o.label : "") + ".");
 }
 function csvVal(v){
@@ -3969,28 +4028,40 @@ function viewSettings(){
   html += '<div class="hint">These expenses are added automatically when a new month is created. If an amount increases, update it here — the new amount is used from the next month.</div>';
   html += '</div>';
 
-  html += '<div class="card"><h2>'+esc(T("synch"))+'</h2>';
-  html += '<label>Sync URL (Google Apps Script web app)</label><input id="setSyncUrl" value="'+esc(st.syncUrl||"")+'" placeholder="https://script.google.com/.../exec">';
+  html += '<div class="card"><h2>🐙 GitHub Sync — replaces Google Sheet sync</h2>'
+        + '<div class="hint" style="margin-top:0;">Aapka main app data ab aapke private repo ke <code>HisabData.json</code> mein sync hota hai. Token aur repo backup wale same hain; backup snapshots alag <code>backups/</code> folder mein safe rahtay hain. Google Sheet ab sirf monthly imports ke liye reh gayi hai.</div>'
+        + '<label>GitHub Token (PAT)</label>'
+        + '<input type="password" id="setGhPat" value="'+esc(st.githubPat||"")+'" placeholder="ghp_… ya github_pat_…" autocomplete="off" style="font-family:monospace;">'
+        + '<div class="row" style="margin-top:8px;"><div><label>Repo</label><input id="setGhRepo" value="'+esc(st.githubRepo||"travel-office-hisab-backup")+'" placeholder="travel-office-hisab-backup"></div></div>'
+        + '<div class="row" style="margin-top:8px; align-items:center; gap:8px;">'
+        +   '<button class="btn small primary" id="ghSave" style="flex:1.35; margin-top:0;">Save token &amp; sync</button>'
+        +   '<button class="btn small" id="ghSyncNow" style="flex:1; margin-top:0;">Push now</button>'
+        +   '<button class="btn small" id="ghSyncPull" style="flex:1; margin-top:0;">Pull now</button>'
+        + '</div>'
+        + '<div class="hint" id="syncStatus" style="margin-top:8px; font-weight:600;"></div>'
+        + '<div class="hint">Naya device: app khol kar same token aur repo paste karein, phir &ldquo;Save token &amp; sync&rdquo; — data khud load ho jayega. Token kisi ko bhi mat bhejein; backup file mein token kabhi nahi jata.</div>'
+        + '</div>';
+
+  html += '<div class="card"><h2>Google Sheets — only monthly imports</h2>';
+  html += '<label>Google GAS import endpoint (one time setup)</label><input id="setSyncUrl" value="'+esc(st.syncUrl||"")+'" placeholder="https://script.google.com/.../exec">';
   html += '<label style="margin-top:8px;">🤖 AI OCR key — OCR.space (free, behtar scanned reading)</label><input id="setOcrKey" value="'+esc(st.ocrApiKey||"")+'" placeholder="K h… (ocr.space/ocrapi se free key lein)" autocomplete="off">';
   html += '<div class="row" style="margin-top:6px; align-items:center;"><button class="btn small green" id="saveOcrKey" style="flex:0 0 auto; margin-top:0;">💾 Save key</button><span class="hint" id="ocrKeyStatus" style="flex:2; margin-top:0;"></span></div>';
   html += '<div class="hint">Ye free key NIC/Passport scan aur scanned PDF ke pages ko AI engine se parhne deti he — offline Tesseract se kafi behtar (Urdu bhi). Free key: <b>ocr.space/ocrapi</b> par email se register karein. Khaali chhorein to offline Tesseract hi chalega.</div>';
-  html += '<label style="margin-top:8px;">Sheet File ID (data is read from and saved to this file)</label><input id="setImportId" value="'+esc(st.importId||"")+'" placeholder="Enter the File ID of the file for each month">';
-  html += '<div class="hint">File ID = the long part of the file URL between /d/ and /edit. Enter the <b>January</b> file ID and save, and the data will come from the January file. If left empty, the app uses the file the script is deployed in — that is why the wrong file&rsquo;s data appeared before.</div>';
+  html += '<label style="margin-top:8px;">Sheet File ID (monthly imports yahan se aate hain)</label><input id="setImportId" value="'+esc(st.importId||"")+'" placeholder="Enter the File ID of the file for each month">';
+  html += '<div class="hint">File ID = the long part of the file URL between /d/ and /edit. Enter the <b>January</b> file ID and save, and imports will read from the January file. Main data sync GitHub par hota hai; Google link sirf monthly Google Sheets se ticket/expense/loan import ke liye hai.</div>';
   html += '<div class="row" style="margin-top:8px; align-items:center;">'
-        + '<button class="btn small primary" id="pullSync" style="flex:0 0 auto; margin-top:0;">Load data from sheet</button>'
-        + '<button class="btn small" id="testSync" style="flex:0 0 auto; margin-top:0; background:var(--gold); color:#fff;">Test</button>'
-        + '<span class="hint hint-status" id="syncStatus" style="flex:2; margin-top:0;"></span>'
+        + '<button class="btn small" id="testSync" style="flex:0 0 auto; margin-top:0; background:var(--gold); color:#fff;">Test import</button>'
+        + '<span class="hint hint-status" id="importStatus" style="flex:2; margin-top:0;"></span>'
         + '</div>';
   html += '<button class="btn small green" id="importSheet" style="margin-top:10px; width:100%;">Import old Google Sheet data (tickets + expenses + loan)</button>';
   html += '<textarea id="batchIds" rows="3" placeholder="Optional: paste File IDs, one per line (leave empty to use the list saved in the app)" style="margin-top:8px; width:100%; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px;"></textarea>';
   html += '<button class="btn small green" id="importAll" style="margin-top:8px; width:100%;">Re-import all files (one click — old rows skipped, new duplicates marked)</button>';
-  html += '<button class="btn small primary" id="copyShare" style="margin-top:8px; width:100%;">'+esc(T("copyshare"))+'</button>';
   html += '<div id="syncReport" class="hint" style="margin-top:10px; line-height:1.7; word-break:break-word; background:var(--field); border:1px solid var(--line); border-radius:10px; padding:10px;"></div>';
-  html += '<div class="hint">If sync fails: (1) the deployment must have <b>Who has access: Anyone</b>, (2) the URL must end with <b>/exec</b> (not …/dev), (3) copy the URL again and paste it. The &ldquo;Test&rdquo; button will tell you what is wrong.</div>';
+  html += '<div class="hint">If import fails: (1) the deployment must have <b>Who has access: Anyone</b>, (2) the URL must end with <b>/exec</b> (not …/dev), (3) copy the URL again and paste it. The &ldquo;Test import&rdquo; button will tell you what is wrong. Main sync hamesha GitHub par hota hai.</div>';
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("gascard"))+'</h2>';
-  html += '<div class="hint">1) Open the Google Sheet → <b>Extensions → Apps Script</b><br>2) Paste the code below<br>3) <b>Deploy → New deployment → Web app</b> — Execute as: <b>Me</b>, Who has access: <b>Anyone</b><br>4) Copy the URL (…/exec) and paste it into &ldquo;Sync URL&rdquo; above, then save</div>';
+  html += '<div class="hint">Main app data GitHub par sync hota hai — Google script ab sirf monthly Google Sheet se ticket/expense/loan import ke liye chahiye.<br>1) Open the Google Sheet → <b>Extensions → Apps Script</b><br>2) Paste the code below<br>3) <b>Deploy → New deployment → Web app</b> — Execute as: <b>Me</b>, Who has access: <b>Anyone</b><br>4) Copy the URL (…/exec) and paste it into &ldquo;Google GAS import endpoint&rdquo; above, then save</div>';
   html += '<textarea id="gasCode" readonly style="width:100%; height:150px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px; margin-top:8px;">'+esc(GAS_CODE)+'</textarea>';
   html += '<button class="btn small primary" id="copyGas" style="margin-top:8px;">Copy code</button>';
   html += '</div>';
@@ -4005,23 +4076,19 @@ function viewSettings(){
   html += '<button class="btn small" id="repAllBtn" style="margin-top:8px; width:100%; background:var(--green); color:#fff;">Download each month separately (one file per month)</button>';
   html += '<div class="hint">Report ab organized ledger ki shakal mein hai: shuru mein Profit &amp; Loss summary, phir har mahine ke alag sections (Income, Expenses, Ticket/Umrah Sales, Withdrawals) sab totals ke saath — tax lawyer ko direct bhejne ke liye tayyar.</div>';
   html += '<label style="margin-top:14px;">'+esc(T("imlbl"))+'</label><input type="file" id="importData" accept=".json">';
-  html += '<div class="hint">Data is saved on this device and in your Google Sheet. Take a backup every month.</div>';
+  html += '<div class="hint">Data is saved on this device, synced to GitHub, and snapshot backups are available. Take a backup every month.</div>';
   html += '</div>';
 
-  html += '<div class="card"><h2>🐙 Backup to GitHub — unlimited free, private</h2>'
-        + '<div class="hint" style="margin-top:0;">Google ke bina — backup JSON file seedha aap ke <b>private</b> repo mein jati hai: <code>Ali122/travel-office-hisab-backup</code>. Koi aur nahi dekh sakta. Naam badalna ho to "Repo" mein <code>owner/repo</code> likhein. Token sirf is device par save hota hai — backup file mein kabhi nahi jata.</div>'
-        + '<label>GitHub Token (PAT)</label>'
-        + '<input type="password" id="setGhPat" value="'+esc(st.githubPat||"")+'" placeholder="ghp_… ya github_pat_…" autocomplete="off" style="font-family:monospace;">'
-        + '<div class="row" style="margin-top:8px;"><div><label>Repo</label><input id="setGhRepo" value="'+esc(st.githubRepo||"travel-office-hisab-backup")+'" placeholder="travel-office-hisab-backup"></div></div>'
-        + '<button class="btn small primary" id="ghSave" style="margin-top:8px;">Save GitHub backup settings</button>'
+  html += '<div class="card"><h2>🐙 GitHub backup — manual snapshots</h2>'
+        + '<div class="hint" style="margin-top:0;">Same private repo stores separate timestamped backup snapshots in <code>backups/</code>. Live sync runs automatically into <code>HisabData.json</code>; these snapshots are for a known-good restore point.</div>'
         + '<div class="row" style="margin-top:8px; gap:8px;">'
-        +   '<button class="btn small" id="ghBakNow" style="flex:1.15; background:var(--green); color:#fff;">☁️ Save backup on GitHub now</button>'
-        +   '<button class="btn small" id="ghBakShow" style="flex:1;">Show backups…</button>'
+        +   '<button class="btn small" id="ghBakNow" style="flex:1.15; background:var(--green); color:#fff; margin-top:0;">☁️ Save backup on GitHub now</button>'
+        +   '<button class="btn small" id="ghBakShow" style="flex:1; margin-top:0;">Show backups…</button>'
         + '</div>'
         + '<select id="ghBakList" style="margin-top:8px; width:100%; display:none;"></select>'
         + '<button class="btn small" id="ghBakRestore" style="margin-top:8px; display:none; width:100%;">↩ Restore selected backup</button>'
         + '<div class="hint" id="ghStatus" style="margin-top:6px; font-weight:600;"></div>'
-        + '<div class="hint">Token kaise banayein: GitHub → Settings → Developer settings → <b>Personal access tokens</b>. <b>Fine-grained</b> PAT — repository <code>travel-office-hisab-backup</code>, permission <b>Contents → Read and write</b>. (Ya classic token with <b>repo</b> scope.) Token sirf is browser mein save hota hai — backup/sync/report files mein koi nahi jata.</div>'
+        + '<div class="hint">Token kaise banayein: GitHub → Settings → Developer settings → <b>Personal access tokens</b>. <b>Fine-grained</b> PAT — repository <code>travel-office-hisab-backup</code>, permission <b>Contents → Read and write</b>. (Ya classic token with <b>repo</b> scope.) Token is device par hi stored hai — backup/sync/report files mein koi nahi jata.</div>'
         + '</div>';
 
   html += '<div class="card"><h2>Ayat of the day</h2>';
@@ -4116,8 +4183,9 @@ function ghApi(path, method, body){
 /* App ke backup se data wapas load — Google/file/GitHub restore teeno isi se */
 function applyBackupData(data){
   if(!data || !data.settings) throw new Error("wrong file");
-  var keepUrl = S.settings.syncUrl, keepId = S.settings.importId, keepPat = S.settings.githubPat || "";
-  var bakUrl = data.settings.syncUrl || "", bakId = data.settings.importId || "";
+  var keepUrl = S.settings.syncUrl, keepId = S.settings.importId, keepPat = S.settings.githubPat || "", keepRepo = S.settings.githubRepo || "";
+  var bakUrl = data.settings.syncUrl || "", bakId = data.settings.importId || "", bakRepo = data.settings.githubRepo || "";
+
   S = data; if(!S.months) S.months = {};
   if(!S.draws) S.draws = []; if(!S.receivables) S.receivables = []; if(!S.tickets) S.tickets = [];
   ensureSettings(S);
@@ -4131,6 +4199,7 @@ function applyBackupData(data){
   if(!bakUrl && keepUrl) S.settings.syncUrl = keepUrl;
   if(!bakId && keepId) S.settings.importId = keepId;
   if(!S.settings.githubPat && keepPat) S.settings.githubPat = keepPat;
+  if(!bakRepo && keepRepo) S.settings.githubRepo = keepRepo;
   _monthAgg = null;
   migrateAutoQarza();
   S.__ts = Date.now();
@@ -5039,29 +5108,11 @@ function bind(){
       else if(el.classList.contains("f-amt")) f.amount = Number(el.value) || 0;
       else if(el.type === "checkbox") f.on = el.checked;
     });
-    var prevId = extractFileId(S.settings.importId || "");
-    var prevUrl = String(S.settings.syncUrl || "");
     S.settings.syncUrl = document.getElementById("setSyncUrl").value.trim();
     S.settings.importId = document.getElementById("setImportId").value.trim();
     var okEl = document.getElementById("setOcrKey");
     if(okEl) S.settings.ocrApiKey = okEl.value.trim();
-    var newId = extractFileId(S.settings.importId || "");
-    var changedFile = (newId !== prevId) || (S.settings.syncUrl !== prevUrl);
-    if(changedFile){
-      // Nayi file chuni gayi — pehle purana data us par na likhein, seedha wahan se data laayein
-      saveLocal(); render();
-      var m1 = "Settings saved.";
-      m1 += newId ? ("\n\nRead/Write file ID: "+newId) : "\n\nFile ID is empty — the app will use the file the script is deployed in.";
-      if(!S.settings.syncUrl){ alert(m1); return; }
-      alert(m1);
-      if(!confirm("Load data from this file now?\n\nOK = Load data from the sheet (recommended)\nCancel = Not now (press 'Load data from sheet' later)")){
-        setSyncStatus("File ID saved — press 'Load data from sheet'", true);
-        return;
-      }
-      syncPull(function(){ render(); });
-      return;
-    }
-    save(); render(); alert("Settings saved." + (S.settings.syncUrl ? "\nData will now sync with the Google Sheet." : ""));
+    save(); render(); alert("Settings saved.\n\nMain app data continues syncing to GitHub.\nGoogle File ID is only used for monthly Google Sheet imports.");
   };
 
   var fx = document.getElementById("fixBtn");
@@ -5180,18 +5231,6 @@ function bind(){
   };
   var rbAll = document.getElementById("repAllBtn");
   if(rbAll) rbAll.onclick = downloadReportEach;
-  var ps = document.getElementById("pullSync");
-  if(ps) ps.onclick = function(){
-    var u = document.getElementById("setSyncUrl").value.trim();
-    var iid = document.getElementById("setImportId");
-    S.settings.syncUrl = u;
-    if(iid) S.settings.importId = iid.value.trim();
-    var kEl = document.getElementById("setOcrKey");
-    if(kEl) S.settings.ocrApiKey = kEl.value.trim();
-    saveLocal();
-    if(!u){ alert("Enter the sync URL first."); return; }
-    syncPull(function(ok){ if(ok) save(); render(); });
-  };
   var tst = document.getElementById("testSync");
   if(tst) tst.onclick = testSync;
   // AI OCR key — dedicated Save button + key change par khud save
@@ -5233,7 +5272,7 @@ function bind(){
     var kEl = document.getElementById("setOcrKey");
     if(kEl) S.settings.ocrApiKey = kEl.value.trim();
     saveLocal();
-    if(!S.settings.syncUrl){ alert("Enter the Sync URL first."); return; }
+    if(!S.settings.syncUrl){ alert("Enter the Google import endpoint first."); return; }
     var ta = document.getElementById("batchIds");
     var list = [];
     if(ta && String(ta.value).trim()){
@@ -5249,7 +5288,7 @@ function bind(){
     }
     if(!list.length){ alert("No imported files found. Import a file first, or paste File IDs in the box above."); return; }
     if(!confirm(list.length+" files will be imported again.\n\nRows already present will be skipped (no duplicates), and possible duplicates will be marked with ⚠.\n\nContinue?")) return;
-    setSyncStatus("Re-importing all files…");
+    setImportStatus("Re-importing all files…");
     var results = [], k = 0;
     (function next(){
       if(k >= list.length){
@@ -5301,20 +5340,15 @@ function bind(){
         alert("Could not check for updates — check your internet.");
       });
   };
-  var cs = document.getElementById("copyShare");
-  if(cs) cs.onclick = function(){
-    var site = location.origin + location.pathname;
-    var link = site + "?sync=" + encodeURIComponent(S.settings.syncUrl || "");
-    var sid = selectedSheetId();
-    if(sid) link += "&ssid=" + encodeURIComponent(sid);
-    if(!S.settings.syncUrl) alert("The sync URL is empty — the link will only open the app, without sync setup.");
-    var ta = document.createElement("textarea");
-    ta.value = link;
-    document.body.appendChild(ta);
-    ta.select();
-    try{ document.execCommand("copy"); alert("Link copied! Send it on WhatsApp — sync will be set up automatically when it is opened."); }
-    catch(e){ window.prompt("Copy this link:", link); }
-    document.body.removeChild(ta);
+  var ghSyncNow = document.getElementById("ghSyncNow");
+  if(ghSyncNow) ghSyncNow.onclick = function(){
+    if(!githubSyncConfigured()){ alert("Pehle GitHub token save karein."); return; }
+    doPush(function(ok){ alert(ok ? "✓ Latest data GitHub par save ho gaya." : "✗ GitHub par save nahi hua — token/internet check karein."); });
+  };
+  var ghSyncPull = document.getElementById("ghSyncPull");
+  if(ghSyncPull) ghSyncPull.onclick = function(){
+    if(!githubSyncConfigured()){ alert("Pehle GitHub token save karein."); return; }
+    syncPull(function(ok){ alert(ok ? "✓ GitHub se latest data load ho gaya." : "GitHub se data load nahi hua — token/repo/internet check karein."); render(); });
   };
   var im = document.getElementById("importData");
   if(im) im.onchange = function(){
@@ -5333,21 +5367,22 @@ function bind(){
   };
   var ra = document.getElementById("resetAll");
   if(ra) ra.onclick = function(){
-    if(confirm("Really delete ALL data?\n\n(This also deletes the data saved in the Google Sheet — pehle automatic backup liya jayega)")){
-      if(confirm("Final confirmation: all records will be removed and the sheet will be cleared.")){
+    if(confirm("Really delete ALL data?\n\n(This also clears the GitHub live sync file — pehle automatic backup liya jayega)")){
+      if(confirm("Final confirmation: all records will be removed and GitHub sync data will be cleared.")){
         if(!takeAutoBackup("All data deleted")){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
-        var keepUrl = S.settings.syncUrl, keepId = S.settings.importId, keepPat = S.settings.githubPat || "";
+        var keepUrl = S.settings.syncUrl, keepId = S.settings.importId, keepPat = S.settings.githubPat || "", keepRepo = S.settings.githubRepo || "";
         S = blankState();
-        S.settings.syncUrl = keepUrl;      // connection settings barqarar
+        S.settings.syncUrl = keepUrl;      // import endpoint only
         S.settings.importId = keepId;
         S.settings.githubPat = keepPat;
+        S.settings.githubRepo = keepRepo;
         S.__ts = Date.now();
         saveLocal(); selectedMonth = null; render();
-        setSyncStatus("Deleting data from the sheet too…");
+        setSyncStatus("Deleting data from GitHub sync too…");
         doPush(function(ok){
           alert(ok
-            ? "✓ Local data and the Google Sheet data are both deleted.\n\nNow import ONE month's file only."
-            : "Local data deleted, but the Google Sheet still has data.\nCheck the internet / sync URL, otherwise old data may come back.");
+            ? "✓ Local data and GitHub sync data are both deleted.\n\nNow import ONE month's file only."
+            : "Local data deleted, but GitHub sync still has data.\nCheck the internet / token, otherwise old data may come back.");
         });
       }
     }
@@ -5356,13 +5391,17 @@ function bind(){
   if(ghSave) ghSave.onclick = function(){
     S.settings.githubPat = (document.getElementById("setGhPat")||{}).value.trim();
     S.settings.githubRepo = (document.getElementById("setGhRepo")||{}).value.trim();
-    save();
+    saveLocal();
     if(S.settings.githubPat){
-      setGhStatus("Token check ho raha he…");
-      ghApi("").then(function(){ setGhStatus("✓ Token sahi hai — backup ke liye tayyar."); })
-               .catch(function(e){ setGhStatus("✗ Token/repo problem — "+e.message, true); });
+      setSyncStatus("Token check ho raha he…");
+      ghApi("").then(function(){
+        setSyncStatus("✓ Token sahi hai — loading latest data from GitHub…");
+        syncPull(function(){ render(); });
+      }).catch(function(e){
+        setSyncStatus("✗ Token/repo problem — "+((e && e.message) || e), true);
+      });
     } else {
-      setGhStatus("Token save ho gaya (khaali).");
+      setSyncStatus("Token save ho gaya (khaali) — GitHub sync is off.");
     }
   };
   var ghNow = document.getElementById("ghBakNow");
@@ -5487,10 +5526,10 @@ migrateAutoQarza();
 render();
 cacheAirLogos();
 autoDistribute();
-if(S.settings.syncUrl) syncPull(function(){ render(); autoDistribute(); });
-// Jab app dobara khole / tab par wapas aaye — sheet se taaza data khud aa jaye
+if(githubSyncConfigured()) syncPull(function(){ render(); autoDistribute(); });
+// Jab app dobara khole / tab par wapas aaye — GitHub se latest data khud aa jaye
 document.addEventListener("visibilitychange", function(){
-  if(document.hidden || !S.settings.syncUrl) return;
+  if(document.hidden || !githubSyncConfigured()) return;
   var el = document.activeElement;
   var typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
   if(!typing) syncPull(function(){ render(); });

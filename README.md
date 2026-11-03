@@ -13,19 +13,29 @@ open `index.html` in any browser. The whole UI is in English.
 - Father (Owner) withdrawals; Waseem commission & salary (Staff)
 - Loan tracker, charity at a configurable rate (per-month override possible)
 - Client pending payments (bakaya) with per-month filter
-- Month-wise import from a Google Sheet (one file per month) via Apps Script web app
-- Sync to Google Sheets (`HisabData` cell) so phone and PC stay together
+- Month-wise imports from Google Sheets (one file per month) via Apps Script web app
+- Live sync to a private GitHub repo (`HisabData.json`) so phone and PC stay together
+- Manual timestamped JSON snapshots to the same private repo for known-good restores
 - Excel (CSV) report: one selected month, all months in one file, or one file per month
 
-## Google Sheet sync
+## GitHub live sync
 
-1. Put the Apps Script code (shown inside the app: Settings → Google Sheet setup) into
+1. Create a private GitHub repo, for example `travel-office-hisab-backup`.
+2. Create a fine-grained Personal Access Token with **Contents → Read and write** for that repo.
+3. In the app: Settings → **GitHub Sync** → paste the token + repo → **Save token & sync**.
+4. The latest data loads automatically (or use **Push now** / **Pull now**). Google Sheet remains only for monthly imports.
+
+The app keeps data in `localStorage`, syncs a JSON copy to the private GitHub repo, and keeps manual backups under `backups/` in that repo.
+
+## Google Sheets imports
+
+1. Put the Apps Script code (shown inside the app: Settings → Google Sheets import setup) into
    the Sheet's **Extensions → Apps Script**, then deploy as a **Web app** (execute as: me,
    access: anyone).
-2. In the app: Settings → paste the deployment URL + the Sheet **File ID** → Test.
+2. In the app: Settings → paste the deployment URL + the Sheet **File ID** → **Test import**.
 3. Each month has its own Sheet file — change the File ID, then **Import**.
 
-The app keeps data in `localStorage` and pushes a JSON copy to the Sheet.
+Google Sheets is used for monthly imports only; main app data syncs to GitHub.
 
 ## Version
 
