@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.93</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v1.94</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -320,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.93";
+var APP_VER = "1.94";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:3}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh \u0026\u0026 !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:3, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 3, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e \u0026\u0026 e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData \u0026\u0026 e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body \u0026\u0026 body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:3, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:3, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r \u003c Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length \u003c hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i \u003c rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" \u0026\u0026 val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -401,7 +401,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", githubPat:"", githubRepo:"travel-office-hisab-backup",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -522,7 +522,7 @@ function doPush(after){
   var url = S.settings.syncUrl; if(!url){ if(after) after(false); return; }
   setSyncStatus("Syncing…");
   var target = sheetUrl(url, false);
-  fetch(target, { method:"POST", headers:{ "Content-Type":"text/plain" }, body: JSON.stringify({ action:"save", ssid: selectedSheetId(), data: JSON.stringify(S) }) })
+  fetch(target, { method:"POST", headers:{ "Content-Type":"text/plain" }, body: JSON.stringify({ action:"save", ssid: selectedSheetId(), data: JSON.stringify(ghStripSecretsForSave(S)) }) })
     .then(function(r){ return r.json(); })
     .then(function(j){
       if(j && j.ok === false){ setSyncStatus("Sync failed — "+(j.err || "the sheet refused the request"), true); if(after) after(false); return; }
@@ -585,6 +585,7 @@ function syncPull(cb){
           }
           data.settings.syncUrl = S.settings.syncUrl;
           data.settings.importId = S.settings.importId || "";
+          if(S.settings.githubPat && !data.settings.githubPat) data.settings.githubPat = S.settings.githubPat;
           if(!data.months) data.months = {};
           if(!data.draws) data.draws = [];
           if(!data.receivables) data.receivables = [];
@@ -1203,7 +1204,7 @@ function refreshFixes(mid){
   save(); render();
 }
 function downloadBackup(){
-  var blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  var blob = new Blob([JSON.stringify(ghStripSecretsForSave(S), null, 2)], {type:"application/json"});
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "hisab-backup-" + dmy(today()).replace(/\//g,"-") + ".json";
@@ -1221,7 +1222,7 @@ try{ localStorage.removeItem(SNAP_KEY); }catch(e){}
 function takeAutoBackup(label, noFile){
   var snapOk = false, fileOk = false;
   try{
-    localStorage.setItem(SNAP_KEY, JSON.stringify({ ts: Date.now(), label: label, data: JSON.stringify(S) }));
+    localStorage.setItem(SNAP_KEY, JSON.stringify({ ts: Date.now(), label: label, data: JSON.stringify(ghStripSecretsForSave(S)) }));
     snapOk = true;
   }catch(e){ snapOk = false; }
   if(!noFile){
@@ -1263,6 +1264,7 @@ function restoreLastSnapshot(){
   }catch(e){ o = null; d = null; }
   if(!d || !d.settings){ alert("Auto-backup kharab hai — downloaded backup file se restore karein."); return; }
   d.settings.syncUrl = S.settings.syncUrl;
+  if(S.settings.githubPat && !d.settings.githubPat) d.settings.githubPat = S.settings.githubPat;
   d.settings.importId = S.settings.importId || "";
   S = d;
   ensureSettings(S);
@@ -4006,6 +4008,22 @@ function viewSettings(){
   html += '<div class="hint">Data is saved on this device and in your Google Sheet. Take a backup every month.</div>';
   html += '</div>';
 
+  html += '<div class="card"><h2>🐙 Backup to GitHub — unlimited free, private</h2>'
+        + '<div class="hint" style="margin-top:0;">Google ke bina — backup JSON file seedha aap ke <b>private</b> repo mein jati hai: <code>Ali122/travel-office-hisab-backup</code>. Koi aur nahi dekh sakta. Naam badalna ho to "Repo" mein <code>owner/repo</code> likhein. Token sirf is device par save hota hai — backup file mein kabhi nahi jata.</div>'
+        + '<label>GitHub Token (PAT)</label>'
+        + '<input type="password" id="setGhPat" value="'+esc(st.githubPat||"")+'" placeholder="ghp_… ya github_pat_…" autocomplete="off" style="font-family:monospace;">'
+        + '<div class="row" style="margin-top:8px;"><div><label>Repo</label><input id="setGhRepo" value="'+esc(st.githubRepo||"travel-office-hisab-backup")+'" placeholder="travel-office-hisab-backup"></div></div>'
+        + '<button class="btn small primary" id="ghSave" style="margin-top:8px;">Save GitHub backup settings</button>'
+        + '<div class="row" style="margin-top:8px; gap:8px;">'
+        +   '<button class="btn small" id="ghBakNow" style="flex:1.15; background:var(--green); color:#fff;">☁️ Save backup on GitHub now</button>'
+        +   '<button class="btn small" id="ghBakShow" style="flex:1;">Show backups…</button>'
+        + '</div>'
+        + '<select id="ghBakList" style="margin-top:8px; width:100%; display:none;"></select>'
+        + '<button class="btn small" id="ghBakRestore" style="margin-top:8px; display:none; width:100%;">↩ Restore selected backup</button>'
+        + '<div class="hint" id="ghStatus" style="margin-top:6px; font-weight:600;"></div>'
+        + '<div class="hint">Token kaise banayein: GitHub → Settings → Developer settings → <b>Personal access tokens</b>. <b>Fine-grained</b> PAT — repository <code>travel-office-hisab-backup</code>, permission <b>Contents → Read and write</b>. (Ya classic token with <b>repo</b> scope.) Token sirf is browser mein save hota hai — backup/sync/report files mein koi nahi jata.</div>'
+        + '</div>';
+
   html += '<div class="card"><h2>Ayat of the day</h2>';
   var aCur = ayatPick();
   html += '<div class="ayat" style="border-radius:10px; margin-bottom:10px;">'
@@ -4066,6 +4084,118 @@ function viewSettings(){
   html += '</div>';
   html += '<div class="hint">App version: '+esc(APP_VER)+'</div>';
   return html;
+}
+
+/* ================= GITHUB BACKUP ================= */
+/* Backup file mein kabhi GitHub token nahi jata — warna koi history mein dekh le sakta hai */
+function ghStripSecretsForSave(s){
+  if(!s) return s;
+  var c = JSON.parse(JSON.stringify(s));
+  if(c.settings){ delete c.settings.githubPat; }
+  return c;
+}
+function ghRepo(){
+  var r = String(S.settings.githubRepo||"").trim() || "travel-office-hisab-backup";
+  if(r.indexOf("/") < 0) r = "Ali122/" + r;
+  return r;
+}
+function ghApi(path, method, body){
+  var pat = String(S.settings.githubPat||"").trim();
+  if(!pat) return Promise.reject(new Error("Token missing — pehle Settings mein GitHub token save karein."));
+  var init = { method: method||"GET",
+    headers: { "Authorization":"token "+pat, "Accept":"application/vnd.github+json", "User-Agent":"AB-Travels" } };
+  if(body !== undefined && body !== null){ init.headers["Content-Type"]="application/json"; init.body = JSON.stringify(body); }
+  return fetch("https://api.github.com/repos/"+ghRepo()+path, init).then(function(r){
+    return r.text().then(function(t){
+      var j = null; try{ j = JSON.parse(t); }catch(e){}
+      if(!r.ok) throw new Error((j && j.message) || ("GitHub error "+r.status));
+      return j;
+    });
+  });
+}
+/* App ke backup se data wapas load — Google/file/GitHub restore teeno isi se */
+function applyBackupData(data){
+  if(!data || !data.settings) throw new Error("wrong file");
+  var keepUrl = S.settings.syncUrl, keepId = S.settings.importId, keepPat = S.settings.githubPat || "";
+  var bakUrl = data.settings.syncUrl || "", bakId = data.settings.importId || "";
+  S = data; if(!S.months) S.months = {};
+  if(!S.draws) S.draws = []; if(!S.receivables) S.receivables = []; if(!S.tickets) S.tickets = [];
+  ensureSettings(S);
+  if(!S.bills) S.bills = [];
+  if(!S.waseem) S.waseem = [];
+  if(!S.charityPaid) S.charityPaid = [];
+  if(!S.qarzaPayments) S.qarzaPayments = [];
+  if(!S.qarzaPaid) S.qarzaPaid = [];
+  if(!S.clients) S.clients = [];
+  // Is device ka Google sync + GitHub backup token barqarar rakhein (backup mein token nahi hota)
+  if(!bakUrl && keepUrl) S.settings.syncUrl = keepUrl;
+  if(!bakId && keepId) S.settings.importId = keepId;
+  if(!S.settings.githubPat && keepPat) S.settings.githubPat = keepPat;
+  _monthAgg = null;
+  migrateAutoQarza();
+  S.__ts = Date.now();
+  save(); selectedMonth = null; render();
+}
+function setGhStatus(msg, bad){
+  var el = document.getElementById("ghStatus"); if(!el) return;
+  el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)";
+}
+function ghBakPush(){
+  var d = new Date(); function p2(n){ return String(n).padStart(2,"0"); }
+  var stamp = d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+"-"+p2(d.getHours())+p2(d.getMinutes());
+  var clean = ghStripSecretsForSave(S);
+  var content = btoa(unescape(encodeURIComponent(JSON.stringify(clean, null, 2))));
+  setGhStatus("GitHub par bhej rahe hain…");
+  return ghApi("/contents/backups/hisab-backup-"+stamp+".json", "PUT", { message:"Backup "+stamp, content:content })
+    .then(function(j){ setGhStatus("✓ Backup save ho gaya: "+((j.content && j.content.path) || stamp)); })
+    .catch(function(e){ setGhStatus("✗ Backup fail — "+e.message, true); });
+}
+function ghBakList(){
+  setGhStatus("Backups dhoonde ja rahe hain…");
+  return ghApi("/contents/backups").then(function(list){
+    var files = (list||[]).filter(function(x){ return /\.json$/i.test(x.name||""); })
+      .sort(function(a,b){ return String(b.name).localeCompare(String(a.name)); }).slice(0,10);
+    var sel = document.getElementById("ghBakList"), rb = document.getElementById("ghBakRestore");
+    if(sel){
+      sel.innerHTML = "";
+      files.forEach(function(x){
+        var o = document.createElement("option");
+        o.value = x.path; o.textContent = x.name + " (" + Math.round((x.size||0)/1024) + " KB)";
+        sel.appendChild(o);
+      });
+      sel.style.display = files.length ? "block" : "none";
+    }
+    if(rb) rb.style.display = files.length ? "block" : "none";
+    setGhStatus(files.length ? ("✓ "+files.length+" backup(s) mile — neeche se chunein.") : "Koi backup nahi mila — pehle ek save karein.");
+  }).catch(function(e){
+    // Khali repo par GitHub "Not Found" deta hai — user ko error nahi, sirf "abhi koi backup nahi" dikhayein
+    if(/Not Found/i.test(String((e && e.message) || e))){
+      var sel = document.getElementById("ghBakList"), rb = document.getElementById("ghBakRestore");
+      if(sel) sel.style.display = "none";
+      if(rb) rb.style.display = "none";
+      setGhStatus("Abhi koi backup nahi — pehle 'Save backup on GitHub now' dabayein.");
+      return;
+    }
+    setGhStatus("✗ List fail — "+e.message, true);
+  });
+}
+function ghBakRestore(){
+  var sel = document.getElementById("ghBakList");
+  if(!sel || !sel.value){ setGhStatus("Pehle 'Show backups' dabayein.", true); return Promise.resolve(); }
+  var path = sel.value;
+  setGhStatus("Backup load ho raha hai…");
+  return ghApi("/contents/"+path).then(function(j){
+    var bin = atob(String(j.content||"").replace(/\n/g,""));
+    var bytes = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    var text = new TextDecoder("utf-8").decode(bytes);
+    var data = JSON.parse(text);
+    if(!data || !data.settings) throw new Error("Yeh valid backup file nahi hai");
+    if(!confirm("Is backup ko restore karein?\n\n"+path+"\n\nIs waqt ka data is backup se replace ho jayega (pehle auto-backup liya jayega).")) { setGhStatus("Cancelled."); return; }
+    if(!takeAutoBackup("GitHub backup restore")) { alert("Auto-backup nahi ban saka — restore rok diya gaya."); setGhStatus("Auto-backup fail — restore cancel.", true); return; }
+    applyBackupData(data);
+    setGhStatus("✓ Backup restore ho gaya.");
+  }).catch(function(e){ setGhStatus("✗ Restore fail — "+e.message, true); });
 }
 
 /* ================= EVENTS ================= */
@@ -5194,23 +5324,9 @@ function bind(){
       try{
         var data = JSON.parse(reader.result);
         if(!data.settings) throw new Error("wrong file");
-        var keepUrl = S.settings.syncUrl, keepId = S.settings.importId;
-        var bakUrl = data.settings.syncUrl || "", bakId = data.settings.importId || "";
-        S = data; if(!S.months) S.months = {};
-        if(!S.draws) S.draws = []; if(!S.receivables) S.receivables = []; if(!S.tickets) S.tickets = [];
-        ensureSettings(S);
-        if(!S.bills) S.bills = [];
-        if(!S.waseem) S.waseem = [];
-        if(!S.charityPaid) S.charityPaid = [];
-        if(!S.qarzaPayments) S.qarzaPayments = [];
-        if(!S.qarzaPaid) S.qarzaPaid = [];
-        if(!S.clients) S.clients = [];
-        _monthAgg = null;
-        migrateAutoQarza();
-        // Is device ka sync connection barqarar rakhein (purane backup mein ye fields khaali hoti hain)
-        if(!bakUrl && keepUrl) S.settings.syncUrl = keepUrl;
-        if(!bakId && keepId) S.settings.importId = keepId;
-        save(); selectedMonth = null; render(); alert("Backup restored.");
+        if(!takeAutoBackup("Backup file restore")){ alert("Auto-backup nahi ban saka — restore rok diya gaya."); return; }
+        applyBackupData(data);
+        alert("Backup restored.");
       }catch(e){ alert("This file is not valid. Choose a backup file only."); }
     };
     reader.readAsText(f);
@@ -5220,10 +5336,11 @@ function bind(){
     if(confirm("Really delete ALL data?\n\n(This also deletes the data saved in the Google Sheet — pehle automatic backup liya jayega)")){
       if(confirm("Final confirmation: all records will be removed and the sheet will be cleared.")){
         if(!takeAutoBackup("All data deleted")){ alert("Backup nahi ban saka — delete rok diya gaya."); return; }
-        var keepUrl = S.settings.syncUrl, keepId = S.settings.importId;
+        var keepUrl = S.settings.syncUrl, keepId = S.settings.importId, keepPat = S.settings.githubPat || "";
         S = blankState();
         S.settings.syncUrl = keepUrl;      // connection settings barqarar
         S.settings.importId = keepId;
+        S.settings.githubPat = keepPat;
         S.__ts = Date.now();
         saveLocal(); selectedMonth = null; render();
         setSyncStatus("Deleting data from the sheet too…");
@@ -5235,6 +5352,26 @@ function bind(){
       }
     }
   };
+  var ghSave = document.getElementById("ghSave");
+  if(ghSave) ghSave.onclick = function(){
+    S.settings.githubPat = (document.getElementById("setGhPat")||{}).value.trim();
+    S.settings.githubRepo = (document.getElementById("setGhRepo")||{}).value.trim();
+    save();
+    if(S.settings.githubPat){
+      setGhStatus("Token check ho raha he…");
+      ghApi("").then(function(){ setGhStatus("✓ Token sahi hai — backup ke liye tayyar."); })
+               .catch(function(e){ setGhStatus("✗ Token/repo problem — "+e.message, true); });
+    } else {
+      setGhStatus("Token save ho gaya (khaali).");
+    }
+  };
+  var ghNow = document.getElementById("ghBakNow");
+  if(ghNow) ghNow.onclick = ghBakPush;
+  var ghShow = document.getElementById("ghBakShow");
+  if(ghShow) ghShow.onclick = ghBakList;
+  var ghRes = document.getElementById("ghBakRestore");
+  if(ghRes) ghRes.onclick = ghBakRestore;
+
   // ===== Clients (customers) tab =====
   var cSave = document.getElementById("clSave");
   if(cSave) cSave.onclick = function(){
