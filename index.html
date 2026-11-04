@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v1.99</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.00</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -320,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "1.99";
+var APP_VER = "2.00";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -556,6 +556,27 @@ function ghConnBadgeHTML(st){
        + '<br><span style="color:var(--muted); font-weight:400;">Ye badge har page reload ke baad bhi dikhega — token save hai. Live connection test ke liye <b>Push now</b> ya <b>Pull now</b> dabayein.</span>'
        + '</div>';
 }
+/* Purane GitHub sync / backup files mein naye sections (clients, invoices, airlineIds …) nahi hote.
+   Restore karte waqt sirf GHAYAB fields local state se bhar dein — warna doosre device ya purani file
+   se pull karte hi clients / invoices / bills waghera mit jate hain. Jo field remote mein maujood hai
+   (khali array bhi) wohi rahegi — jaan-bujh kar delete ka respect hota hai. */
+function mergeMissingAppData(data, local){
+  if(!data || typeof data !== "object") return data;
+  var L = local || S || {};
+  var arrKeys = ["draws","receivables","tickets","waseem","charityPaid","qarzaPaid","qarzaPayments",
+                 "bills","invoices","airlineIds","clients"];
+  arrKeys.forEach(function(k){
+    if(!Array.isArray(data[k])){
+      data[k] = Array.isArray(L[k]) ? JSON.parse(JSON.stringify(L[k])) : [];
+    }
+  });
+  if(!data.months || typeof data.months !== "object" || Array.isArray(data.months)){
+    data.months = (L.months && typeof L.months === "object" && !Array.isArray(L.months))
+      ? JSON.parse(JSON.stringify(L.months)) : {};
+  }
+  if(!data.settings || typeof data.settings !== "object") data.settings = {};
+  return data;
+}
 function doPush(after){
   var pat = String(S.settings.githubPat || "").trim();
   if(!pat){ if(after) after(false); return; }
@@ -652,17 +673,7 @@ function syncPull(cb){
       data.settings.githubRepo = S.settings.githubRepo || "";
       data.settings.syncUrl = S.settings.syncUrl || "";
       data.settings.importId = S.settings.importId || "";
-      if(!data.months) data.months = {};
-      if(!data.draws) data.draws = [];
-      if(!data.receivables) data.receivables = [];
-      if(!data.tickets) data.tickets = [];
-      if(!data.bills) data.bills = [];
-      if(!data.invoices) data.invoices = [];
-      if(!data.clients) data.clients = [];
-      if(!data.waseem) data.waseem = [];
-      if(!data.charityPaid) data.charityPaid = [];
-      if(!data.qarzaPayments) data.qarzaPayments = [];
-      if(!data.qarzaPaid) data.qarzaPaid = [];
+      mergeMissingAppData(data, S);   // purani sync file se naye sections mat mitayein
       S = data;
       ensureSettings(S);
       _monthAgg = null;
@@ -1566,14 +1577,13 @@ function restoreLastSnapshot(){
     d = JSON.parse(o.data);
   }catch(e){ o = null; d = null; }
   if(!d || !d.settings){ alert("Auto-backup kharab hai — downloaded backup file se restore karein."); return; }
-  d.settings.syncUrl = S.settings.syncUrl;
+  if(!d.settings.syncUrl && S.settings.syncUrl) d.settings.syncUrl = S.settings.syncUrl;
   if(S.settings.githubPat && !d.settings.githubPat) d.settings.githubPat = S.settings.githubPat;
   if(S.settings.githubRepo && !d.settings.githubRepo) d.settings.githubRepo = S.settings.githubRepo;
-  d.settings.importId = S.settings.importId || "";
+  if(!d.settings.importId && S.settings.importId) d.settings.importId = S.settings.importId;
+  mergeMissingAppData(d, S);   // purane snapshot mein naye sections na hon to wo bhi bachayein
   S = d;
   ensureSettings(S);
-  if(!S.invoices) S.invoices = [];
-  if(!S.clients) S.clients = [];
   migrateAutoQarza();
   S.__ts = Date.now();
   _monthAgg = null;
@@ -3599,6 +3609,7 @@ function viewQarza(){
 }
 
 /* ================= PDF TO WORD (OCR reader) ================= */
+var pwStructured = null;
 var pwText = "", pwBusy = false;
 var pwPdfLib = null;
 function loadPdfJs(){
@@ -3627,10 +3638,537 @@ function loadDocx(){
   });
   return pwDocxLib;
 }
+/* ================= PDF TO WORD (STRUCTURED — iLovePDF style) =================
+   Render-free: pdf.js ke canvas render par inhirasar nahi — text layer, vector lines,
+   embedded images aur operator list se seedha layout read hota hai. */
+function pwHalfPts(pt){ return Math.max(2, Math.round(pt * 2)); }
+function pwClamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function pwNormTxt(t){ return String(t||"").trim().replace(/\s+/g," ").toLowerCase(); }
+function pwFontHeuristic(name){
+  var s = String(name || "");
+  return {
+    bold:   /bold|black|heavy|semibold|bd|boldmt/i.test(s),
+    italic: /italic|oblique/i.test(s),
+    family: /times/i.test(s) || /serif/i.test(s) || /roman/i.test(s) ? "Times New Roman"
+         : (/courier/i.test(s) || /mono/i.test(s)) ? "Courier New"
+         : (/georgia/i.test(s)) ? "Georgia"
+         : (/symbol|dingbat/i.test(s)) ? "Symbol"
+         : "Arial"
+  };
+}
+function pwFontMap(items){
+  var out = {};
+  (items||[]).forEach(function(it){ if(it.fontName && !out[it.fontName]) out[it.fontName] = pwFontHeuristic(it.fontName); });
+  return out;
+}
+/* Items (x, yTop) ko line mein group karein */
+function pwGroupLines(items, pageW){
+  var arr = items.filter(function(it){ return String(it.str||""); });
+  if(!arr.length) return [];
+  arr.sort(function(a,b){ return a.yTop - b.yTop || a.x - b.x; });
+  var lines = [], cur = null;
+  for(var i = 0; i < arr.length; i++){
+    var it = arr[i];
+    if(cur && Math.abs(it.yTop - cur.yTop) <= Math.max(2, cur.size * 0.42)){
+      cur.items.push(it);
+      cur.x0 = Math.min(cur.x0, it.x);
+      cur.x1 = Math.max(cur.x1, it.x + it.width);
+      cur.size = Math.max(cur.size, it.size);
+    } else {
+      if(cur) lines.push(cur);
+      cur = { yTop: it.yTop, items: [it], x0: it.x, x1: it.x + it.width, size: it.size };
+    }
+  }
+  if(cur) lines.push(cur);
+  lines.forEach(function(l){
+    l.items.sort(function(a,b){ return a.x - b.x; });
+    var parts = [], prevEnd = null;
+    for(var j = 0; j < l.items.length; j++){
+      var it = l.items[j];
+      if(prevEnd !== null && it.x - prevEnd > Math.max(2.2, it.size * 0.24)) parts.push(" ");
+      parts.push(String(it.str));
+      prevEnd = it.x + it.width;
+    }
+    l.text = parts.join("").replace(/\s+/g, " ").trim();
+    var ySum = 0; l.items.forEach(function(i){ ySum += i.yTop; }); l.yTop = ySum / l.items.length;
+    l.h = Math.max(l.size * 1.18, 6);
+    var bc = 0, ic = 0, fam = "Arial";
+    l.items.forEach(function(i){ if(i.font && i.font.bold) bc++; if(i.font && i.font.italic) ic++; if(i.font) fam = i.font.family; });
+    l.bold = bc > l.items.length / 2;
+    l.italic = ic > l.items.length / 2;
+    l.family = fam;
+    var cx = (l.x0 + l.x1) / 2;
+    if(Math.abs(cx - pageW / 2) <= Math.max(12, pageW * 0.03) && l.x0 > pageW * 0.08 && l.x1 < pageW * 0.92) l.align = "center";
+    else if(l.x1 >= pageW - 35 && l.x0 >= pageW * 0.42) l.align = "right";
+    else l.align = "left";
+  });
+  lines.sort(function(a,b){ return a.yTop - b.yTop; });
+  return lines;
+}
+/* Operator list se vector lines / rectangles */
+function pwVectorSegments(page, pageH){
+  return page.getOperatorList().then(function(ol){
+    var ops = ol.fnArray, args = ol.argsArray;
+    var segs = [];
+    function nLine(x0, y0, x1, y1){ segs.push({ x0:x0, y0:pageH - y0, x1:x1, y1:pageH - y1 }); }
+    for(var i = 0; i < ops.length; i++){
+      var fn = ops[i];
+      if(fn === 91){
+        var cp = args[i] || [], pathOps = cp[0] || [], coords = cp[1] || [];
+        var p = 0, cur = null;
+        for(var j = 0; j < pathOps.length; j++){
+          var op = pathOps[j];
+          if(op === 19){
+            var x = coords[p], y = coords[p+1], w = coords[p+2], h = coords[p+3]; p += 4;
+            var yA = pageH - y, yB = pageH - (y + h);
+            var top = Math.min(yA, yB), bot = Math.max(yA, yB);
+            var left = Math.min(x, x + w), right = Math.max(x, x + w);
+            segs.push({ x0:left, x1:right, y0:top, y1:top });
+            segs.push({ x0:left, x1:right, y0:bot, y1:bot });
+            segs.push({ x0:left, x1:left,  y0:top, y1:bot });
+            segs.push({ x0:right, x1:right, y0:top, y1:bot });
+          } else if(op === 13){ cur = { x:coords[p], y:coords[p+1] }; p += 2; }
+            else if(op === 14){ var nx = coords[p], ny = coords[p+1]; p += 2; if(cur) nLine(cur.x, cur.y, nx, ny); cur = { x:nx, y:ny }; }
+        }
+      }
+    }
+    var H = [], V = [];
+    segs.forEach(function(s){
+      var dx = Math.abs(s.x1 - s.x0), dy = Math.abs(s.y1 - s.y0);
+      if(dy <= 1.5 && dx >= 24) H.push({ y: Math.round(((s.y0 + s.y1) / 2) * 10) / 10, x0: Math.min(s.x0, s.x1), x1: Math.max(s.x0, s.x1) });
+      else if(dx <= 1.5 && dy >= 16) V.push({ x: Math.round(((s.x0 + s.x1) / 2) * 10) / 10, y0: Math.min(s.y0, s.y1), y1: Math.max(s.y0, s.y1) });
+    });
+    function cluster(list, key){
+      list.sort(function(a,b){ return a[key] - b[key]; });
+      var out = [], cur2 = null;
+      for(var k = 0; k < list.length; k++){
+        if(cur2 && Math.abs(list[k][key] - cur2.pos) <= 1.5){
+          cur2.items.push(list[k]); cur2.pos = (cur2.pos * (cur2.items.length - 1) + list[k][key]) / cur2.items.length;
+        } else { if(cur2) out.push(cur2); cur2 = { pos: list[k][key], items: [list[k]] }; }
+      }
+      if(cur2) out.push(cur2);
+      return out;
+    }
+    var cH = cluster(H, "y").map(function(c){
+      var x0 = Infinity, x1 = -Infinity;
+      c.items.forEach(function(l){ x0 = Math.min(x0, l.x0); x1 = Math.max(x1, l.x1); });
+      return { pos: c.pos, x0: x0, x1: x1 };
+    }).filter(function(l){ return l.x1 - l.x0 >= 40; });
+    var cV = cluster(V, "x").map(function(c){
+      var y0 = Infinity, y1 = -Infinity;
+      c.items.forEach(function(l){ y0 = Math.min(y0, l.y0); y1 = Math.max(y1, l.y1); });
+      return { pos: c.pos, y0: y0, y1: y1 };
+    }).filter(function(l){ return l.y1 - l.y0 >= 16; });
+    return { h: cH, v: cV };
+  });
+}
+/* Sab se bada grid = table */
+function pwFindTables(segs, lines, pageW, pageH){
+  var H = segs.h, V = segs.v;
+  if(H.length < 2 || V.length < 2) return [];
+  var top = Math.min.apply(null, H.map(function(h){ return h.pos; }));
+  var bot = Math.max.apply(null, H.map(function(h){ return h.pos; }));
+  var left = Math.min.apply(null, V.map(function(v){ return v.pos; }));
+  var right = Math.max.apply(null, V.map(function(v){ return v.pos; }));
+  var spanY = bot - top, spanX = right - left;
+  V = V.filter(function(v){ return v.y1 - v.y0 >= 0.5 * spanY; });
+  H = H.filter(function(h){ return h.x1 - h.x0 >= 0.45 * spanX; });
+  if(V.length < 2 || H.length < 2 || spanY < 22 || spanX < 90) return [];
+  var cols = V.map(function(v){ return v.pos; }).sort(function(a,b){ return a - b; });
+  var rows = H.map(function(h){ return h.pos; }).sort(function(a,b){ return a - b; });
+  var tableLines = [];
+  lines.forEach(function(l){
+    if(l.yTop >= top - 2 && (l.yTop + l.h) <= bot + 2 && l.x0 >= left - 6 && l.x1 <= right + 6){
+      l.usedInTable = true; tableLines.push(l);
+    }
+  });
+  return [{ top: top, bottom: bot, left: left, right: right, cols: cols, rows: rows, lines: tableLines }];
+}
+function pwMulMat(cm, b){ return [ cm[0]*b[0]+cm[2]*b[1], cm[1]*b[0]+cm[3]*b[1], cm[0]*b[2]+cm[2]*b[3], cm[1]*b[2]+cm[3]*b[3], cm[0]*b[4]+cm[2]*b[5]+cm[4], cm[1]*b[4]+cm[3]*b[5]+cm[5] ]; }
+function pwMatPt(mm, x, y){ return [ mm[0]*x + mm[2]*y + mm[4], mm[1]*x + mm[3]*y + mm[5] ]; }
+function pwRectFromMat(m, pageH){
+  var p0 = pwMatPt(m, 0, 0), p1 = pwMatPt(m, 1, 0), p2 = pwMatPt(m, 0, 1), p3 = pwMatPt(m, 1, 1);
+  var xs = [p0[0], p1[0], p2[0], p3[0]], ys = [p0[1], p1[1], p2[1], p3[1]];
+  var L = Math.min.apply(null, xs), R = Math.max.apply(null, xs);
+  var T = pageH - Math.max.apply(null, ys), B = pageH - Math.min.apply(null, ys);
+  return { x: L, yTop: T, w: R - L, h: B - T };
+}
+function pwPageImages(page, pageH){
+  return page.getOperatorList().then(function(ol){
+    var ops = ol.fnArray, args = ol.argsArray;
+    var m = [1,0,0,1,0,0], stack = [];
+    var rects = [];
+    for(var i = 0; i < ops.length; i++){
+      var fn = ops[i];
+      if(fn === 10) stack.push(m.slice());
+      else if(fn === 11) m = stack.pop() || m;
+      else if(fn === 12) m = pwMulMat(args[i], m);
+      else if(fn === 85 || fn === 88){
+        var nm = args[i] && args[i][0];
+        if(!nm) continue;
+        rects.push({ nm: nm, rect: pwRectFromMat(m, pageH) });
+      }
+    }
+    return Promise.all(rects.map(function(r){
+      return new Promise(function(res){
+        try{ page.objs.get(r.nm, function(bmp){ res({ rect: r.rect, bmp: bmp }); }); }
+        catch(e){ res({ rect: r.rect, bmp: null }); }
+      });
+    })).then(function(items){
+      var out = [];
+      items.forEach(function(it){
+        if(!it.bmp) return;
+        var bmp = it.bmp;
+        if(bmp && bmp.bitmap) bmp = bmp.bitmap;   // pdf.js kabhi {bitmap,width,height} deta hai
+        var sw = (bmp && bmp.width) || it.bmp.width || 0, sh = (bmp && bmp.height) || it.bmp.height || 0;
+        if(sw < 8 || sh < 8) return;
+        var crop = document.createElement("canvas");
+        crop.width = sw; crop.height = sh;
+        var ctx = crop.getContext("2d");
+        try{ ctx.drawImage(bmp, 0, 0, sw, sh); }catch(e){ return; }
+        out.push({ yTop: it.rect.yTop, wPts: Math.max(8, it.rect.w), hPts: Math.max(8, it.rect.h), dataUrl: crop.toDataURL("image/png") });
+      });
+      return out;
+    });
+  });
+}
+/* Page ka sab se bada embedded image kitna area ghera hai — scanned page pehchaanne ke liye */
+function pwLargestImageArea(page, pageW, pageH){
+  return page.getOperatorList().then(function(ol){
+    var ops = ol.fnArray, args = ol.argsArray;
+    var m = [1,0,0,1,0,0], stack = [], best = 0;
+    for(var i = 0; i < ops.length; i++){
+      var fn = ops[i];
+      if(fn === 10) stack.push(m.slice());
+      else if(fn === 11) m = stack.pop() || m;
+      else if(fn === 12) m = pwMulMat(args[i], m);
+      else if(fn === 85 || fn === 88){
+        var r = pwRectFromMat(m, pageH);
+        var a = (r.w * r.h) / (pageW * pageH);
+        if(a > best) best = a;
+      }
+    }
+    return best;
+  }).catch(function(){ return 0; });
+}
+/* Scanned page ke liye canvas: pehle embedded full-page image (render-free), warna render with timeout */
+function pwOcrCanvas(page, pageW, pageH){
+  return page.getOperatorList().then(function(ol){
+    var ops = ol.fnArray, args = ol.argsArray;
+    var m = [1,0,0,1,0,0], stack = [];
+    var best = null;
+    for(var i = 0; i < ops.length; i++){
+      var fn = ops[i];
+      if(fn === 10) stack.push(m.slice());
+      else if(fn === 11) m = stack.pop() || m;
+      else if(fn === 12) m = pwMulMat(args[i], m);
+      else if(fn === 85 || fn === 88){
+        var nm = args[i] && args[i][0];
+        if(!nm) continue;
+        var r = pwRectFromMat(m, pageH);
+        var area = (r.w * r.h) / (pageW * pageH);
+        if(!best || area > best.area) best = { nm: nm, area: area };
+      }
+    }
+    return best;
+  }).then(function(best){
+    if(best && best.area > 0.35){
+      return new Promise(function(res){
+        try{ page.objs.get(best.nm, function(bmp){
+          if(!bmp) return res(null);
+          var realBmp = bmp.bitmap || bmp;
+          var cv = document.createElement("canvas");
+          cv.width = realBmp.width || bmp.width || 1200; cv.height = realBmp.height || bmp.height || 1600;
+          var ctx = cv.getContext("2d");
+          try{ ctx.drawImage(realBmp, 0, 0, cv.width, cv.height); }catch(e){ return res(null); }
+          res(cv);
+        }); }catch(e){ res(null); }
+      });
+    }
+    return new Promise(function(res){
+      var done = false;
+      var scale = 2;
+      var vp = page.getViewport({ scale: scale });
+      var cv = document.createElement("canvas");
+      cv.width = vp.width; cv.height = vp.height;
+      var ctx = cv.getContext("2d");
+      var t = setTimeout(function(){ if(!done){ done = true; res(null); } }, 15000);
+      try{
+        page.render({ canvasContext: ctx, viewport: vp }).promise.then(function(){
+          if(done) return; done = true; clearTimeout(t); res(cv);
+        }, function(){ if(done) return; done = true; clearTimeout(t); res(null); });
+      }catch(e){ if(!done){ done = true; clearTimeout(t); res(null); } }
+    });
+  }).catch(function(){ return null; });
+}
+/* Har page par repeat hone wali upar/neeche ki line = header / footer */
+function pwDetectHeaderFooter(pages){
+  var n = pages.length;
+  if(n < 2) return { header:null, footer:null };
+  var topCount = {}, botCount = {};
+  pages.forEach(function(pg){
+    var seenTop = {}, seenBot = {};
+    pg.lines.forEach(function(l){
+      if(l.yTop < pg.h * 0.13){
+        var k = pwNormTxt(l.text); if(!k) return;
+        seenTop[k] = seenTop[k] || { text: l.text, align: l.align, bold: l.bold, size: l.size };
+      } else if(l.yTop + l.h > pg.h * 0.88){
+        var k2 = pwNormTxt(l.text); if(!k2) return;
+        seenBot[k2] = seenBot[k2] || { text: l.text, align: l.align, bold: l.bold, size: l.size };
+      }
+    });
+    Object.keys(seenTop).forEach(function(k){ topCount[k] = (topCount[k] || { count:0, v:seenTop[k] }); topCount[k].count++; });
+    Object.keys(seenBot).forEach(function(k){ botCount[k] = (botCount[k] || { count:0, v:seenBot[k] }); botCount[k].count++; });
+  });
+  function pick(cnt){
+    var best = null;
+    Object.keys(cnt).forEach(function(k){
+      var c = cnt[k].count;
+      if(c >= Math.max(2, Math.ceil(n * 0.55)) && (!best || c > best.count)) best = { count: c, v: cnt[k].v };
+    });
+    return best ? best.v : null;
+  }
+  var header = pick(topCount), footer = pick(botCount);
+  if(header) pages.forEach(function(pg){ pg.lines = pg.lines.filter(function(l){ return !(l.yTop < pg.h * 0.13 && pwNormTxt(l.text) === pwNormTxt(header.text)); }); });
+  if(footer) pages.forEach(function(pg){ pg.lines = pg.lines.filter(function(l){ return !(l.yTop + l.h > pg.h * 0.88 && pwNormTxt(l.text) === pwNormTxt(footer.text)); }); });
+  return { header: header, footer: footer };
+}
+function pwPageElements(page, pageData){
+  var lines = pageData.lines;
+  pageData.tables = pwFindTables(pageData.segs, lines, pageData.pageW, pageData.h);
+  var els = [];
+  lines.forEach(function(l){ if(!l.usedInTable) els.push({ type:"p", y: l.yTop, line: l }); });
+  pageData.tables.forEach(function(t){ els.push({ type:"t", y: t.top, table: t }); });
+  (pageData.images||[]).forEach(function(img){ els.push({ type:"i", y: img.yTop, img: img }); });
+  els.sort(function(a,b){ return a.y - b.y; });
+  return els;
+}
+/* Poora PDF → structured data (text layer ya OCR) */
+async function pwConvertStructured(file, lang, onMsg, onProg){
+  var pdfjs = await loadPdfJs();
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjs.getDocument({ data: buf }).promise;
+  var n = pdf.numPages;
+  var pages = [];
+  var needOcrPages = [];
+  for(var p = 1; p <= n; p++){
+    if(onMsg) onMsg("Analyze page " + p + "/" + n + "…");
+    var page = await pdf.getPage(p);
+    var size1 = page.getViewport({ scale: 1 });
+    var pageW = size1.width, pageH = size1.height;
+    var tc = await page.getTextContent();
+    var tot = 0;
+    tc.items.forEach(function(it){ tot += String(it.str||"").replace(/\s+/g,"").length; });
+    // Sirf tab OCR karein jab page par poora-page image ho AUR text layer lagbhag khaali ho.
+    // Warna chhota logo + chhota title wala page bhi scanned samajh liya jata tha.
+    var scanned = false;
+    if(tot < 25) scanned = (await pwLargestImageArea(page, pageW, pageH)) > 0.35;
+    if(scanned){
+      needOcrPages.push(p);
+      pages[p-1] = { pageNum: p, pageW: pageW, pageH: pageH, h: pageH, ocr: true, lines: [], segs: { h: [], v: [] }, images: [], els: [] };
+      page.cleanup(); if(onProg) onProg(p / (n * 2));
+      continue;
+    }
+    var raw = [];
+    for(var i = 0; i < tc.items.length; i++){
+      var it = tc.items[i];
+      var fSize = Math.abs(it.transform && it.transform[3]) || it.height || 10;
+      var x = (it.transform && it.transform[4]) || 0;
+      var yBase = (it.transform && it.transform[5]) || 0;
+      var h = it.height || fSize;
+      raw.push({ str: it.str, x: x, yTop: pageH - yBase - h, size: fSize, h: h, width: it.width || 0, fontName: it.fontName, hasEOL: !!it.hasEOL });
+    }
+    var fontMap = pwFontMap(raw);
+    raw.forEach(function(it){ it.font = fontMap[it.fontName] || { bold:false, italic:false, family:"Arial" }; });
+    var lines = pwGroupLines(raw, pageW);
+    var segs = await pwVectorSegments(page, pageH);
+    var images = await pwPageImages(page, pageH);
+    var pg = { pageNum: p, pageW: pageW, pageH: pageH, h: pageH, ocr: false, lines: lines, segs: segs, images: images };
+    pg.els = pwPageElements(page, pg);
+    pages[p-1] = pg;
+    page.cleanup();
+    if(onProg) onProg(p / (n * 2));
+  }
+  if(needOcrPages.length){
+    var worker = await (await loadTesseract()).createWorker(lang === "eng+urd" ? "eng+urd" : "eng");
+    for(var k = 0; k < needOcrPages.length; k++){
+      var pnum = needOcrPages[k];
+      if(onMsg) onMsg("OCR page " + pnum + "…");
+      var page2 = await pdf.getPage(pnum);
+      var size2 = page2.getViewport({ scale: 1 });
+      var pageW2 = size2.width, pageH2 = size2.height;
+      var cv2 = await pwOcrCanvas(page2, pageW2, pageH2);
+      if(!cv2){
+        var pgFail = { pageNum: pnum, pageW: pageW2, pageH: pageH2, h: pageH2, ocr: true,
+          lines: [{ x0: 40, x1: pageW2 - 40, yTop: 60, h: 30, size: 11, bold: false, italic: false, family: "Arial", align: "left",
+                    text: "[Is page ka OCR nahi ho saka — browser canvas dheema hai. Ise alag se iLovePDF website se convert karein.]" }],
+          segs: { h: [], v: [] }, images: [], els: [] };
+        pgFail.els = pwPageElements(page2, pgFail);
+        pages[pnum - 1] = pgFail;
+        page2.cleanup();
+        if(onProg) onProg(0.5 + (k + 1) / (n * 2));
+        continue;
+      }
+      var res = await worker.recognize(cv2, {}, { tessjs_create_tsv: true });
+      var tsv = (res && res.data && res.data.tsv) || "";
+      var words = [];
+      var rows = tsv.split("\n").slice(1);
+      for(var ri = 0; ri < rows.length; ri++){
+        var cols = rows[ri].split("\t");
+        if(cols.length < 12) continue;
+        var conf = Number(cols[10]);
+        var txt = (cols[11] || "").trim();
+        if(conf < 55 || !txt) continue;
+        words.push({ x: Number(cols[6]) / 2, yTop: Number(cols[7]) / 2, w: Number(cols[8]) / 2, h: Number(cols[9]) / 2, str: txt, size: Math.max(6, Number(cols[9]) / 2), block: cols[2], par: cols[3], line: cols[4] });
+      }
+      var byLine = {};
+      words.forEach(function(w){
+        var key = w.block + "_" + w.par + "_" + w.line;
+        (byLine[key] = byLine[key] || []).push(w);
+      });
+      var ocrLines = [];
+      Object.keys(byLine).forEach(function(key){
+        var ws = byLine[key].sort(function(a,b){ return a.x - b.x; });
+        var x0 = Math.min.apply(null, ws.map(function(x){ return x.x; }));
+        var x1 = Math.max.apply(null, ws.map(function(x){ return x.x + x.w; }));
+        var yMin = Math.min.apply(null, ws.map(function(x){ return x.yTop; }));
+        var yMax = Math.max.apply(null, ws.map(function(x){ return x.yTop + x.h; }));
+        var sizeMax = 0, txts = [];
+        ws.forEach(function(x){ sizeMax = Math.max(sizeMax, x.size); txts.push(x.str); });
+        ocrLines.push({ x0:x0, x1:x1, yTop:yMin, h:Math.max(6, yMax - yMin), size:sizeMax, bold:false, italic:false, family:"Arial", align:"left", text:txts.join(" ") });
+      });
+      ocrLines.sort(function(a,b){ return a.yTop - b.yTop; });
+      var pg2 = { pageNum: pnum, pageW: pageW2, pageH: pageH2, h: pageH2, ocr: true, lines: ocrLines, segs: { h: [], v: [] }, images: [], els: [] };
+      pg2.els = pwPageElements(page2, pg2);
+      pages[pnum - 1] = pg2;
+      page2.cleanup();
+      if(onProg) onProg(0.5 + (k + 1) / (n * 2));
+    }
+    await worker.terminate();
+  }
+  var hf = pwDetectHeaderFooter(pages);
+  // Header/footer lines ab pg.lines se hata di gayi hain — elements dobara banayein warna
+  // Word header ke sath sath body mein bhi wahi line duplicate aa jati hai.
+  pages.forEach(function(pg){ pg.els = pwPageElements(pg, pg); });
+  var mL = Infinity, mT = Infinity, mR = 0, mB = 0;
+  pages.forEach(function(pg){
+    (pg.lines||[]).forEach(function(l){
+      mL = Math.min(mL, l.x0); mT = Math.min(mT, l.yTop);
+      mR = Math.max(mR, pg.pageW - l.x1); mB = Math.max(mB, pg.pageH - (l.yTop + l.h));
+    });
+  });
+  if(!isFinite(mL)) mL = 40; if(!isFinite(mT)) mT = 40;
+  mL = pwClamp(mL, 16, 72); mT = pwClamp(mT, 16, 72);
+  mR = pwClamp(mR, 16, 72); mB = pwClamp(mB, 16, 72);
+  return { pages: pages, header: hf.header, footer: hf.footer, marginLeft: mL, marginTop: mT, marginRight: mR, marginBottom: mB };
+}
+/* Structured data → editable .docx */
+function pwB64ToBytes(b64){
+  var bin = atob(b64);
+  var u8 = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+function pwAlignVal(D, a){
+  if(a === "center") return D.AlignmentType.CENTER;
+  if(a === "right") return D.AlignmentType.RIGHT;
+  return D.AlignmentType.START;
+}
+function pwTableToDocx(D, t){
+  var b = { style: D.BorderStyle.SINGLE, size: 4, color: "777777" };
+  var borders = { top: b, left: b, bottom: b, right: b, insideHorizontal: b, insideVertical: b };
+  var tw = function(v){ return Math.round(v * 20); };
+  var rowBands = [];
+  for(var i = 0; i < t.rows.length - 1; i++) rowBands.push([t.rows[i], t.rows[i + 1]]);
+  if(rowBands.length < 1) return null;
+  var trs = rowBands.map(function(band){
+    var tcs = [];
+    for(var c = 0; c < t.cols.length - 1; c++){
+      var cx0 = t.cols[c], cx1 = t.cols[c + 1];
+      var cellLines = (t.lines||[]).filter(function(l){
+        return l.yTop >= band[0] - 1.5 && (l.yTop + l.h) <= band[1] + 1.5 && l.x0 >= cx0 - 4 && l.x1 <= cx1 + 4;
+      });
+      cellLines.sort(function(a,b){ return a.yTop - b.yTop; });
+      var cellChildren = cellLines.length ? cellLines.map(function(l){
+        return new D.Paragraph({ spacing: { before: 0, after: 0 }, children: [ new D.TextRun({ text: l.text, bold: l.bold, italics: l.italic, font: l.family, size: pwHalfPts(l.size) }) ] });
+      }) : [ new D.Paragraph({ children: [ new D.TextRun({ text: "" }) ] }) ];
+      tcs.push(new D.TableCell({ children: cellChildren, borders: borders, margins: { top: 40, bottom: 40, left: 60, right: 60 } }));
+    }
+    return new D.TableRow({ children: tcs, cantSplit: true });
+  });
+  var totalW = 0;
+  for(var c2 = 0; c2 < t.cols.length - 1; c2++) totalW += (t.cols[c2+1] - t.cols[c2]);
+  var gridCols = [];
+  for(var c3 = 0; c3 < t.cols.length - 1; c3++) gridCols.push({ size: tw(t.cols[c3+1] - t.cols[c3]), type: D.WidthType.DXA });
+  return new D.Table({ rows: trs, width: { size: 100, type: D.WidthType.PERCENTAGE }, borders: borders, layout: { type: D.TableLayoutType.FIXED, width: tw(totalW) }, columnWidths: gridCols.map(function(x){ return x.size; }) });
+}
+async function pwBuildStructuredDocx(D, result){
+  var children = [];
+  var pages = result.pages;
+  var pageW = pages[0].pageW, pageH = pages[0].pageH;
+  var mL = result.marginLeft, mT = result.marginTop, mR = result.marginRight, mB = result.marginBottom;
+  var tw = function(v){ return Math.round(v * 20); };
+  pages.forEach(function(pg, idx){
+    var lastBottom = mT;
+    (pg.els||[]).forEach(function(el){
+      if(el.type === "p"){
+        var l = el.line;
+        var gap = Math.max(0, el.y - lastBottom);
+        var spacingBefore = pwClamp(Math.round(gap * 13 * 0.72), 0, 300);
+        var indentLeft = pwClamp(Math.round((l.x0 - mL) * 20), 0, tw(pageW * 0.9));
+        var para = {
+          spacing: { before: spacingBefore, after: 0 },
+          alignment: pwAlignVal(D, l.align),
+          children: [ new D.TextRun({ text: l.text, bold: l.bold, italics: l.italic, font: l.family, size: pwHalfPts(l.size), color: "000000" }) ]
+        };
+        if(l.align === "left" && indentLeft > 2) para.indent = { left: indentLeft };
+        children.push(new D.Paragraph(para));
+        lastBottom = el.y + l.h;
+      } else if(el.type === "t"){
+        var gapT = Math.max(0, el.y - lastBottom);
+        if(gapT > 6) children.push(new D.Paragraph({ spacing: { before: pwClamp(Math.round(gapT * 13 * 0.72), 0, 200), after: 0 }, children: [ new D.TextRun({ text: "" }) ] }));
+        var table = pwTableToDocx(D, el.table);
+        if(table){
+          children.push(table);
+          children.push(new D.Paragraph({ spacing: { before: 0, after: 40 }, children: [ new D.TextRun({ text: "" }) ] }));
+        }
+        lastBottom = el.table.bottom;
+      } else if(el.type === "i"){
+        var img = el.img;
+        var data = null;
+        try { if(img.dataUrl && img.dataUrl.indexOf(",") >= 0) data = pwB64ToBytes(img.dataUrl.split(",")[1]); } catch(e){ data = null; }
+        var gapI = Math.max(0, el.y - lastBottom);
+        if(data){
+          children.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { before: pwClamp(Math.round(gapI * 13 * 0.72), 0, 300), after: 0 }, children: [ new D.ImageRun({ data: data, transformation: { width: Math.round(img.wPts), height: Math.round(img.hPts) }, type: "png" }) ] }));
+          lastBottom = el.y + img.hPts;
+        }
+      }
+    });
+    if(idx < pages.length - 1) children.push(new D.Paragraph({ children: [ new D.PageBreak() ] }));
+  });
+  var section = {
+    properties: {
+      page: {
+        size: { width: tw(pageW), height: tw(pageH) },
+        margin: { top: tw(mT), right: tw(mR), bottom: tw(mB), left: tw(mL), header: 240, footer: 240 }
+      }
+    },
+    children: children
+  };
+  if(result.header){
+    section.headers = { default: new D.Header({ children: [ new D.Paragraph({ alignment: pwAlignVal(D, result.header.align), children: [ new D.TextRun({ text: result.header.text, bold: result.header.bold, font: result.header.family || "Arial", size: pwHalfPts(result.header.size || 10) }) ] }) ] }) };
+  }
+  if(result.footer){
+    section.footers = { default: new D.Footer({ children: [ new D.Paragraph({ alignment: pwAlignVal(D, result.footer.align), children: [ new D.TextRun({ text: result.footer.text, bold: result.footer.bold, font: result.footer.family || "Arial", size: pwHalfPts(result.footer.size || 10) }) ] }) ] }) };
+  }
+  var doc = new D.Document({ sections: [ section ] });
+  return D.Packer.toBlob(doc);
+}
 function viewPdfToWord(){
-  var html = '<div class="card"><h2>📄 PDF to Word (OCR reader)</h2>';
-  html += '<div class="hint">PDF upload karein — andar likha hua text ho to bilkul sahi nikaal legi, aur scanned PDF (tasveer wali) ho to har page ka OCR hoga. Kuch bhi save nahi hota — sab kuch aapke device par. <b>Behtar scanned result ke liye Settings me free AI OCR key (OCR.space) dalein.</b> Pehli dafa engine internet se download hota he.</div>';
-  html += '<div class="row" style="margin-top:8px;"><div><label>OCR ki zubaan (sirf scanned PDF ke liye)</label><select id="pwLang"><option value="eng">English</option><option value="eng+urd">English + Urdu (dheema, bara download)</option></select></div></div>';
+  var html = '<div class="card"><h2>📄 PDF to Word — iLovePDF style</h2>';
+  html += '<div class="hint">PDF upload karein — andar likha hua text ho to bilkul sahi nikaalegi (structure, tables, images, header/footer sab PDF jaisa, editable Word mein). Scanned/tasveer wali PDF ho to har page OCR hoga. Kuch bhi save nahi hota — sab kuch aapke device par. <b>Behtar scanned result ke liye Settings me free AI OCR key (OCR.space) dalein.</b> Pehli dafa engine internet se download hota he.</div>';
+  html += '<div class="row" style="margin-top:8px;"><div><label>Convert mode</label><select id="pwMode"><option value="structured">iLovePDF style — layout + tables + images + header/footer</option><option value="text">Simple text only</option></select></div>'
+        + '<div><label>OCR ki zubaan (sirf scanned PDF ke liye)</label><select id="pwLang"><option value="eng">English</option><option value="eng+urd">English + Urdu (dheema, bara download)</option></select></div></div>';
   html += '<div style="display:flex; gap:8px; margin-top:8px; align-items:center;"><button class="btn primary small" id="pwPickBtn">📄 PDF chunein</button><input type="file" id="pwFile" accept="application/pdf,.pdf" style="display:none;"></div>';
   html += '<div class="hint" id="pwStatus" style="font-weight:600;"></div>';
   html += '<div id="pwBarWrap" style="height:8px; background:var(--line-soft); border-radius:99px; overflow:hidden; margin-top:8px; display:none;"><div id="pwBar" style="height:100%; width:0%; background:var(--blue);"></div></div>';
@@ -3641,25 +4179,57 @@ function viewPdfToWord(){
   html += '</div>';
   return html;
 }
+/* Dispatcher: mode ke hisaab se structured (layout) ya simple text conversion */
 async function pwProcess(file){
   if(pwBusy) return;
-  if(!file || !/\.pdf$/i.test(file.name) && file.type !== "application/pdf"){ alert("Sirf PDF file chunein."); return; }
+  if(!file || (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf")){ alert("Sirf PDF file chunein."); return; }
   pwBusy = true;
+  pwStructured = null;
   var st = document.getElementById("pwStatus");
   var barWrap = document.getElementById("pwBarWrap");
   var bar = document.getElementById("pwBar");
   function msg(t){ if(st) st.textContent = t; }
-  function prog(p){ if(bar) bar.style.width = Math.round(p * 100) + "%"; }
+  function prog(p){ if(bar) bar.style.width = Math.round(pwClamp(p,0,1) * 100) + "%"; }
+  function showOut(){
+    var out = document.getElementById("pwOut"); if(out) out.value = pwText;
+    var ow = document.getElementById("pwOutWrap"); if(ow) ow.style.display = "block";
+    var db = document.getElementById("pwDocBtn"), cb = document.getElementById("pwCopyBtn");
+    if(db) db.style.display = ""; if(cb) cb.style.display = "";
+  }
   msg("PDF khul rahi he…");
   if(barWrap) barWrap.style.display = "block";
   prog(0);
+  try{
+    var mode = (document.getElementById("pwMode")||{}).value || "structured";
+    var lang = (document.getElementById("pwLang")||{}).value || "eng";
+    if(mode === "structured"){
+      var res = await pwConvertStructured(file, lang, msg, prog);
+      pwStructured = res;
+      pwText = res.pages.map(function(pg){
+        return "— Page " + pg.pageNum + " —\n" + (pg.lines||[]).map(function(l){ return l.text; }).join("\n");
+      }).join("\n\n");
+      showOut();
+      var ocrN = res.pages.filter(function(pg){ return pg.ocr; }).length;
+      msg("✓ " + res.pages.length + " page(s) — iLovePDF style convert ho gaye. " + (ocrN ? ocrN + " scanned page(s) OCR se parhe — font size/bold/table borders approximate hongi." : "Text layer se — bilkul sahi.") + " Ab Download Word dabayein.");
+      prog(1);
+    } else {
+      await pwProcessText(file, msg, prog);
+      showOut();
+      prog(1);
+    }
+  }catch(e){
+    msg("⚠ PDF convert nahi ho saki: " + ((e && e.message) ? e.message : "unknown error") + " — internet check karein.");
+  }
+  pwBusy = false;
+}
+/* Purana wala simple text/OCR mode */
+async function pwProcessText(file, msg, prog){
   try{
     var pdfjs = await loadPdfJs();
     var buf = await file.arrayBuffer();
     var pdf = await pdfjs.getDocument({ data: buf }).promise;
     var n = pdf.numPages;
     var lang = (document.getElementById("pwLang")||{}).value || "eng";
-    // 1) Har page ki text layer check karo — text wali PDF ho to OCR ki zaroorat hi nahi
     var pagesText = [], needOcr = [];
     for(var p = 1; p <= n; p++){
       msg("Text layer check: page " + p + "/" + n + "…");
@@ -3687,7 +4257,6 @@ async function pwProcess(file){
           txt2 = await ocrSpaceRecognize(cv, lang);
         }
         if(txt2 === null){
-          // AI na ho ya fail ho — offline Tesseract
           if(!worker){
             msg("Offline OCR engine load ho raha he… (pehli dafa thora waqt lagta he)");
             worker = await (await loadTesseract()).createWorker(lang === "eng+urd" ? "eng+urd" : "eng");
@@ -3704,24 +4273,24 @@ async function pwProcess(file){
     }
     if(worker) worker.terminate();
     pwText = result.join("\n\n");
-    var out = document.getElementById("pwOut"); if(out) out.value = pwText;
-    var ow = document.getElementById("pwOutWrap"); if(ow) ow.style.display = "block";
-    var db = document.getElementById("pwDocBtn"), cb = document.getElementById("pwCopyBtn");
-    if(db) db.style.display = ""; if(cb) cb.style.display = "";
     msg("✓ " + n + " page(s) convert ho gaye." + (ocrCount ? " (" + ocrCount + " scanned page(s) OCR se parhe)" : " (text layer se — bilkul sahi)"));
   }catch(e){
     msg("⚠ PDF convert nahi ho saki: " + ((e && e.message) ? e.message : "unknown error") + " — internet check karein.");
   }
-  pwBusy = false;
 }
 async function pwDownload(){
   try{
     var D = await loadDocx();
-    var paras = pwText.split(/\n/).map(function(line){
-      return new D.Paragraph({ children: [ new D.TextRun(line || " ") ] });
-    });
-    var doc = new D.Document({ sections: [{ properties: {}, children: paras }] });
-    var blob = await D.Packer.toBlob(doc);
+    var blob;
+    if(pwStructured && pwStructured.pages && pwStructured.pages.length){
+      blob = await pwBuildStructuredDocx(D, pwStructured);
+    } else {
+      var paras = pwText.split(/\n/).map(function(line){
+        return new D.Paragraph({ children: [ new D.TextRun(line || " ") ] });
+      });
+      var doc = new D.Document({ sections: [{ properties: {}, children: paras }] });
+      blob = await D.Packer.toBlob(doc);
+    }
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "converted-" + dmy(today()).replace(/\//g,"-") + ".docx";
@@ -4441,15 +5010,9 @@ function applyBackupData(data){
   var keepUrl = S.settings.syncUrl, keepId = S.settings.importId, keepPat = S.settings.githubPat || "", keepRepo = S.settings.githubRepo || "";
   var bakUrl = data.settings.syncUrl || "", bakId = data.settings.importId || "", bakRepo = data.settings.githubRepo || "";
 
-  S = data; if(!S.months) S.months = {};
-  if(!S.draws) S.draws = []; if(!S.receivables) S.receivables = []; if(!S.tickets) S.tickets = [];
+  mergeMissingAppData(data, S);   // purane backup file mein naye sections na hon to local data bachayein
+  S = data;
   ensureSettings(S);
-  if(!S.bills) S.bills = [];
-  if(!S.waseem) S.waseem = [];
-  if(!S.charityPaid) S.charityPaid = [];
-  if(!S.qarzaPayments) S.qarzaPayments = [];
-  if(!S.qarzaPaid) S.qarzaPaid = [];
-  if(!S.clients) S.clients = [];
   // Is device ka Google sync + GitHub backup token barqarar rakhein (backup mein token nahi hota)
   if(!bakUrl && keepUrl) S.settings.syncUrl = keepUrl;
   if(!bakId && keepId) S.settings.importId = keepId;
