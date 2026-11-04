@@ -91,3 +91,7 @@ Current version: **2.06** (merged friend's v2.04/v2.05 dialog + date work with P
 - New provider: Ignav (ignav.com) - free 1,000 searches/month, then \ per 1,000. Simple X-Api-Key header, no OAuth/worker needed. Setup: Settings -> Flight prices - Ignav -> paste key -> Save & test.
 - Price Lookup tab: one-way/round-trip, adults, cabin class, non-stop, market (PKR/AED/SAR/GBP/USD/INR/QAR), max results; results show airline + flight number, times, duration, stops, cabin and price, with Copy fare and Book/links (Ignav booking-links endpoint -> airline/OTA deep links).
 - Security: the Ignav API key is stripped from backup files, GitHub sync payloads, undo snapshots and share links (same treatment as the GitHub PAT); it stays on the device and survives restores.
+
+## Price Lookup fix (v2.08): Ignav requires a server proxy
+- Cause of 'check connection': Ignav's API is not callable from browser JavaScript (key must stay server-side). Direct calls fail.
+- Fix: one-click Cloudflare Worker proxy code inside Settings (free plan). Worker adds the key server-side and exposes /health, /fares, /round-trip, /booking-links with CORS.

@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.07</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.08</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -347,8 +347,10 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.07";
+var APP_VER = "2.08";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+/* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
+var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
@@ -428,7 +430,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -4714,6 +4716,39 @@ var FA_MARKETS = [
 function ignavKey(){
   return String(S.settings.ignavKey||"").trim();
 }
+function ignavProxy(){
+  var p = String(S.settings.ignavProxy||"").trim().replace(/\/+$/, "");
+  if(!p) return "";
+  if(!/^https:\/\//i.test(p)) p = "https://" + p;
+  return p;
+}
+/* Request bhejne ke 2 tareeke: proxy (recommended) ya direct key (browser se reject ho sakta hai) */
+function ignavApi(path, payload){
+  var px = ignavProxy();
+  if(px){
+    var init = { headers: { "Content-Type": "application/json" } };
+    if(payload){ init.method = "POST"; init.body = JSON.stringify(payload); }
+    return fetch(px + path, init).then(ignavRead);
+  }
+  var key = ignavKey();
+  if(!key) return Promise.reject(new Error("NO_KEY"));
+  var url = "https://ignav.com/api" + path;
+  if(payload){
+    return fetch(url, { method: "POST", headers: { "X-Api-Key": key, "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(ignavRead);
+  }
+  return fetch(url, { headers: { "X-Api-Key": key } }).then(ignavRead);
+}
+function ignavRead(r){
+  return r.text().then(function(txt){
+    var j = null; try { j = JSON.parse(txt); } catch(e){ j = null; }
+    if(!r.ok){
+      var e = (j && j.error && (j.error.message || j.error.code)) || ("Ignav error " + r.status);
+      if(r.status === 401 && !ignavProxy()) e += " — browser se direct call block hai; Cloudflare proxy URL set karein (Settings → Flight prices).";
+      throw new Error(e);
+    }
+    return j || {};
+  });
+}
 function ignavMarket(){
   return String(S.settings.ignavMarket||"PK").trim().toUpperCase() || "PK";
 }
@@ -4725,15 +4760,20 @@ function ignMaskKey(k){
 }
 function ignavBadgeHTML(st){
   var key = String((st && st.ignavKey) || "").trim();
+  var px = String((st && st.ignavProxy) || "").trim();
   var mkt = String((st && st.ignavMarket) || "PK").trim() || "PK";
-  if(!key){
-    return '<div class="hint" id="ignavConnInfo" style="margin:6px 0 0; font-weight:600; color:var(--red);">✗ No Ignav key attached — price search is off. Paste the key above and press “Save &amp; test connection”.</div>';
+  if(px){
+    return '<div class="hint" id="ignavConnInfo" style="margin:6px 0 0; font-weight:600; color:var(--green);">'
+         + '✓ Proxy connected: <code>'+esc(px)+'</code> &nbsp;•&nbsp; Market: <code>'+esc(mkt)+'</code>'
+         + '<br><span style="color:var(--muted); font-weight:400;">Key Worker (server) par hai — app/backup mein nahi. Badge har reload ke baad dikhega.</span>'
+         + '</div>';
   }
-  return '<div class="hint" id="ignavConnInfo" style="margin:6px 0 0; font-weight:600; color:var(--green);">'
-       + '✓ Ignav key attached and saved on this device: <code>'+esc(ignMaskKey(key))+'</code>'
-       + ' &nbsp;•&nbsp; Market: <code>'+esc(mkt)+'</code>'
-       + '<br><span style="color:var(--muted); font-weight:400;">Badge har reload ke baad bhi dikhega. Live check ke liye “Save &amp; test connection” ya Price Lookup tab se ek search karein.</span>'
-       + '</div>';
+  if(key){
+    return '<div class="hint" id="ignavConnInfo" style="margin:6px 0 0; font-weight:600; color:var(--gold);">'
+         + '⚠ Key saved on this device (<code>'+esc(ignMaskKey(key))+'</code>) but <b>no proxy</b> — Ignav browser se direct calls block karta hai, search fail hoga. Worker URL set karein.'
+         + '</div>';
+  }
+  return '<div class="hint" id="ignavConnInfo" style="margin:6px 0 0; font-weight:600; color:var(--red);">✗ Not connected — Worker URL (ya key) save karein, phir “Save &amp; test connection”.</div>';
 }
 function faSetStatus(msg, bad){
   var el = document.getElementById("faStatus"); if(!el) return;
@@ -4798,37 +4838,10 @@ function faAirlineName(code, fallback){
 }
 /* ---- API calls ---- */
 function ignavFares(payload){
-  var key = ignavKey();
-  if(!key) return Promise.reject(new Error("NO_KEY"));
-  return fetch("https://ignav.com/api/fares/one-way", {
-    method: "POST",
-    headers: { "X-Api-Key": key, "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  }).then(function(r){
-    return r.text().then(function(txt){
-      var j = null; try { j = JSON.parse(txt); } catch(e){ j = null; }
-      if(!r.ok){
-        var e = (j && j.error && (j.error.message || j.error.code)) || ("Ignav error " + r.status);
-        throw new Error(e);
-      }
-      return j || {};
-    });
-  });
+  return ignavApi("/fares", payload);
 }
 function ignavBookingLinks(ignavId){
-  var key = ignavKey();
-  if(!key) return Promise.reject(new Error("NO_KEY"));
-  return fetch("https://ignav.com/api/fares/booking-links", {
-    method: "POST",
-    headers: { "X-Api-Key": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ ignav_id: ignavId })
-  }).then(function(r){
-    return r.text().then(function(txt){
-      var j = null; try { j = JSON.parse(txt); } catch(e){ j = null; }
-      if(!r.ok) throw new Error((j && j.error && (j.error.message || j.error.code)) || ("Booking links unavailable (" + r.status + ")"));
-      return j || {};
-    });
-  });
+  return ignavApi("/booking-links", { ignav_id: ignavId });
 }
 function faRenderPresets(){
   var host = document.getElementById("faPresets"); if(!host) return;
@@ -4983,12 +4996,13 @@ function faLoadBookingLinks(ignavId, btn){
 }
 function ignavSearch(){
   var key = ignavKey();
+  var proxy = ignavProxy();
   var f = ((document.getElementById("faFrom")||{}).value || "").trim().toUpperCase();
   var t = ((document.getElementById("faTo")||{}).value || "").trim().toUpperCase();
   var date = (document.getElementById("faDate")||{}).value || "";
   var trip = (document.getElementById("faTrip")||{}).value || "one";
   var ret = (document.getElementById("faRet")||{}).value || "";
-  if(!key){ faSetStatus("⚠ Setup missing — Settings → “Flight prices — Ignav” → key save karein.", true); return; }
+  if(!key && !proxy){ faSetStatus("⚠ Setup missing — Settings → “Flight prices — Ignav” → proxy URL (ya key) save karein.", true); return; }
   if(!/^[A-Z]{3}$/.test(f) || !/^[A-Z]{3}$/.test(t)){ faSetStatus("From/To 3-letter IATA codes hain (KHI, LHE, DXB…).", true); return; }
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ faSetStatus("Departure date select karein.", true); return; }
   if(trip === "round" && !/^\d{4}-\d{2}-\d{2}$/.test(ret)){ faSetStatus("Round trip ke liye return date select karein.", true); return; }
@@ -5005,26 +5019,14 @@ function ignavSearch(){
   payload.market = (document.getElementById("faMarket")||{}).value || ignavMarket();
   if(trip === "round") payload.return_date = ret;
   payload.__max = Number((document.getElementById("faMax")||{}).value || 15);
-  var url = "https://ignav.com/api/fares/" + (trip === "round" ? "round-trip" : "one-way");
-  fetch(url, {
-    method: "POST",
-    headers: { "X-Api-Key": key, "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  }).then(function(r){
-    return r.text().then(function(txt){
-      var j = null; try { j = JSON.parse(txt); } catch(e){ j = null; }
-      if(!r.ok){
-        var msg = (j && j.error && (j.error.message || j.error.code)) || ("Ignav error " + r.status);
-        throw new Error(msg);
-      }
-      faRenderOffers(j || {}, payload);
-      var n = ((j && j.itineraries) || []).length;
-      faSetStatus(n ? ("✓ " + Math.min(n, payload.__max) + " fare(s) mil gaye — sab se sasta pehle") : "Koi fare nahi mila.", !n);
-    });
+  ignavApi(trip === "round" ? "/round-trip" : "/fares", payload).then(function(j){
+    faRenderOffers(j || {}, payload);
+    var n = ((j && j.itineraries) || []).length;
+    faSetStatus(n ? ("✓ " + Math.min(n, payload.__max) + " fare(s) mil gaye — sab se sasta pehle") : "Koi fare nahi mila.", !n);
   }).catch(function(e){
     var m = String((e && e.message) || e);
-    if(m === "NO_KEY") m = "Ignav key missing — Settings mein save karein.";
-    else if(/Failed to fetch/i.test(m)) m = "Internet/API reach nahi hui — check connection.";
+    if(m === "NO_KEY") m = "Ignav key missing — Settings mein key ya proxy URL save karein.";
+    else if(/Failed to fetch/i.test(m)) m = "Connection nahi bani — proxy URL theek hai? Internet check karein.";
     faSetStatus("✗ " + m, true);
   }).then(function(){
     faBusy = false;
@@ -5623,13 +5625,18 @@ function viewSettings(){
 
   // ===== Ignav — live flight prices (sasta ticket jaisa) =====
   html += '<div class="card"><h2>✈️ Flight prices — Ignav API (free 1,000 searches)</h2>';
-  html += '<div class="hint">Live published fares (PIA, Emirates, Qatar, Saudia, flydubai waghera) — IATA ya Travelport ki zaroorat nahi. Setup (sirf ek dafa, 2 minute):<br>'
-        + '1) <b>ignav.com/signup</b> → free account — email verify karein<br>'
-        + '2) Dashboard se <b>API key</b> copy karein<br>'
-        + '3) Neeche paste karein → Save &amp; test<br><br>'
-        + '<b>Free:</b> 1,000 searches/month, phir $2 per 1,000 (kiraya na lagay to limit set karenge).<br>'
-        + '<b>Note:</b> API key leased browser mein save hoti hai. Is ki chat/backup mein kabhi nahi jati. Zyada safety chahiye to keh dein — main free server proxy bana dunga.</div>';
-  html += '<label style="margin-top:8px;">Ignav API key</label>';
+  html += '<div class="hint"><b>Setup (ek dafa, ~5 minute, free):</b><br>'
+        + '1) <b>ignav.com/signup</b> → free account, email verify → dashboard se <b>API key</b> copy karein<br>'
+        + '2) <b>cloudflare.com</b> → free account → <b>Workers &amp; Pages → Create Worker</b> → neeche diya code paste karein → <b>Deploy</b><br>'
+        + '3) Worker → <b>Settings → Variables and Secrets</b> → secret add karein: <code>IGNAV_API_KEY</code> = aap ki Ignav key<br>'
+        + '4) Worker URL (<code>https://xxx.workers.dev</code>) neeche paste karein → <b>Save &amp; test connection</b><br><br>'
+        + '<b>Kyun proxy?</b> Ignav ki API browser se direct call manta nahi (safer hai) — is liye key server (Worker) par rehti hai aur app sirf proxy se baat karti hai. Key app/backup mein kabhi nahi aati.<br>'
+        + '<b>Free:</b> 1,000 searches/month, phir $2 per 1,000.</div>';
+  html += '<textarea id="ignavWorkerCode" readonly style="width:100%; height:150px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px; margin-top:8px;">'+esc(IGNAV_WORKER_CODE)+'</textarea>';
+  html += '<button class="btn small primary" id="copyIgnavCode" style="margin-top:8px;">Copy worker code</button>';
+  html += '<label style="margin-top:12px;">Worker URL (proxy)</label>';
+  html += '<input id="setIgnavProxy" value="'+esc(st.ignavProxy||"")+'" placeholder="https://xxx.workers.dev" autocomplete="off" style="font-family:monospace;">';
+  html += '<label style="margin-top:8px;">Ignav API key (optional — sirf tab jab proxy use na karein)</label>';
   html += '<input type="password" id="setIgnavKey" value="'+esc(st.ignavKey||"")+'" placeholder="Your Ignav key" autocomplete="off" style="font-family:monospace;">';
   html += ignavBadgeHTML(st);
   html += '<div class="row" style="margin-top:8px;"><div><label>Pricing market (currency)</label><select id="setIgnavMarket">'
@@ -5737,7 +5744,8 @@ function ghStripSecretsForSave(s){
   var c = JSON.parse(JSON.stringify(s));
   if(c.settings){
     delete c.settings.githubPat;
-    delete c.settings.ignavKey;   // Ignav API key — backup/sync/share mein kabhi nahi
+    delete c.settings.ignavKey;
+    delete c.settings.ignavProxy;   // proxy URL device-specific — shared state mein na jaye
   }
   return c;
 }
@@ -6888,21 +6896,39 @@ function bind(){
     catch(e){ alert("Select the text and copy it manually."); }
   };
   // ===== Ignav flight prices =====
+  var cig = document.getElementById("copyIgnavCode");
+  if(cig) cig.onclick = function(){
+    faCopy(String(IGNAV_WORKER_CODE||""));
+    alert("Worker code copied — Cloudflare Worker mein paste karein, phir secret IGNAV_API_KEY add karein.");
+  };
   var sig = document.getElementById("saveIgnav");
   if(sig) sig.onclick = function(){
+    S.settings.ignavProxy = String((document.getElementById("setIgnavProxy")||{}).value||"").trim().replace(/\/+$/, "");
     S.settings.ignavKey = String((document.getElementById("setIgnavKey")||{}).value||"").trim();
     S.settings.ignavMarket = String((document.getElementById("setIgnavMarket")||{}).value||"PK").trim().toUpperCase() || "PK";
     save(); render();
     document.querySelector('[data-tab="settings"]').click();
-    if(!S.settings.ignavKey){ faSetIgnavStatus("Key save ho gayi (khaali) — price search off hai."); return; }
+    var px = ignavProxy();
+    if(!px && !S.settings.ignavKey){ faSetIgnavStatus("Kuch bhi save nahi hua — Worker URL ya key dalein."); return; }
     faSetIgnavStatus("Connection check ho raha hai…");
-    fetch("https://ignav.com/api/health").then(function(r){ return r.json().catch(function(){ return { ok:r.ok }; }); }).then(function(j){
-      var ok = (j && (j.ok === true || j.status === "ok" || j.healthy === true));
-      if(ok) faSetIgnavStatus("✓ Ignav reachable — Price Lookup tab se search karein.");
-      else faSetIgnavStatus("⚠ Health response: " + JSON.stringify(j || {}).slice(0,120), true);
-    }).catch(function(){
-      faSetIgnavStatus("⚠ Health endpoint reach nahi hua — internet check karein. (Search phir bhi try karein.)", true);
-    });
+    if(px){
+      fetch(px + "/health", { headers: { "Accept": "application/json" } })
+        .then(function(r){ return r.text().then(function(t){ var j=null; try{ j=JSON.parse(t); }catch(e){} return { status:r.status, j:j, t:t }; }); })
+        .then(function(res){
+          if(res.status >= 200 && res.status < 300){
+            faSetIgnavStatus("✓ Connected — Price Lookup tab se search karein.");
+          } else if(res.j && res.j.error && res.j.error.message){
+            faSetIgnavStatus("✗ Worker mil gaya lekin error: " + res.j.error.message, true);
+          } else {
+            faSetIgnavStatus("✗ Worker response: " + res.status + " " + String(res.t||"").slice(0,120), true);
+          }
+        })
+        .catch(function(){
+          faSetIgnavStatus("✗ Worker reach nahi hui — URL sahi? Deploy hua? (Ad-blocker/browser extension bhi block kar sakta hai)", true);
+        });
+    } else {
+      faSetIgnavStatus("⚠ Key save ho gayi, lekin proxy ke baghair browser call block hogi. Worker URL bhi add karein.", true);
+    }
   };
   var cu = document.getElementById("checkUpdates");
   if(cu) cu.onclick = function(){
