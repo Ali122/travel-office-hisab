@@ -62,3 +62,11 @@ Tesseract.js) load from CDN on first use.
 ## Version
 
 Current version: **2.00**. Bump APP_VER and #verBadge on every release.
+
+## PDF to Word - Exact look mode (v2.01)
+- Renders every page to a high-res image (logo, shapes, colors, tables, borders) embedded as full-page background
+- Adds transparent, floating, absolutely-positioned editable text frames at exact PDF positions (font family, size, bold/italic, align, white/black auto-detected from background)
+- Result opens in Word looking exactly like the PDF - click any text and edit it in place. iLovePDF-style mode remains for native, reflowable Word objects (tables/headers/margins).
+- The app bundles pdf.worker.min.js (~1 MB, same version as bundled pdf.js) so page rendering does not depend on a CDN worker. Do not delete it.
+## Version
+Current version: **2.01**. Bump APP_VER and #verBadge on every release.

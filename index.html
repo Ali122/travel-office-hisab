@@ -265,7 +265,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.00</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.01</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -320,7 +320,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.00";
+var APP_VER = "2.01";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -3610,6 +3610,7 @@ function viewQarza(){
 
 /* ================= PDF TO WORD (OCR reader) ================= */
 var pwStructured = null;
+var pwExact = null;
 var pwText = "", pwBusy = false;
 var pwPdfLib = null;
 function loadPdfJs(){
@@ -3618,7 +3619,10 @@ function loadPdfJs(){
     var s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
     s.onload = function(){
-      try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js"; }catch(e){}
+      try{
+        // Local worker bundle (repo mein pdf.worker.min.js) — CDN chahiye hi nahi render ke liye
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "pdf.worker.min.js";
+      }catch(e){}
       resolve(window.pdfjsLib);
     };
     s.onerror = function(){ reject(new Error("pdf.js load nahi hui")); };
@@ -4164,10 +4168,167 @@ async function pwBuildStructuredDocx(D, result){
   var doc = new D.Document({ sections: [ section ] });
   return D.Packer.toBlob(doc);
 }
+/* ================= PDF TO WORD (EXACT LOOK) =================
+   Har PDF page → high-res image background + uske ooper transparent editable
+   text frames (exact x/y/font/size, PDF ki jaisi position). Logo, vector shapes,
+   colors, tables — sab image mein; text Word mein editable. */
+var exactJszipLib = null;
+function loadJszip(){
+  if(!exactJszipLib) exactJszipLib = new Promise(function(resolve, reject){
+    if(window.JSZip) return resolve(window.JSZip);
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+    s.onload = function(){ resolve(window.JSZip); };
+    s.onerror = function(){ reject(new Error("JSZip load nahi hui")); };
+    document.head.appendChild(s);
+  });
+  return exactJszipLib;
+}
+function pwXmlEsc(t){
+  return String(t==null?"":t)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+}
+function pwTw(pt){ return Math.round(pt * 20); }
+function pwLum(r,g,b){ return 0.2126*r + 0.7152*g + 0.0722*b; }
+/* Line ke aaspaas corner/edge pixels se batayein background light hai ya dark —
+   taake white-text-on-dark-bar wale lines Word mein white reh jaayein.
+   Text strokes ko corners mein sample na hone se fast aur robust. */
+function pwSampleLineColor(ctx, scale, pageH, line){
+  var x0 = Math.round(line.x0 * scale);
+  var y0 = Math.round(line.yTop * scale);
+  var x1 = Math.round(line.x1 * scale);
+  var y1 = Math.round((line.yTop + line.h) * scale);
+  function pxAt(x,y){
+    if(x<0 || y<0 || x>=ctx.canvas.width || y>=ctx.canvas.height) return null;
+    var d = ctx.getImageData(x,y,1,1).data; return d;
+  }
+  var midX = Math.round((x0 + x1) / 2);
+  var pts = [
+    [x0-4, y0-4], [x1+4, y0-4], [x0-4, y1+4], [x1+4, y1+4],
+    [midX, y0-4], [midX, y1+4], [x0-4, Math.round((y0+y1)/2)], [x1+4, Math.round((y0+y1)/2)]
+  ];
+  var dark = 0, total = 0;
+  for(var i=0;i<pts.length;i++){
+    var p = pxAt(pts[i][0], pts[i][1]);
+    if(!p) continue;
+    if(pwLum(p[0], p[1], p[2]) < 110) dark++;
+    total++;
+  }
+  return (total > 0 && dark / total >= 0.5) ? "FFFFFF" : "000000";
+}
+/* _canvas render se image banata hai — logo/shapes/colors bhi */
+async function pwConvertExact(file, onMsg, onProg){
+  var pdfjs = await loadPdfJs();
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjs.getDocument({ data: buf }).promise;
+  var n = pdf.numPages;
+  var pages = [];
+  for(var p = 1; p <= n; p++){
+    if(onMsg) onMsg("Render page " + p + "/" + n + "…");
+    var page = await pdf.getPage(p);
+    var size1 = page.getViewport({ scale: 1 });
+    var pageW = size1.width, pageH = size1.height;
+    var scale = 2;
+    var vp = page.getViewport({ scale: scale });
+    var canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(vp.width); canvas.height = Math.ceil(vp.height);
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    var img = canvas.toDataURL("image/png");
+    var tc = await page.getTextContent();
+    var raw = [];
+    for(var i = 0; i < tc.items.length; i++){
+      var it = tc.items[i];
+      var fSize = Math.abs(it.transform && it.transform[3]) || it.height || 10;
+      var x = (it.transform && it.transform[4]) || 0;
+      var yBase = (it.transform && it.transform[5]) || 0;
+      var h = it.height || fSize;
+      raw.push({ str: it.str, x: x, yTop: pageH - yBase - h, size: fSize, h: h, width: it.width || 0, fontName: it.fontName });
+    }
+    var fontMap = pwFontMap(raw);
+    raw.forEach(function(it){ it.font = fontMap[it.fontName] || { bold:false, italic:false, family:"Arial" }; });
+    var lines = pwGroupLines(raw, pageW);
+    lines.forEach(function(l){ l.color = pwSampleLineColor(ctx, scale, pageH, l); });
+    pages.push({ pageNum: p, pageW: pageW, pageH: pageH, image: img, lines: lines });
+    page.cleanup();
+    if(onProg) onProg(p / n);
+  }
+  return { pages: pages };
+}
+/* Manual .docx writer — floating framePr paragraphs + full-page inline images */
+async function pwBuildExactDocx(result){
+  var zip = new (await loadJszip())();
+  var imgs = [], rels = [];
+  result.pages.forEach(function(pg, idx){
+    var name = "page" + pg.pageNum + ".png";
+    imgs.push({ name: name, b64: String(pg.image).split(",")[1] });
+    rels.push('<Relationship Id="rId' + (idx + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/' + name + '"/>');
+  });
+  var IL_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  var doc = [];
+  doc.push('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
+  doc.push('<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="' + IL_R + '" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">');
+  doc.push('<w:body>');
+  result.pages.forEach(function(pg, idx){
+    var cx = Math.round(pg.pageW * 12700), cy = Math.round(pg.pageH * 12700);
+    var rid = "rId" + (idx + 1);
+    doc.push('<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>');
+    doc.push('<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="' + cx + '" cy="' + cy + '"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="' + (idx + 1) + '" name="page' + (idx + 1) + '" descr="page ' + pg.pageNum + '"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>');
+    doc.push('<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.microsoft.com/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="' + (idx + 1) + '" name="page' + pg.pageNum + '.png"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="' + rid + '" cstate="none"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>');
+    doc.push('<pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic>');
+    doc.push('</wp:inline></w:drawing></w:r></w:p>');
+    // editable text overlay frames
+    (pg.lines||[]).forEach(function(l){
+      var fam = pwXmlEsc(l.family || "Arial");
+      var wVal = Math.max(20, pwTw(l.x1 - l.x0 + 8));
+      var hVal = Math.max(20, pwTw(l.h + 4));
+      var jc = l.align === "center" ? "center" : (l.align === "right" ? "right" : "left");
+      var rpr = '<w:rFonts w:ascii="' + fam + '" w:hAnsi="' + fam + '" w:cs="' + fam + '"/>'
+        + (l.bold ? '<w:b/><w:bCs/>' : '') + (l.italic ? '<w:i/><w:iCs/>' : '')
+        + '<w:sz w:val="' + pwHalfPts(l.size) + '"/><w:szCs w:val="' + pwHalfPts(l.size) + '"/>'
+        + '<w:color w:val="' + (l.color || '000000') + '"/>';
+      doc.push('<w:p><w:pPr>'
+        + '<w:framePr w:w="' + wVal + '" w:h="' + hVal + '" w:x="' + pwTw(l.x0) + '" w:y="' + pwTw(l.yTop) + '" w:hAnchor="page" w:vAnchor="page" w:wrap="none" w:hSpace="0" w:vSpace="0"/>'
+        + '<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="' + jc + '"/></w:pPr>'
+        + '<w:r><w:rPr>' + rpr + '</w:rPr><w:t xml:space="preserve">' + pwXmlEsc(l.text) + '</w:t></w:r></w:p>');
+    });
+    if(idx < result.pages.length - 1){
+      doc.push('<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:br w:type="page"/></w:r></w:p>');
+    }
+  });
+  var W = Math.round(result.pages[0].pageW * 20), H = Math.round(result.pages[0].pageH * 20);
+  doc.push('<w:sectPr><w:pgSz w:w="' + W + '" w:h="' + H + '" orient="portrait"/><w:pgMar w:top="0" w:right="0" w:bottom="0" w:left="0" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>');
+  doc.push('</w:body></w:document>');
+  var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>';
+  var settings = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>';
+  var core = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>Converted PDF</dc:title><dc:creator>AB Travels</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">2026-11-04T00:00:00Z</dcterms:created></cp:coreProperties>';
+  var relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" Target="docProps/core.xml"/></Relationships>';
+  var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId100" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId101" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>' + rels.join('') + '</Relationships>';
+  var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    + '<Default Extension="xml" ContentType="application/xml"/>'
+    + '<Default Extension="png" ContentType="image/png"/>'
+    + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    + '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+    + '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>'
+    + '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
+    + '</Types>';
+  zip.file("[Content_Types].xml", ct);
+  zip.file("_rels/.rels", relsXml);
+  zip.file("word/document.xml", doc.join(""));
+  zip.file("word/_rels/document.xml.rels", docRels);
+  zip.file("word/styles.xml", styles);
+  zip.file("word/settings.xml", settings);
+  zip.file("docProps/core.xml", core);
+  imgs.forEach(function(im){ zip.file("word/media/" + im.name, im.b64, { base64: true }); });
+  return zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+}
 function viewPdfToWord(){
   var html = '<div class="card"><h2>📄 PDF to Word — iLovePDF style</h2>';
   html += '<div class="hint">PDF upload karein — andar likha hua text ho to bilkul sahi nikaalegi (structure, tables, images, header/footer sab PDF jaisa, editable Word mein). Scanned/tasveer wali PDF ho to har page OCR hoga. Kuch bhi save nahi hota — sab kuch aapke device par. <b>Behtar scanned result ke liye Settings me free AI OCR key (OCR.space) dalein.</b> Pehli dafa engine internet se download hota he.</div>';
-  html += '<div class="row" style="margin-top:8px;"><div><label>Convert mode</label><select id="pwMode"><option value="structured">iLovePDF style — layout + tables + images + header/footer</option><option value="text">Simple text only</option></select></div>'
+  html += '<div class="row" style="margin-top:8px;"><div><label>Convert mode</label><select id="pwMode"><option value="structured">iLovePDF style — layout + tables + images + header/footer</option><option value="exact">Exact look — image background + editable text (PDF jaisa)</option><option value="text">Simple text only</option></select></div>'
         + '<div><label>OCR ki zubaan (sirf scanned PDF ke liye)</label><select id="pwLang"><option value="eng">English</option><option value="eng+urd">English + Urdu (dheema, bara download)</option></select></div></div>';
   html += '<div style="display:flex; gap:8px; margin-top:8px; align-items:center;"><button class="btn primary small" id="pwPickBtn">📄 PDF chunein</button><input type="file" id="pwFile" accept="application/pdf,.pdf" style="display:none;"></div>';
   html += '<div class="hint" id="pwStatus" style="font-weight:600;"></div>';
@@ -4185,6 +4346,7 @@ async function pwProcess(file){
   if(!file || (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf")){ alert("Sirf PDF file chunein."); return; }
   pwBusy = true;
   pwStructured = null;
+  pwExact = null;
   var st = document.getElementById("pwStatus");
   var barWrap = document.getElementById("pwBarWrap");
   var bar = document.getElementById("pwBar");
@@ -4202,7 +4364,16 @@ async function pwProcess(file){
   try{
     var mode = (document.getElementById("pwMode")||{}).value || "structured";
     var lang = (document.getElementById("pwLang")||{}).value || "eng";
-    if(mode === "structured"){
+    if(mode === "exact"){
+      var resX = await pwConvertExact(file, msg, prog);
+      pwExact = resX;
+      pwText = resX.pages.map(function(pg){
+        return "— Page " + pg.pageNum + " —\n" + (pg.lines||[]).map(function(l){ return l.text; }).join("\n");
+      }).join("\n\n");
+      showOut();
+      msg("✓ " + resX.pages.length + " page(s) — Exact look ready. Har cheez PDF jaisi (logo, colors, tables) — text par click karke edit karein. Ab Download Word dabayein.");
+      prog(1);
+    } else if(mode === "structured"){
       var res = await pwConvertStructured(file, lang, msg, prog);
       pwStructured = res;
       pwText = res.pages.map(function(pg){
@@ -4282,7 +4453,9 @@ async function pwDownload(){
   try{
     var D = await loadDocx();
     var blob;
-    if(pwStructured && pwStructured.pages && pwStructured.pages.length){
+    if(pwExact && pwExact.pages && pwExact.pages.length){
+      blob = await pwBuildExactDocx(pwExact);
+    } else if(pwStructured && pwStructured.pages && pwStructured.pages.length){
       blob = await pwBuildStructuredDocx(D, pwStructured);
     } else {
       var paras = pwText.split(/\n/).map(function(line){
