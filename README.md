@@ -85,3 +85,9 @@ Current version: **2.03**.
 
 ## Version
 Current version: **2.06** (merged friend's v2.04/v2.05 dialog + date work with Price Lookup).
+
+## Price Lookup - Ignav (v2.07) - replaces Amadeus
+- Amadeus Self-Service was decommissioned 17 July 2026 (all free keys disabled) - that integration is removed.
+- New provider: Ignav (ignav.com) - free 1,000 searches/month, then \ per 1,000. Simple X-Api-Key header, no OAuth/worker needed. Setup: Settings -> Flight prices - Ignav -> paste key -> Save & test.
+- Price Lookup tab: one-way/round-trip, adults, cabin class, non-stop, market (PKR/AED/SAR/GBP/USD/INR/QAR), max results; results show airline + flight number, times, duration, stops, cabin and price, with Copy fare and Book/links (Ignav booking-links endpoint -> airline/OTA deep links).
+- Security: the Ignav API key is stripped from backup files, GitHub sync payloads, undo snapshots and share links (same treatment as the GitHub PAT); it stays on the device and survives restores.
