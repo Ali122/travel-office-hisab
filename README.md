@@ -82,3 +82,6 @@ Current version: **2.02**.
 - New nav tab: Price Lookup - enter From/To (IATA codes), date, adults, non-stop filter, currency (PKR/USD/AED/SAR/EUR), class, and see real-time published fares sorted by price (airline, times, stops, duration, seats, fare class, grand total). Copy any fare to clipboard to send to a client. Popular-route presets + sasta ticket/Google Flights/Kayak backup links included. Indicative fares; booking via consolidator/airline portal.
 ## Version
 Current version: **2.03**.
+
+## Version
+Current version: **2.06** (merged friend's v2.04/v2.05 dialog + date work with Price Lookup).
