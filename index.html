@@ -107,6 +107,23 @@
 .sum-btn:hover{border-color:#94a3b8; background:var(--stat-b);}
   .pos{color:var(--green);} .neg{color:var(--red);} .blu{color:var(--blue);} .gld{color:var(--gold);}
   table{width:100%; border-collapse:collapse; font-size:14px;}
+  .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%;}
+  @media (max-width: 860px){
+    .table-wrap table:not(.stack-mobile){min-width:600px;}
+    .table-wrap td:last-child,.table-wrap th:last-child{white-space:nowrap;}
+    /* Mobile par data tables card-style rows — action icons hamesha nazar aayein, scroll ki zaroorat nahi */
+    .table-wrap table.stack-mobile{display:block; min-width:0 !important; width:100%;}
+    .table-wrap table.stack-mobile tbody{display:block;}
+    .table-wrap table.stack-mobile tr{display:block; margin:0 0 10px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:var(--card);}
+    .table-wrap table.stack-mobile tr.tbl-head{display:none;}
+    .table-wrap table.stack-mobile tr:last-child{margin-bottom:0;}
+    .table-wrap table.stack-mobile td,.table-wrap table.stack-mobile th{display:block; border:0; padding:3px 0;}
+    .table-wrap table.stack-mobile td::before{content:attr(data-label); display:block; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:1px;}
+    .table-wrap table.stack-mobile td:not([data-label])::before{display:none;}
+    .table-wrap table.stack-mobile td.act-cell{display:flex; flex-wrap:wrap; align-items:center; gap:6px; white-space:normal; padding-top:8px;}
+    .table-wrap table.stack-mobile td.act-cell::before{display:none;}
+    .table-wrap table.stack-mobile td.act-cell button{margin:0 !important;}
+  }
   th{text-align:left; color:var(--muted); font-size:12px; padding:6px 4px; border-bottom:1px solid var(--line);}
   td{padding:8px 4px; border-bottom:1px solid var(--line); vertical-align:top;}
   td:last-child, th:last-child{text-align:right; white-space:nowrap;}
@@ -265,7 +282,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.01</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.02</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -320,7 +337,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.01";
+var APP_VER = "2.02";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -2889,6 +2906,40 @@ function setupCollapsibleCards(root){
   }
 }
 
+/* Mobile par tables card se bahar na niklein — horizontal scroll wrapper.
+   Warna `.card{overflow-x:hidden}` icons/buttons ko chhupa/clip kar deta tha. */
+function wrapTables(root){
+  var tables = root.querySelectorAll("table");
+  for(var i = 0; i < tables.length; i++){
+    var tb = tables[i];
+    // Invoice print/preview apne fixed layout mein rehne dein (PDF capture ke liye zaroori)
+    if(tb.closest && tb.closest("#invPrint")) continue;
+    if(tb.parentNode && tb.parentNode.classList && tb.parentNode.classList.contains("table-wrap")) continue;
+    // Header row ke label utha kar har cell ko data-label dein — mobile stacked view ke liye
+    var rows = tb.querySelectorAll("tr");
+    var labels = [];
+    if(rows.length && rows[0].querySelector("th")){
+      rows[0].classList.add("tbl-head");
+      rows[0].querySelectorAll("th").forEach(function(th){ labels.push(String(th.textContent||"").trim()); });
+    }
+    for(var r = 0; r < rows.length; r++){
+      if(rows[r].classList.contains("tbl-head")) continue;
+      rows[r].querySelectorAll("td").forEach(function(td, c){
+        var lab = labels[c] || "";
+        if(lab) td.setAttribute("data-label", lab);
+        // Aakhri column (actions) — icons hamesha dikhein, flex-wrap karein
+        if(!lab && c === rows[r].querySelectorAll("td").length - 1) td.classList.add("act-cell");
+        else if(!lab && !labels.length && c === rows[r].querySelectorAll("td").length - 1) td.classList.add("act-cell");
+      });
+    }
+    tb.classList.add("stack-mobile");
+    var w = document.createElement("div");
+    w.className = "table-wrap";
+    tb.parentNode.insertBefore(w, tb);
+    w.appendChild(tb);
+  }
+}
+
 function render(){
   _monthAgg = null; // data may have changed since the last calculation
   var app = document.getElementById("app");
@@ -2906,6 +2957,7 @@ function render(){
   else if(currentTab==="pdftoword") app.innerHTML = viewPdfToWord();
   else if(currentTab==="airids") app.innerHTML = viewAirIds();
   else app.innerHTML = viewSettings();
+  wrapTables(app);
   setupCollapsibleCards(app);
   bind();
   // Sale se aayi invoice values form mein bhar dein
@@ -6722,7 +6774,7 @@ if(themeB) themeB.onclick = function(){
     orig.apply(this, arguments);
     if(typeof currentTab !== "undefined" && currentTab === "lookup"){
       var app = document.getElementById("app");
-      if(app){ app.innerHTML = view(); bindView(); }
+      if(app){ app.innerHTML = view(); wrapTables(app); bindView(); }
     }
   };
 

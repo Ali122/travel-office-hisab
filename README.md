@@ -70,3 +70,9 @@ Current version: **2.00**. Bump APP_VER and #verBadge on every release.
 - The app bundles pdf.worker.min.js (~1 MB, same version as bundled pdf.js) so page rendering does not depend on a CDN worker. Do not delete it.
 ## Version
 Current version: **2.01**. Bump APP_VER and #verBadge on every release.
+
+## Mobile tables (v2.02)
+- render() har data table ko .table-wrap (overflow-x:auto) mein wrap karta hai, aur mobile par card-style stacked rows bana deta hai (data-label ke sath) - action icons (edit/unpaid/delete/invoice/date) kabhi clip ya off-screen nahi hote.
+- Invoice print preview (#invPrint) ko wrap nahi kiya jata taake PDF capture ka layout barqarar rahe.
+## Version
+Current version: **2.02**.
