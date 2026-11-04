@@ -282,7 +282,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.03</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.04</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -337,7 +337,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.03";
+var APP_VER = "2.04";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
@@ -1402,6 +1402,120 @@ function readTime(id){
 }
 function monthLabel(m){ var p=m.split("-"); return MONTH_NAMES[Number(p[1])-1] + " " + p[0]; }
 function esc(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+/* ================= PROFESSIONAL IN-APP DIALOGS =================
+   Native alert boxes ko center modal se replace karta hai. Confirm update-check
+   jaise important flows ke liye Promise-based hai. */
+var _appModalQueue = [], _appModalOpen = false;
+function _appDialogColors(type){
+  if(type === "success") return { bg:"var(--green-bg)", fg:"var(--green)", icon:"✓" };
+  if(type === "error")   return { bg:"var(--red-bg)",   fg:"var(--red)",   icon:"!" };
+  if(type === "warning") return { bg:"var(--gold-bg)",  fg:"var(--gold)",  icon:"!" };
+  return { bg:"var(--blue-bg)", fg:"var(--blue)", icon:"i" };
+}
+function _appDialogNext(){
+  if(_appModalOpen || !_appModalQueue.length) return;
+  var job = _appModalQueue.shift();
+  _appModalOpen = true;
+  _appDialogRender(job.opts, function(value){
+    _appModalOpen = false;
+    job.resolve(value);
+    setTimeout(_appDialogNext, 30);
+  });
+}
+function _appDialogPush(opts){
+  return new Promise(function(resolve){
+    _appModalQueue.push({ opts:opts, resolve:resolve });
+    _appDialogNext();
+  });
+}
+function _appDialogRender(o, done){
+  var kind = o.kind || "alert";
+  var type = o.type || "info";
+  var colors = _appDialogColors(type);
+  var previous = document.activeElement;
+  var ov = document.createElement("div");
+  ov.style.cssText = "position:fixed; inset:0; z-index:2147483000; background:rgba(2,6,23,.58); display:flex; align-items:center; justify-content:center; padding:18px; box-sizing:border-box; opacity:0; transition:opacity .16s ease; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  var card = document.createElement("div");
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.setAttribute("aria-labelledby", "appDialogTitle");
+  card.style.cssText = "width:100%; max-width:490px; background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:18px; padding:20px 20px 16px; box-shadow:0 24px 70px rgba(0,0,0,.32),0 4px 16px rgba(0,0,0,.12); transform:translateY(10px) scale(.985); transition:transform .18s ease, opacity .18s ease; max-height:calc(100vh - 40px); overflow:auto;";
+  var head = document.createElement("div");
+  head.style.cssText = "display:flex; align-items:flex-start; gap:12px;";
+  var icon = document.createElement("div");
+  icon.style.cssText = "flex:0 0 auto; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:" + colors.bg + "; color:" + colors.fg + "; font-size:20px; font-weight:900; line-height:1;";
+  icon.textContent = colors.icon;
+  var title = document.createElement("div");
+  title.id = "appDialogTitle";
+  title.style.cssText = "flex:1; min-width:0; font-size:17px; font-weight:800; line-height:1.35; padding-top:6px;";
+  title.textContent = o.title || (kind === "confirm" ? "Please confirm" : "Notice");
+  head.appendChild(icon); head.appendChild(title);
+  var msg = document.createElement("div");
+  msg.style.cssText = "font-size:14px; line-height:1.58; color:var(--muted); white-space:pre-wrap; overflow-wrap:anywhere; margin:13px 0 0;";
+  msg.textContent = String(o.message == null ? "" : o.message);
+  var actions = document.createElement("div");
+  actions.style.cssText = "display:flex; justify-content:flex-end; gap:9px; flex-wrap:wrap; margin-top:18px;";
+  var cancelBtn = null, okBtn = document.createElement("button");
+  var closed = false;
+  function close(value){
+    if(closed) return;
+    closed = true;
+    ov.style.opacity = "0";
+    card.style.transform = "translateY(6px) scale(.985)";
+    card.style.opacity = "0";
+    document.removeEventListener("keydown", onKey, true);
+    setTimeout(function(){
+      if(ov.parentNode) ov.parentNode.removeChild(ov);
+      try{ if(previous && previous.focus) previous.focus(); }catch(e){}
+      done(value);
+    }, 150);
+  }
+  if(kind === "confirm"){
+    cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "btn small";
+    cancelBtn.textContent = o.cancelText || "Cancel";
+    cancelBtn.style.marginTop = "0";
+    cancelBtn.onclick = function(){ close(false); };
+    actions.appendChild(cancelBtn);
+  }
+  okBtn.type = "button";
+  okBtn.className = "btn small " + (type === "error" ? "" : "primary");
+  okBtn.textContent = o.okText || (kind === "confirm" ? "Confirm" : "OK");
+  okBtn.style.marginTop = "0";
+  if(type === "error") okBtn.style.background = "var(--red)";
+  okBtn.onclick = function(){ close(kind === "confirm" ? true : undefined); };
+  actions.appendChild(okBtn);
+  card.appendChild(head); card.appendChild(msg); card.appendChild(actions);
+  ov.appendChild(card);
+  ov.onclick = function(e){ if(e.target === ov) close(false); };
+  function onKey(e){
+    if(e.key === "Escape"){ e.preventDefault(); close(false); }
+    else if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); close(kind === "confirm" ? true : undefined); }
+  }
+  document.addEventListener("keydown", onKey, true);
+  document.body.appendChild(ov);
+  requestAnimationFrame(function(){ ov.style.opacity = "1"; card.style.transform = "translateY(0) scale(1)"; });
+  setTimeout(function(){ try{ okBtn.focus(); }catch(e){} }, 50);
+}
+function appAlert(message, title, type){
+  var s = String(message == null ? "" : message);
+  var t = type || (/^✓/.test(s.trim()) ? "success" : (/^[⚠✗]/.test(s.trim()) ? "warning" : "info"));
+  var tt = title || (t === "success" ? "Done" : t === "warning" ? "Please check" : "Notice");
+  return _appDialogPush({ kind:"alert", type:t, title:tt, message:s });
+}
+function appConfirm(message, title, opts){
+  opts = opts || {};
+  return _appDialogPush({
+    kind:"confirm", type:opts.type || "info", title:title || "Please confirm",
+    message:String(message == null ? "" : message),
+    okText:opts.okText || "Confirm", cancelText:opts.cancelText || "Cancel"
+  }).then(function(v){ return !!v; });
+}
+/* All existing alert() calls become centered professional dialogs. */
+window.alert = function(message){ appAlert(message); };
+window.showAppAlert = appAlert;
+window.showAppConfirm = appConfirm;
 function up(t){ return esc(String(t==null?"":t).toUpperCase()); }
 
 /* ================= MONTH CALCULATION ================= */
@@ -6372,20 +6486,21 @@ function bind(){
     if(st2) st2.textContent = "Checking…";
     fetch(location.pathname + "?_upd=" + Date.now(), { cache:"no-store" })
       .then(function(r){ return r.text(); })
-      .then(function(txt){
+      .then(async function(txt){
         var m = txt.match(/APP_VER = "([0-9.]+)"/);
         var live = m ? m[1] : null;
         if(!live){
           if(st2) st2.textContent = "Version not found.";
-          alert("Could not check for a new version — the website could not be reached (internet?).");
+          appAlert("Could not check for a new version — the website could not be reached (internet?).", "Update check failed", "error");
           return;
         }
         if(live === APP_VER){
           if(st2) st2.textContent = "You have the latest version (v"+APP_VER+").";
-          alert("You have the latest version: v"+APP_VER+"\n\nIf the header still shows an old number, clear the browser cache.");
+          appAlert("You have the latest version: v"+APP_VER+"\n\nIf the header still shows an old number, clear the browser cache.", "You're up to date", "success");
           return;
         }
-        if(confirm("A new version is live: v"+live+" (yours: v"+APP_VER+")\n\nReload the app to the new version now?")){
+        var go = await appConfirm("A new version is live: v"+live+" (yours: v"+APP_VER+")\n\nReload the app to the new version now?", "Update available", { okText:"Reload now", cancelText:"Later", type:"info" });
+        if(go){
           // Cache-busted URL — GitHub Pages can keep the old index.html in the browser cache.
           try{ location.replace(location.pathname + "?v=" + encodeURIComponent(live)); }
           catch(e){ location.reload(); }
@@ -6393,7 +6508,7 @@ function bind(){
       })
       .catch(function(){
         if(st2) st2.textContent = "Check failed.";
-        alert("Could not check for updates — check your internet.");
+        appAlert("Could not check for updates — check your internet.", "Update check failed", "error");
       });
   };
   var ghSyncNow = document.getElementById("ghSyncNow");
