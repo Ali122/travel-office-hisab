@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.05</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.06</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -315,6 +315,7 @@
       <button data-tab="clients"><span class="ic">👥</span><span class="lbl">Clients</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
       <button data-tab="lookup"><span class="ic">🔎</span><span class="lbl">PNR Lookup</span></button>
+      <button data-tab="fares"><span class="ic">🔍</span><span class="lbl">Price Lookup</span></button>
       <button data-tab="pdftoword"><span class="ic">📄</span><span class="lbl">PDF to Word</span></button>
       <button data-tab="month"><span class="ic">📅</span><span class="lbl">Monthly Accounts</span></button>
       <button data-tab="dash"><span class="ic">📊</span><span class="lbl">Summary</span></button>
@@ -346,8 +347,9 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.05";
+var APP_VER = "2.06";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var AMADEUS_WORKER_CODE = "// AB Travels - Amadeus flight price proxy (Cloudflare Worker)\n// Amadeus API free milti hai (developers.amadeus.com) - sirf Amadeus GDS mein jo airlines hain\n// registered unke fares dikhengay. No IATA required.\n//\n// SETUP (sirf ek dafa):\n// 1) developers.amadeus.com par free account -> Create new app -> API Key + Secret milega\n// 2) cloudflare.com par free account -> Workers & Pages -> Create Worker -> yeh code paste karein\n// 3) Worker ke Settings -> Variables and Secrets mein 2 secrets add karein:\n//    AMADEUS_CLIENT_ID = Amadeus API Key\n//    AMADEUS_CLIENT_SECRET = Amadeus API Secret\n//    (Encrypt karke Add - secret ko app kabhi nahi dikhayega)\n// 4) (Optional) CORS allow: ALLOWED_ORIGIN = https://ali122.github.io\n// 5) Deploy -> Worker ka URL (https://xyz.workers.dev) copy karke app mein paste karein\n//\n// Test vs production: test.api.amadeus.com free hai real-time; production Amadeus approval ke baad milta hai.\n// GOLD RULE: yeh Worker kisi bhi free Cloudflare account se chal sakta hai - koi credit card nahi.\n//\n// Endpoints: /health  /flights?from=KHI&to=DXB&date=2026-11-15&adults=1&max=10\n\nconst TOKEN_TTL = 25 * 60 * 1000;\nlet cached = { token: null, exp: 0 };\n\nasync function getToken(env) {\n  const now = Date.now();\n  if (cached.token && cached.exp > now) return cached.token;\n  const r = await fetch('https://test.api.amadeus.com/v1/security/oauth2/token', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },\n    body: 'grant_type=client_credentials&client_id=' + env.AMADEUS_CLIENT_ID + '&client_secret=' + env.AMADEUS_CLIENT_SECRET\n  });\n  const j = await r.json();\n  if (!j.access_token) throw new Error(j.error_description || j.error || ('token error ' + r.status));\n  cached = { token: j.access_token, exp: now + Math.min(Number(j.expires_in || 1800) * 1000, TOKEN_TTL) };\n  return cached.token;\n}\nfunction j(obj, status, cors) {\n  return new Response(JSON.stringify(obj), { status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n}\nexport default {\n  async fetch(request, env) {\n    const cors = { 'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*', 'Access-Control-Allow-Methods': 'GET,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (url.pathname === '/health') {\n      try { await getToken(env); return j({ ok: true }, 200, cors); }\n      catch (e) { return j({ ok: false, error: String(e && e.message || e) }, 401, cors); }\n    }\n    if (url.pathname === '/flights') {\n      const p = url.searchParams;\n      const from = String(p.get('from') || '').trim().toUpperCase();\n      const to = String(p.get('to') || '').trim().toUpperCase();\n      const date = String(p.get('date') || '');\n      if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) return j({ ok: false, error: 'from/to must be 3-letter IATA codes (e.g. KHI, LHE, DXB)' }, 400, cors);\n      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return j({ ok: false, error: 'date must be YYYY-MM-DD' }, 400, cors);\n      const q = new URLSearchParams({ originLocationCode: from, destinationLocationCode: to, departureDate: date, adults: String(p.get('adults') || '1'), max: String(p.get('max') || '15') });\n      if (p.get('nonStop') === 'true') q.set('nonStop', 'true');\n      if (p.get('travelClass')) q.set('travelClass', p.get('travelClass'));\n      if (p.get('currency')) q.set('currencyCode', p.get('currency'));\n      try {\n        const token = await getToken(env);\n        const r = await fetch('https://test.api.amadeus.com/v2/shopping/flight-offers?' + q.toString(), { headers: { Authorization: 'Bearer ' + token } });\n        const text = await r.text();\n        return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n      } catch (e) {\n        return j({ ok: false, error: String(e && e.message || e) }, 500, cors);\n      }\n    }\n    return j({ ok: false, error: 'not found' }, 404, cors);\n  }\n};\n";
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
@@ -427,7 +429,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", githubPat:"", githubRepo:"travel-office-hisab-backup",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", githubPat:"", githubRepo:"travel-office-hisab-backup", amadeusProxy:"",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -3117,6 +3119,7 @@ function render(){
   else if(currentTab==="invoice") app.innerHTML = viewInvoice();
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
   else if(currentTab==="clients") app.innerHTML = viewClients();
+  else if(currentTab==="fares") app.innerHTML = viewFares();
   else if(currentTab==="pdftoword") app.innerHTML = viewPdfToWord();
   else if(currentTab==="airids") app.innerHTML = viewAirIds();
   else app.innerHTML = viewSettings();
@@ -4693,6 +4696,213 @@ async function pwDownload(){
   }
 }
 
+/* ================= PRICE LOOKUP (Amadeus, via free Cloudflare proxy) ================= */
+var faBusy = false;
+var FA_PRESETS = [
+  { from:"KHI", to:"DXB", label:"KHI → DXB" },
+  { from:"KHI", to:"JED", label:"KHI → Jeddah" },
+  { from:"LHE", to:"DXB", label:"LHE → DXB" },
+  { from:"ISB", to:"DXB", label:"ISB → DXB" },
+  { from:"KHI", to:"LHE", label:"KHI → Lahore" },
+  { from:"KHI", to:"ISB", label:"KHI → Islamabad" },
+  { from:"KHI", to:"JID", label:"KHI → Madinah" }
+];
+function amadeusProxy(){
+  return String(S.settings.amadeusProxy||"").trim().replace(/\/+$/,"");
+}
+function faSetStatus(msg, bad){
+  var el = document.getElementById("faStatus"); if(!el) return;
+  el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)";
+}
+function faSetAmadeusStatus(msg, bad){
+  var el = document.getElementById("amadeusStatus"); if(!el) return;
+  el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)";
+}
+function faCopy(text){
+  function fallback(){
+    var ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch(e){}
+    document.body.removeChild(ta);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).catch(fallback);
+  } else fallback();
+}
+function faDur(d){
+  var m = String(d||"").match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if(!m) return String(d||"");
+  var h = Number(m[1]||0), mi = Number(m[2]||0);
+  return (h ? h + "h " : "") + mi + "m";
+}
+function faDateTime(s){
+  var m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if(!m) return String(s||"");
+  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var hh = Number(m[4]), mm = m[5];
+  var ampm = hh >= 12 ? "pm" : "am";
+  var h12 = hh % 12; if(h12 === 0) h12 = 12;
+  return m[3] + " " + months[Number(m[2]) - 1] + " · " + h12 + ":" + String(mm).padStart(2,"0") + " " + ampm;
+}
+function faAirlineName(code){
+  var hit = null;
+  try { (INV_AIRLINES||[]).forEach(function(a){ if(a.c === code) hit = a.n; }); } catch(e){}
+  return hit || code;
+}
+function viewFares(){
+  var html = '<div class="card"><h2>🔍 Price Lookup — live flight prices</h2>';
+  html += '<div class="hint">Amadeus se asli published fares — sasta ticket ki tarah. <b>Setup pehle kiya?</b> Settings → Amadeus card → worker URL save karein. Agar abhi tak nahi kiya: pehle wahan setup karein, phir yahan search karein. Jo airline GDS par nahi (kuch LCCs), wo result mein nahi aati — uske liye neeche sasta ticket / Google Flights button hamesha kaam karte hain.</div>';
+  html += '<div class="row" style="margin-top:8px; align-items:flex-end;">'
+        + '<div><label>From</label><input id="faFrom" maxlength="3" placeholder="KHI" autocomplete="off" style="text-transform:uppercase; font-size:18px; font-weight:700; letter-spacing:.12em;"></div>'
+        + '<div style="display:flex; align-items:center; padding-bottom:10px; font-size:20px;">→</div>'
+        + '<div><label>To</label><input id="faTo" maxlength="3" placeholder="DXB" autocomplete="off" style="text-transform:uppercase; font-size:18px; font-weight:700; letter-spacing:.12em;"></div>'
+        + '</div>';
+  html += '<div class="row" style="margin-top:8px;">'
+        + '<div><label>Date</label><input id="faDate" type="date" value="'+today()+'"></div>'
+        + '<div><label>Adults</label><select id="faAdults">'+[1,2,3,4,5,6,7,8,9].map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+'</select></div>'
+        + '<div><label>Class</label><select id="faClass"><option value="">Any</option><option value="ECONOMY">Economy</option><option value="PREMIUM_ECONOMY">Premium</option><option value="BUSINESS">Business</option><option value="FIRST">First</option></select></div>'
+        + '</div>';
+  html += '<div class="row" style="margin-top:8px; align-items:center;">'
+        + '<div><label>Currency</label><select id="faCurr"><option value="">Auto</option><option value="PKR">PKR</option><option value="USD">USD</option><option value="AED">AED</option><option value="SAR">SAR</option><option value="EUR">EUR</option></select></div>'
+        + '<div><label>Max</label><select id="faMax"><option value="10">10</option><option value="15" selected>15</option><option value="25">25</option></select></div>'
+        + '<label style="margin:0; display:flex; gap:6px; align-items:center; padding-bottom:8px;"><input type="checkbox" id="faNonStop" style="width:auto;"> Non-stop only</label>'
+        + '</div>';
+  html += '<button class="btn primary" id="faSearch" style="width:100%; margin-top:8px;">🔍 Search flights</button>';
+  html += '<div id="faStatus" class="hint" style="margin-top:8px; font-weight:600;"></div>';
+  html += '<div class="hint" style="margin-top:6px;">Prices <b>indicative</b> hain — booking consolidator/airline portal se hoti hai. Test API free hai; commercial output ke liye Amadeus approval lagta hai.</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>Popular routes</h2><div class="hint" style="margin-top:0;">Ek click mein search:</div><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;" id="faPresets"></div>';
+  html += '<div class="hint" style="margin-top:12px; font-weight:600;">🔎 Ya in websites par khud dekhein (hamesha kaam karti hain):</div><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;" id="faQuick"></div></div>';
+  html += '<div id="faResults"></div>';
+  return html;
+}
+function faRenderPresets(){
+  var host = document.getElementById("faPresets"); if(!host) return;
+  host.innerHTML = "";
+  FA_PRESETS.forEach(function(p){
+    var b = document.createElement("button");
+    b.className = "btn small"; b.style.margin = "0"; b.textContent = p.label;
+    b.onclick = function(){
+      var f = document.getElementById("faFrom"), t = document.getElementById("faTo");
+      if(f) f.value = p.from; if(t) t.value = p.to;
+      amadeusSearch();
+    };
+    host.appendChild(b);
+  });
+  var qk = document.getElementById("faQuick");
+  if(qk){
+    qk.innerHTML = "";
+    var items = [
+      { label:"🛫 sasta ticket", url:"https://www.sastaticket.pk/" },
+      { label:"🔎 Google Flights", url:"https://www.google.com/travel/flights" },
+      { label:"🔎 Kayak", url:"https://www.kayak.com/flights" }
+    ];
+    items.forEach(function(it){
+      var a = document.createElement("a");
+      a.href = it.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.className = "btn small"; a.style.cssText = "margin:0; text-decoration:none;";
+      a.textContent = it.label;
+      qk.appendChild(a);
+    });
+  }
+}
+function faRenderOffers(j){
+  var host = document.getElementById("faResults"); if(!host) return;
+  var cors = (j && j.dictionaries && j.dictionaries.carriers) || {};
+  var offers = (j && j.data) || [];
+  if(!offers.length){
+    host.innerHTML = '<div class="card"><div class="empty">Koi flight nahi mili — date/route change karke dobara try karein. (Test API kabhi kabhi kam offers deta hai; sasta ticket button se confirm karein.)</div></div>';
+    return;
+  }
+  var html = '<div class="card"><h2>Results — '+offers.length+' offer(s)</h2>';
+  offers.forEach(function(o){
+    try{
+      var itins = o.itineraries || [];
+      var segs = (itins[0] && itins[0].segments) || [];
+      if(!segs.length) return;
+      var first = segs[0], last = segs[segs.length - 1];
+      var carrier = (Array.isArray(o.validatingAirlineCodes) && o.validatingAirlineCodes[0]) || first.carrierCode || "";
+      var oper = first.operating && first.operating.carrierCode && first.operating.carrierCode !== carrier ? first.operating.carrierCode : null;
+      var stops = segs.length - 1;
+      var dur = faDur(itins[0].duration);
+      var price = Number((o.price && (o.price.grandTotal || o.price.total)) || 0);
+      var curr = (o.price && o.price.currency) || "";
+      var priceTxt = (function(){ try { return new Intl.NumberFormat("en-PK", { maximumFractionDigits: 0 }).format(price); } catch(e){ return String(Math.round(price)); } })();
+      var seats = o.numberOfBookableSeats != null ? o.numberOfBookableSeats : "?";
+      var fareClass = "";
+      try{ fareClass = (o.travelerPricings && o.travelerPricings[0] && o.travelerPricings[0].fareDetailsBySegment && o.travelerPricings[0].fareDetailsBySegment[0] && o.travelerPricings[0].fareDetailsBySegment[0].class) || ""; }catch(e){ fareClass = ""; }
+      var cabin = "";
+      try{ cabin = (o.travelerPricings && o.travelerPricings[0] && o.travelerPricings[0].fareDetailsBySegment && o.travelerPricings[0].fareDetailsBySegment[0] && o.travelerPricings[0].fareDetailsBySegment[0].cabin) || ""; }catch(e){ cabin = ""; }
+      var legLabel = function(s){
+        return esc(s.departure.iataCode) + " " + esc(faDateTime(s.departure.at).split("·")[1] ? faDateTime(s.departure.at).split("·")[1].trim() : faDateTime(s.departure.at))
+          + " → " + esc(s.arrival.iataCode) + " " + esc(faDateTime(s.arrival.at).split("·")[1] ? faDateTime(s.arrival.at).split("·")[1].trim() : faDateTime(s.arrival.at));
+      };
+      var airlineName = (cors[carrier]) || faAirlineName(carrier);
+      var copyTxt = carrier + (first.number ? "-" + first.number : "") + " " + first.departure.iataCode + "-" + last.arrival.iataCode + " " + faDateTime(first.departure.at).split("·")[1].trim() + " " + curr + " " + priceTxt + (fareClass ? " (" + fareClass + ")" : "");
+      html += '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; display:flex; gap:12px; align-items:center;">'
+            +   '<img src="airlines/'+esc(carrier)+'.png" alt="'+esc(carrier)+'" onerror="this.style.display=\'none\'" style="width:42px; height:42px; object-fit:contain; flex:0 0 auto; background:#fff; border-radius:8px;">'
+            +   '<div style="flex:1; min-width:0;">'
+            +     '<div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline; flex-wrap:wrap;"><div><b>'+esc(carrier)+(first.number?"-"+esc(first.number):"")+'</b> <span style="color:var(--muted); font-size:12px;">'+esc(airlineName)+(oper?' (op by '+esc(oper)+')':'')+'</span></div>'
+            +       '<div style="font-size:19px; font-weight:800; color:var(--blue); white-space:nowrap;">'+esc(curr)+' '+esc(priceTxt)+'</div></div>'
+            +     '<div style="font-size:13px; margin-top:3px;">'+esc(faDateTime(first.departure.at))+' → '+esc(faDateTime(last.arrival.at))+'</div>'
+            +     '<div style="font-size:11.5px; color:var(--muted); margin-top:2px;">'+esc(first.departure.iataCode)+' → '+esc(last.arrival.iataCode)+' · '+(stops===0?'Direct':stops+' stop'+(stops>1?'s':''))+' · '+esc(dur)+' · seats '+seats+(cabin?' · '+esc(cabin):'')+(fareClass?' · class '+esc(fareClass):'')+'</div>'
+            +   '</div>'
+            +   '<button class="btn small fa-copy" data-fa="'+esc(copyTxt)+'" style="flex:0 0 auto; margin:0; background:var(--blue-bg); color:var(--blue);">Copy fare</button>'
+            + '</div>';
+    }catch(e){
+      html += '<div style="color:var(--muted); font-size:12px; margin-bottom:6px;">Offer render nahi hua.</div>';
+    }
+  });
+  html += '</div>';
+  host.innerHTML = html;
+  var btns = host.querySelectorAll(".fa-copy");
+  for(var i=0;i<btns.length;i++){
+    btns[i].onclick = function(){ faCopy(this.getAttribute("data-fa")); this.textContent = "✓"; var b = this; setTimeout(function(){ b.textContent = "Copy fare"; }, 1200); };
+  }
+}
+async function amadeusSearch(){
+  var px = amadeusProxy();
+  var f = (document.getElementById("faFrom")||{}).value || "";
+  var t = (document.getElementById("faTo")||{}).value || "";
+  var date = (document.getElementById("faDate")||{}).value || "";
+  f = f.trim().toUpperCase(); t = t.trim().toUpperCase();
+  if(!px){ faSetStatus("⚠ Setup missing — Settings → Amadeus card → proxy URL save karein.", true); return; }
+  if(!/^[A-Z]{3}$/.test(f) || !/^[A-Z]{3}$/.test(t)){ faSetStatus("From/To 3-letter IATA codes hain (KHI, LHE, DXB…).", true); return; }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ faSetStatus("Date select karein.", true); return; }
+  if(faBusy) return;
+  faBusy = true;
+  var btn = document.getElementById("faSearch"); if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
+  faSetStatus("Searching " + f + " → " + t + " on " + date + "…");
+  var adults = (document.getElementById("faAdults")||{}).value || "1";
+  var max = (document.getElementById("faMax")||{}).value || "15";
+  var nonStop = (document.getElementById("faNonStop")||{}).checked ? "true" : "false";
+  var travelClass = (document.getElementById("faClass")||{}).value || "";
+  var curr = (document.getElementById("faCurr")||{}).value || "";
+  var url = px + "/flights?from=" + encodeURIComponent(f) + "&to=" + encodeURIComponent(t) + "&date=" + encodeURIComponent(date)
+          + "&adults=" + encodeURIComponent(adults) + "&max=" + encodeURIComponent(max) + "&nonStop=" + nonStop
+          + (travelClass ? "&travelClass=" + encodeURIComponent(travelClass) : "")
+          + (curr ? "&currency=" + encodeURIComponent(curr) : "");
+  try{
+    var resp = await fetch(url);
+    var j = null;
+    try{ j = await resp.json(); }catch(e){ j = null; }
+    if(j && j.errors && j.errors.length){
+      var msg = j.errors[0].detail || j.errors[0].title || "Unknown API error";
+      faSetStatus("✗ " + msg, true);
+    } else if(j && Array.isArray(j.data)){
+      faRenderOffers(j);
+      faSetStatus(j.data.length ? ("✓ " + j.data.length + " offer(s) — cheapest pehle") : "Koi offer nahi mila.");
+    } else {
+      faSetStatus("✗ Unexpected response — proxy check karein.", true);
+    }
+  }catch(e){
+    faSetStatus("✗ " + ((e && e.message) || e) + " — proxy URL / Cloudflare / internet check karein.", true);
+  }
+  faBusy = false;
+  if(btn){ btn.textContent = "🔍 Search flights"; btn.disabled = false; }
+}
+
 /* ================= CLIENTS (CUSTOMERS) ================= */
 var clEditId = null;
 function clDaysLeft(dstr){
@@ -5280,6 +5490,23 @@ function viewSettings(){
   html += '<div class="hint">Main app sync GitHub par hota hai — Google script ab monthly imports ke saath private GitHub credentials bhi trusted devices ko bhejta hai.<br>1) Open the Google Sheet → <b>Extensions → Apps Script</b><br>2) Paste the new code below<br>3) Apps Script → <b>Project Settings → Script Properties</b> → add <b>GITHUB_TOKEN</b> = fine-grained PAT (Contents → Read and write); optional <b>GITHUB_REPO</b><br>4) <b>Deploy → Manage deployments → Edit → New version</b> (same …/exec URL), or <b>New deployment</b> with Execute as: Me, Who has access: Anyone<br>5) Trusted device opens the copied link → GitHub token/repo are saved automatically and latest data loads<br><br><b>WARNING:</b> Anyone who has this URL can call the script and receive the GitHub token. Share the link ONLY with people you fully trust.</div>';
   html += '<textarea id="gasCode" readonly style="width:100%; height:150px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px; margin-top:8px;">'+esc(GAS_CODE)+'</textarea>';
   html += '<button class="btn small primary" id="copyGas" style="margin-top:8px;">Copy code</button>';
+  html += '</div>';
+
+  // ===== Amadeus — live flight prices (sasta ticket jaisa) =====
+  html += '<div class="card"><h2>🔍 Amadeus — live flight prices (sasta ticket jaisa)</h2>';
+  html += '<div class="hint">Free Amadeus API se asli published fares dikhenge — PIA international aur jo Pakistani airlines GDS par hain. IATA ki zaroorat nahi. Pehle ye setup karein (sirf ek dafa):<br>'
+        + '1) <b>developers.amadeus.com</b> par free account banayein → <b>Create new app</b> → API Key + API Secret milenge (copy karke rakhein)<br>'
+        + '2) <b>cloudflare.com</b> par free account → <b>Workers &amp; Pages → Create Worker</b> → neeche diya code paste karein<br>'
+        + '3) Worker ke <b>Settings → Variables and Secrets</b> mein 2 secrets add karein: <code>AMADEUS_CLIENT_ID</code> (Key) aur <code>AMADEUS_CLIENT_SECRET</code> (Secret) — Encrypt karke Add<br>'
+        + '4) <b>Deploy</b> → Worker ka URL (https://xyz.workers.dev) copy karke neeche paste karein → Save<br>'
+        + '<br><b>Note:</b> Worker secret app mein kabhi nahi aata — key Cloudflare mein rehti hai. Test environment free real-time fares deta hai. Koi credit card nahi chahiye. Jo airline GDS par nahi hai (kuch LCCs), wo result nahi deti — tab neeche sasta ticket / Google Flights button use karein.</div>';
+  html += '<textarea id="amadeusCode" readonly style="width:100%; height:170px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px; margin-top:8px;">'+esc(AMADEUS_WORKER_CODE)+'</textarea>';
+  html += '<button class="btn small primary" id="copyAmadeus" style="margin-top:8px;">Copy worker code</button>';
+  html += '<label style="margin-top:12px;">Flight proxy URL (aap ka Cloudflare Worker)</label>';
+  html += '<input id="setAmadeusProxy" value="'+esc(st.amadeusProxy||"")+'" placeholder="https://xyz.workers.dev" autocomplete="off" style="font-family:monospace;">';
+  html += '<button class="btn small green" id="saveAmadeus" style="margin-top:8px; width:100%;">💾 Save &amp; test connection</button>';
+  html += '<div class="hint" id="amadeusStatus" style="margin-top:6px; font-weight:600;"></div>';
+  html += '<div class="hint">Prices <b>indicative</b> hain — booking airline portal/agent consolidator se hoti hai. Search ka result cache thoda purana ho sakta hai (Amadeus seconds-to-minutes baar update hota hai).</div>';
   html += '</div>';
 
   html += '<div class="card"><h2>'+esc(T("backuph"))+'</h2>';
@@ -6523,6 +6750,28 @@ function bind(){
     try{ document.execCommand("copy"); alert("Code copied — paste it in the Apps Script editor."); }
     catch(e){ alert("Select the text and copy it manually."); }
   };
+  // ===== Amadeus flight proxy =====
+  var cam = document.getElementById("copyAmadeus");
+  if(cam) cam.onclick = function(){
+    var ta = document.getElementById("amadeusCode");
+    var t = ta ? ta.value : String(AMADEUS_WORKER_CODE||"");
+    faCopy(t);
+    alert("Worker code copied — Cloudflare Worker mein paste karein, phir secrets add karein.");
+  };
+  var sam = document.getElementById("saveAmadeus");
+  if(sam) sam.onclick = function(){
+    var v = String((document.getElementById("setAmadeusProxy")||{}).value||"").trim().replace(/\/+$/, "");
+    S.settings.amadeusProxy = v;
+    save();
+    if(!v){ faSetAmadeusStatus("Proxy URL save ho gaya (khaali)."); return; }
+    faSetAmadeusStatus("Connection check ho raha hai…");
+    fetch(v + "/health").then(function(r){ return r.json(); }).then(function(j){
+      if(j && j.ok) faSetAmadeusStatus("✓ Connected — flight prices ab \"🔍 Price Lookup\" tab se search karein.");
+      else faSetAmadeusStatus("✗ "+((j && j.error) || "Worker ne error diya — secrets check karein (AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET)."), true);
+    }).catch(function(){
+      faSetAmadeusStatus("✗ Reach nahi hui — URL sahi hai? Worker deploy hua? Internet check karein.", true);
+    });
+  };
   var cu = document.getElementById("checkUpdates");
   if(cu) cu.onclick = function(){
     var st2 = document.getElementById("updStatus");
@@ -6748,6 +6997,14 @@ function bind(){
   var cScan = document.getElementById("clScan");
   if(cScanBtn && cScan) cScanBtn.onclick = function(){ cScan.value = ""; cScan.click(); };
   if(cScan) cScan.onchange = function(){ if(this.files && this.files[0]) clScanFile(this.files[0]); };
+  // ===== Price Lookup (Amadeus via proxy) =====
+  var faFrom = document.getElementById("faFrom"), faTo = document.getElementById("faTo");
+  if(faFrom) faFrom.addEventListener("input", function(){ this.value = this.value.toUpperCase().replace(/[^A-Z]/g, ""); });
+  if(faTo) faTo.addEventListener("input", function(){ this.value = this.value.toUpperCase().replace(/[^A-Z]/g, ""); });
+  var faSearchBtn = document.getElementById("faSearch");
+  if(faSearchBtn) faSearchBtn.onclick = amadeusSearch;
+  faRenderPresets();
+
   // ===== PDF to Word =====
   var pwPick = document.getElementById("pwPickBtn");
   var pwFile = document.getElementById("pwFile");
