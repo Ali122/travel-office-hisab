@@ -127,6 +127,9 @@
     render();
   }
   function msg(t,bad){ var e=$("view").querySelector(".flash"); if(e){ e.textContent=t; e.style.color=bad?"var(--red)":"var(--green)"; } }
+  function dataError(e){
+    return '<div class="card"><h2>Could not load data</h2><div class="hint">'+esc(e && e.message || e)+'</div><div class="hint">Ask the owner to check the Worker secrets (GITHUB_TOKEN) and press Refresh.</div></div>';
+  }
 
   function render(){
     var v=$("view"); if(!DATA){ v.innerHTML=""; return; }
@@ -318,7 +321,12 @@
     var p=$("pw").value;
     if(!p){ $("loginErr").textContent="Password required"; return; }
     $("loginBtn").disabled=true; $("loginErr").textContent="";
-    api("/api/login",{password:p}).then(function(){ $("pw").value=""; return load(); })
+    api("/api/login",{password:p})
+      .then(function(){
+        $("pw").value="";
+        showApp();
+        return load().catch(function(e){ showApp(); $("view").innerHTML=dataError(e); });
+      })
       .catch(function(e){ $("loginErr").textContent=e.message; })
       .then(function(){ $("loginBtn").disabled=false; });
   };
@@ -332,7 +340,7 @@
   api("/api/session").then(function(){ return load(); }).catch(function(e){
     if(e && e.message === "login required"){ showLogin(); return; }
     showApp();
-    $("view").innerHTML='<div class="card"><h2>Could not load data</h2><div class="hint">'+esc(e && e.message || e)+'</div><div class="hint">Ask the owner to check the Worker secrets (GITHUB_TOKEN) and try Refresh.</div></div>';
+    $("view").innerHTML=dataError(e);
   });
 })();
 </script>
