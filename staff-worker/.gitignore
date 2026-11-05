@@ -1,0 +1,4 @@
+node_modules/
+.wrangler/
+.wrangler-dryrun/
+.dev.vars

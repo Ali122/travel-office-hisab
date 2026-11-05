@@ -1,0 +1,7 @@
+exclude:
+  - staff-worker
+  - node_modules
+  - .github
+  - package.json
+  - package-lock.json
+  - scrape.js

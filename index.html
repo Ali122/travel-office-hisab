@@ -348,7 +348,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.15";
+var APP_VER = "2.16";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -3182,7 +3182,13 @@ function totals(){
     if(c.applied){ charity += c.charity; loanPaid += c.loanPay; monthsApplied++; }
   });
   var bakaya = 0;
-  S.tickets.forEach(function(t){ if(t.paid === false) bakaya += Number(t.sale)||0; });
+  S.tickets.forEach(function(t){
+    if(t.paid === false){
+      var tkPaid = 0;
+      (t.payments||[]).forEach(function(p){ tkPaid += Number(p.amount)||0; });
+      bakaya += Math.max(0, (Number(t.sale)||0) - tkPaid);
+    }
+  });
   S.receivables.forEach(function(r){
     var paid=0; (r.payments||[]).forEach(function(p){ paid+=Number(p.amount)||0; });
     bakaya += Math.max(0, (Number(r.total)||0) - paid);
@@ -3533,6 +3539,8 @@ function viewTickets(){
     sorted.forEach(function(t){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
       var costPending = !(Number(t.cost) > 0) && (Number(t.sale) > 0);
+      var tkPaid = 0; (t.payments||[]).forEach(function(x){ tkPaid += Number(x.amount)||0; });
+      var tkRem = Math.max(0, (Number(t.sale)||0) - tkPaid);
       var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket")).toLowerCase();
       html += '<tr data-search="'+esc(hay)+'"><td>'+esc(dmy(t.date))+'</td>'
             + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+(costPending?' <span class="pill pending" title="Cost price abhi nahi dali — ✏ se edit karein">⚠ cost pending</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.payMethod?' <div style="font-size:12px; color:var(--muted);">'+(t.payMethod==='Online'?'💳':'💵')+' '+esc(t.payMethod)+'</div>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
@@ -3540,6 +3548,7 @@ function viewTickets(){
             + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
             + '<td>'+(t.paid === false
                   ? '<button class="btn small tk-toggle" data-id="'+t.id+'" style="margin:0 4px 0 0; padding:5px 9px; background:var(--gold); color:#fff;">'+esc(T("unpaid"))+'</button>'
+                    +(tkPaid?'<div class="hint" style="font-size:11px;">Received '+money(tkPaid)+'<br>Remaining '+money(tkRem)+'</div>':'')
                   : '<span class="pill done">'+esc(T("paidp"))+'</span>')
                 +(t.doubleEntry?'<button class="del" data-unflagTk="'+t.id+'" style="background:var(--green-bg); color:var(--green); margin-right:4px;" title="OK — remove this flag (ticket stays)">✓</button>':'')
                 +'<button class="del tk-inv" data-id="'+t.id+'" title="'+(t.inv?'View invoice':'Create invoice for this sale')+'" style="background:'+(t.inv?'var(--green-bg)':'var(--blue-bg)')+'; color:'+(t.inv?'var(--green)':'var(--blue)')+'; margin-right:4px;">🧾'+(t.inv?' ✓':'')+'</button>'
@@ -5642,7 +5651,9 @@ function viewClients(){
     if(tks.length){
       hist += '<div style="margin-top:6px;"><table><tr><th>Date</th><th>Type</th><th>Detail</th><th>Sale</th><th>Pay</th></tr>';
       tks.forEach(function(t){
-        hist += '<tr><td>'+esc(dmy(t.date))+'</td><td>'+esc(t.kind||"Ticket")+'</td><td>'+esc(t.detail||"—")+'</td><td>'+money(t.sale)+'</td><td>'+(t.paid === false ? '<span class="pill pending">Unpaid</span>' : '<span class="pill done">Paid</span>')+'</td></tr>';
+        var tkPaid = 0; (t.payments||[]).forEach(function(x){ tkPaid += Number(x.amount)||0; });
+        var tkRem = Math.max(0, (Number(t.sale)||0) - tkPaid);
+        hist += '<tr><td>'+esc(dmy(t.date))+'</td><td>'+esc(t.kind||"Ticket")+'</td><td>'+esc(t.detail||"—")+'</td><td>'+money(t.sale)+'</td><td>'+(t.paid === false ? '<span class="pill pending">Unpaid</span>'+(tkPaid?'<div class="hint" style="font-size:11px;">Remaining '+money(tkRem)+'</div>':'') : '<span class="pill done">Paid</span>')+'</td></tr>';
       });
       hist += '</table></div>';
     }
@@ -5695,6 +5706,12 @@ function viewClients(){
 }
 
 /* ================= BAKAYA (RECEIVABLES) ================= */
+function ticketPaidAmt(t){ return (t && Array.isArray(t.payments) ? t.payments : []).reduce(function(n,p){ return n + (Number(p.amount)||0); }, 0); }
+function ticketRemaining(t){
+  var sale = Number(t && t.sale) || 0;
+  if(t && t.paid === true) return 0;
+  return Math.max(0, sale - ticketPaidAmt(t));
+}
 function viewBakaya(){
   var mf = monthFilterCard("BAK", "Pick a month to see that month&rsquo;s pending amount (unpaid tickets + clients). <b>All months</b> shows everything pending.");
   var html = mf.html;
@@ -5708,18 +5725,20 @@ function viewBakaya(){
   html += htmlX;
 
   // Unpaid tickets — bakaya mein khud aate hain
-  var unpaidT = S.tickets.filter(function(x){ return x.paid === false; });
+  var unpaidT = S.tickets.filter(function(x){ return x.paid === false && ticketRemaining(x) > 0; });
   if(mf.cur!=="all") unpaidT = unpaidT.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
   html += '<div class="card" data-collapse="rvunpaid"><h2>'+esc(T("unpaidtkh"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
   if(!unpaidT.length){
     html += '<div class="empty">'+esc(T("emptyub"))+'</div>';
   } else {
     unpaidT.forEach(function(x){
+      var paid = ticketPaidAmt(x), rem = ticketRemaining(x);
       html += '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">';
       html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">';
       html += '<div><b>'+esc(x.client)+'</b><div style="font-size:13px; color:var(--muted);">'+esc(dmy(x.date||""))+' • '+esc(x.detail||"")+'</div></div>';
-      html += '<div style="text-align:right;"><div class="gld" style="font-weight:800;">'+money(x.sale)+'</div><div style="font-size:12px; color:var(--muted);">'+esc(T("ublbl2"))+'</div></div>';
+      html += '<div style="text-align:right;"><div class="gld" style="font-weight:800;">'+money(rem)+'</div><div style="font-size:12px; color:var(--muted);">'+esc(T("ublbl2"))+(paid?' · Received '+money(paid)+' of '+money(x.sale):' · Sale '+money(x.sale))+'</div></div>';
       html += '</div>';
+      if(paid) html += '<div class="hint" style="margin-top:5px;">Partial payments: '+money(paid)+' received · '+money(rem)+' remaining</div>';
       html += '<button class="btn small green tk-toggle" data-id="'+x.id+'" style="margin-top:8px;">'+esc(T("markpaid"))+'</button>';
       html += '</div>';
     });
@@ -5731,7 +5750,7 @@ function viewBakaya(){
   if(mf.cur!=="all") recs = recs.filter(function(r){ return String(r.date||"").slice(0,7) === mf.cur; });
 
   var shownTotal = 0;
-  unpaidT.forEach(function(x){ shownTotal += Number(x.sale)||0; });
+  unpaidT.forEach(function(x){ shownTotal += ticketRemaining(x); });
   recs.forEach(function(r){
     var p = 0; (r.payments||[]).forEach(function(x){ p += Number(x.amount)||0; });
     shownTotal += Math.max(0, (Number(r.total)||0) - p);

@@ -84,7 +84,7 @@ Current version: **2.02**.
 Current version: **2.03**.
 
 ## Version
-Current version: **2.15** (header update button + Sasta cached route feed).
+Current version: **2.16** (partial ticket payments from the staff portal + pending balance display).
 
 ## Price Lookup - Ignav (v2.12) - Cloudflare Worker proxy
 - Amadeus Self-Service was decommissioned 17 July 2026 (all free keys disabled) - that integration is removed.
@@ -97,6 +97,13 @@ Current version: **2.15** (header update button + Sasta cached route feed).
 - Top 16 routes only; output is `data/sasta/<origin>-<destination>.json` with a route-level `amount`, `observed_at`, `source_url`. It is cached/indicative, not date-specific availability.
 - Price Lookup fetches `data/sasta/khi-dxb.json` (etc.) and shows a **Sasta Ticket — route price · External / indicative** card under Ignav results. Missing file / failed scrape = badge hidden, manual Sasta link remains.
 - The scraper does not log in, bypass CAPTCHA or book. If Sasta changes markup/WAF, the job fails gracefully and the last good JSON stays.
+
+## Staff portal (v2.16) — separate Cloudflare Worker
+- `staff-worker/` is a password-only staff portal at `staff-abtravels.<subdomain>.workers.dev`. No email or OTP; the password is a Worker secret and the browser gets a 12-hour signed `HttpOnly` cookie.
+- Staff can add partial payments on receivables and unpaid tickets, view/add/edit clients (no delete), create their own bookings, print/share invoices for their own bookings, and use PNR Lookup.
+- Cost, profit, expenses, partners, Father, loans, settings, airline IDs, backups and the GitHub token never reach staff. Staff bookings are saved with `createdBy: "staff"`, `cost: 0` so the owner can add the real cost.
+- Setup, secrets and testing: see `staff-worker/README.md`. The Worker writes to the same `HisabData.json`; press **Pull now** in the owner app to see staff changes.
+
 
 ## Price Lookup fix (v2.08): Ignav requires a server proxy
 - Cause of 'check connection': Ignav's API is not callable from browser JavaScript (key must stay server-side). Direct calls fail.

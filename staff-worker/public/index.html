@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AB Travels — Staff</title>
+<style>
+  :root{--bg:#f3f6fb;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--blue:#2563eb;--blue-bg:#eff6ff;--green:#047857;--green-bg:#ecfdf5;--gold:#b45309;--gold-bg:#fffbeb;--red:#b91c1c;--red-bg:#fef2f2;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+  header{background:#0f172a;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+  header h1{margin:0;font-size:17px;letter-spacing:.3px}
+  header .sub{font-size:11px;color:#94a3b8}
+  header .badge{margin-left:auto;font-size:11px;background:#1e293b;border:1px solid #334155;border-radius:999px;padding:5px 10px;color:#cbd5e1}
+  header button{margin-left:8px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;border-radius:8px;padding:7px 10px;font-weight:700;cursor:pointer}
+  .wrap{max-width:1050px;margin:0 auto;padding:18px}
+  .login{max-width:420px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 15px 40px rgba(15,23,42,.08)}
+  .login h2{margin:0 0 4px;font-size:20px}
+  .login p{color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .login input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:16px}
+  .login button{margin-top:12px;width:100%;padding:11px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:800;font-size:15px;cursor:pointer}
+  .err{color:var(--red);font-size:12.5px;min-height:18px;margin-top:8px}
+  nav{display:flex;gap:6px;overflow:auto;padding:10px 0 14px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  nav button{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 12px;font-weight:700;color:var(--muted);cursor:pointer}
+  nav button.on{background:var(--blue-bg);border-color:#bfdbfe;color:var(--blue)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,.03)}
+  .card h2{margin:0 0 9px;font-size:16px}
+  .hint{color:var(--muted);font-size:12.5px;line-height:1.55}
+  .row{display:flex;gap:9px;flex-wrap:wrap}
+  .row > *{flex:1;min-width:140px}
+  label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:0 0 4px}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--ink)}
+  textarea{min-height:64px;resize:vertical}
+  .btn{border:0;border-radius:9px;padding:9px 12px;font-weight:800;cursor:pointer;margin-top:8px}
+  .btn.primary{background:var(--blue);color:#fff}.btn.green{background:var(--green);color:#fff}.btn.gray{background:#e2e8f0;color:#0f172a}
+  .btn.small{padding:5px 9px;font-size:12px;margin-top:0}
+  .item{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px;background:#fff}
+  .item .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .item b{font-size:14px}
+  .money{font-weight:800;white-space:nowrap}
+  .gold{color:var(--gold)}.green{color:var(--green)}.red{color:var(--red)}.muted{color:var(--muted)}
+  .pill{display:inline-block;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800;background:var(--gold-bg);color:var(--gold)}
+  .paybox{display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-top:9px}
+  .paybox > div{flex:1;min-width:100px}
+  .paybox input,.paybox select{padding:7px 8px}
+  .history{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+  .client{border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:7px;cursor:pointer}
+  .client:hover{border-color:#bfdbfe;background:var(--blue-bg)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:700px){.grid{grid-template-columns:1fr}.row{flex-direction:column}.paybox{flex-direction:column}.item .top{flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div><div style="font-weight:900;letter-spacing:.5px">AB TRAVELS</div><div class="sub">Staff portal</div></div>
+  <span class="badge">Staff</span>
+  <button id="refresh" style="display:none">Refresh</button>
+  <button id="logout" style="display:none">Log out</button>
+</header>
+
+<div id="login" class="login">
+  <h2>Staff access</h2>
+  <p>Enter the staff password. This portal only shows pending payments, clients, your bookings and invoices.</p>
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password" autofocus>
+  <button id="loginBtn">Open staff portal</button>
+  <div id="loginErr" class="err"></div>
+  <div class="hint" style="margin-top:12px">No email or OTP. The password is checked on the server.</div>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+  <nav id="nav">
+    <button data-tab="pending" class="on">Pending Payments</button>
+    <button data-tab="clients">Clients</button>
+    <button data-tab="booking">New Booking</button>
+    <button data-tab="invoices">My Invoices</button>
+    <button data-tab="pnr">PNR Lookup</button>
+  </nav>
+  <div id="view"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var DATA = null, TAB = "pending", editingClient = null;
+  var $ = function(id){ return document.getElementById(id); };
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function money(n){ n = Number(n)||0; try{ return "PKR " + n.toLocaleString("en-PK"); }catch(e){ return "PKR " + Math.round(n); } }
+  function dmy(s){ var m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[3]+"/"+m[2]+"/"+m[1].slice(-2)) : (s||""); }
+  function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function paidOf(x){ return (x && Array.isArray(x.payments) ? x.payments : []).reduce(function(n,p){ return n+(Number(p.amount)||0); },0); }
+  function remainOf(x){ if(x && x.paid === true) return 0; return Math.max(0, (Number(x.total!=null?x.total:x.sale)||0) - paidOf(x)); }
+  function receivedOf(x){ return x && x.paid === true ? Math.max(paidOf(x), Number(x.total!=null?x.total:x.sale)||0) : paidOf(x); }
+  function api(path, body, method){
+    var init = { method: method || (body ? "POST" : "GET"), cache:"no-store", credentials:"same-origin", headers:{} };
+    if(body){ init.headers["content-type"] = "application/json"; init.body = JSON.stringify(body); }
+    return fetch(path, init).then(function(r){
+      return r.json().catch(function(){ return {ok:false,error:{message:"Server response was not JSON"}}; }).then(function(j){
+        if(r.status === 401 && path !== "/api/login"){ showLogin(); throw new Error("login required"); }
+        if(!j || j.ok === false) throw new Error((j && j.error && j.error.message) || ("Request failed ("+r.status+")"));
+        return j;
+      });
+    });
+  }
+  function showLogin(){
+    DATA = null;
+    editingClient = null;
+    window.__clientQ = "";
+    $("view").innerHTML = "";
+    $("app").style.display = "none";
+    $("login").style.display = "block";
+    $("logout").style.display = "none";
+    $("refresh").style.display = "none";
+    try{ $("pw").focus(); }catch(e){}
+  }
+  function showApp(){
+    $("login").style.display = "none";
+    $("app").style.display = "block";
+    $("logout").style.display = "inline-block";
+    $("refresh").style.display = "inline-block";
+  }
+  function load(){
+    return api("/api/data").then(function(j){ DATA=j; showApp(); render(); });
+  }
+  function setTab(t){
+    TAB=t;
+    Array.prototype.forEach.call(document.querySelectorAll("#nav button"),function(b){ b.className = b.getAttribute("data-tab")===t ? "on" : ""; });
+    render();
+  }
+  function msg(t,bad){ var e=$("view").querySelector(".flash"); if(e){ e.textContent=t; e.style.color=bad?"var(--red)":"var(--green)"; } }
+
+  function render(){
+    var v=$("view"); if(!DATA){ v.innerHTML=""; return; }
+    var h='<div class="flash hint" style="min-height:18px;margin-bottom:8px"></div>';
+    if(TAB==="pending") h+=renderPending();
+    else if(TAB==="clients") h+=renderClients();
+    else if(TAB==="booking") h+=renderBooking();
+    else if(TAB==="invoices") h+=renderInvoices();
+    else h+=renderPnr();
+    v.innerHTML=h;
+    bindView();
+  }
+
+  function renderPending(){
+    var html='<div class="card"><h2>Pending Payments</h2><div class="hint">Receivables and unpaid tickets. Add a partial payment — the remaining balance and payment history update automatically.</div></div>';
+    var tickets=(DATA.tickets||[]).filter(function(t){ return t.paid===false && remainOf(t)>0; });
+    var recs=(DATA.receivables||[]).filter(function(r){ return remainOf(r)>0; });
+    html+='<div class="card"><h2>Unpaid tickets ('+tickets.length+')</h2>';
+    if(!tickets.length){ html+='<div class="hint">No unpaid tickets.</div>'; }
+    tickets.forEach(function(t){
+      var paid=paidOf(t), rem=remainOf(t);
+      html+='<div class="item"><div class="top"><div><b>'+esc(t.client)+'</b><div class="hint">'+esc(dmy(t.date))+(t.detail?' · '+esc(t.detail):'')+(t.pnr?' · PNR '+esc(t.pnr):'')+'</div></div><div style="text-align:right"><div class="money gold">'+money(rem)+' remaining</div><div class="hint">Sale '+money(t.sale)+(paid?' · Received '+money(paid):'')+'</div></div></div>'
+        +'<div class="paybox"><div><label>Amount</label><input class="pay-amt" data-type="ticket" data-id="'+esc(t.id)+'" type="number" min="0" step="1" placeholder="Rs"></div><div><label>Date</label><input class="pay-date" type="date" value="'+today()+'"></div><div><label>Method</label><select class="pay-method"><option>Cash</option><option>Online</option><option>Bank</option><option>Other</option></select></div><div><label>Note</label><input class="pay-note" placeholder="optional"></div><button class="btn green pay-btn" data-type="ticket" data-id="'+esc(t.id)+'">Add payment</button></div>'
+        +paymentHistory(t.payments)+'</div>';
+    });
+    html+='</div>';
+    html+='<div class="card"><h2>Receivables ('+recs.length+')</h2>';
+    if(!recs.length){ html+='<div class="hint">No pending receivables.</div>'; }
+    recs.forEach(function(r){
+      var paid=paidOf(r), rem=remainOf(r);
+      html+='<div class="item"><div class="top"><div><b>'+esc(r.client)+'</b><div class="hint">'+esc(r.note||"")+(r.date?' · '+esc(dmy(r.date)):'')+'</div></div><div style="text-align:right"><div class="money gold">'+money(rem)+' remaining</div><div class="hint">Total '+money(r.total)+(paid?' · Received '+money(paid):'')+'</div></div></div>'
+        +'<div class="paybox"><div><label>Amount</label><input class="pay-amt" data-type="receivable" data-id="'+esc(r.id)+'" type="number" min="0" step="1" placeholder="Rs"></div><div><label>Date</label><input class="pay-date" type="date" value="'+today()+'"></div><div><label>Method</label><select class="pay-method"><option>Cash</option><option>Online</option><option>Bank</option><option>Other</option></select></div><div><label>Note</label><input class="pay-note" placeholder="optional"></div><button class="btn green pay-btn" data-type="receivable" data-id="'+esc(r.id)+'">Add payment</button></div>'
+        +paymentHistory(r.payments)+'</div>';
+    });
+    html+='</div>';
+    return html;
+  }
+  function paymentHistory(list){
+    if(!list || !list.length) return "";
+    return '<div class="history">'+list.map(function(p){ return esc(dmy(p.date))+" · "+money(p.amount)+" · "+esc(p.method||"")+(p.by?" · "+esc(p.by):"")+(p.note?" · "+esc(p.note):""); }).join("<br>")+'</div>';
+  }
+
+  function renderClients(){
+    var q = (window.__clientQ||"").toLowerCase();
+    var list=(DATA.clients||[]).filter(function(c){ return !q || (c.name||"").toLowerCase().indexOf(q)>=0 || (c.phone||"").indexOf(q)>=0 || (c.nic||"").toLowerCase().indexOf(q)>=0; }).sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
+    var c = editingClient ? (DATA.clients||[]).filter(function(x){ return x.id===editingClient; })[0] : null;
+    var h='<div class="card"><h2>'+(c?"Edit client":"Add client")+'</h2><div class="grid">'
+      +'<div><label>Name</label><input id="clName" value="'+esc(c&&c.name||"")+'"></div>'
+      +'<div><label>Phone</label><input id="clPhone" value="'+esc(c&&c.phone||"")+'"></div>'
+      +'<div><label>NIC / Passport</label><input id="clNic" value="'+esc(c&&c.nic||"")+'"></div>'
+      +'<div><label>Passport expiry</label><input id="clExp" type="date" value="'+esc(c&&c.passExp||"")+'"></div>'
+      +'</div><label style="margin-top:8px">Note</label><textarea id="clNote">'+esc(c&&c.note||"")+'</textarea>'
+      +'<button class="btn primary" id="clSave">'+(c?"Save changes":"Add client")+'</button>'
+      +(c?'<button class="btn gray" id="clCancel" style="margin-left:6px">Cancel</button>':'')+'</div>';
+    h+='<div class="card"><h2>All clients ('+(DATA.clients||[]).length+')</h2><input id="clSearch" placeholder="Search name / phone / NIC" value="'+esc(window.__clientQ||"")+'"><div style="margin-top:8px">';
+    if(!list.length) h+='<div class="hint">No clients found.</div>';
+    list.forEach(function(x){
+      h+='<div class="client cl-edit" data-id="'+esc(x.id)+'"><b>'+esc(x.name)+'</b> <span class="hint">'+esc(x.phone||"")+(x.nic?' · '+esc(x.nic):'')+(x.passExp?' · exp '+esc(dmy(x.passExp)):'')+'</span>'+(x.note?'<div class="hint">'+esc(x.note)+'</div>':'')+'</div>';
+    });
+    h+='</div></div>';
+    return h;
+  }
+
+  function renderBooking(){
+    var names=(DATA.clients||[]).slice().sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
+    var h='<div class="card"><h2>New booking</h2><div class="hint">Cost and profit are hidden. This entry is saved as your booking; the owner can add cost later.</div>'
+      +'<div class="grid"><div><label>Client</label><input id="bkClient" list="clientNames" placeholder="Client name"><datalist id="clientNames">'+names.map(function(c){return '<option value="'+esc(c.name)+'">';}).join("")+'</datalist></div>'
+      +'<div><label>Date</label><input id="bkDate" type="date" value="'+today()+'"></div>'
+      +'<div><label>From (IATA)</label><input id="bkFrom" maxlength="3" placeholder="KHI" style="text-transform:uppercase"></div>'
+      +'<div><label>To (IATA)</label><input id="bkTo" maxlength="3" placeholder="DXB" style="text-transform:uppercase"></div>'
+      +'<div><label>Airline</label><input id="bkAir" placeholder="PIA"></div>'
+      +'<div><label>PNR / Booking ref</label><input id="bkPnr" maxlength="12" style="text-transform:uppercase"></div>'
+      +'<div><label>Sale amount (Rs)</label><input id="bkSale" type="number" min="0" placeholder="e.g. 150000"></div>'
+      +'<div><label>Detail / note</label><input id="bkDetail" placeholder="e.g. Umrah ticket"></div></div>'
+      +'<label style="margin-top:8px;display:flex;gap:7px;align-items:center"><input id="bkPaid" type="checkbox" style="width:auto"> Payment received in full</label>'
+      +'<button class="btn primary" id="bkSave">Save booking</button></div>';
+    var own=(DATA.bookings||[]).slice().sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); }).slice(0,20);
+    h+='<div class="card"><h2>My recent bookings</h2>';
+    if(!own.length) h+='<div class="hint">No bookings yet.</div>';
+    own.forEach(function(t){ h+='<div class="item"><div class="top"><div><b>'+esc(t.client)+'</b><div class="hint">'+esc(dmy(t.date))+' · '+esc(t.from||"")+' → '+esc(t.to||"")+' · '+esc(t.pnr||"")+'</div></div><div class="money">'+money(t.sale)+'</div></div><button class="btn small primary inv-btn" data-id="'+esc(t.id)+'">Invoice</button></div>'; });
+    h+='</div>';
+    return h;
+  }
+
+  function renderInvoices(){
+    var own=(DATA.bookings||[]).slice().sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
+    var h='<div class="card"><h2>My Invoices</h2><div class="hint">Only your bookings. Open an invoice to print or share it.</div>';
+    if(!own.length) h+='<div class="hint">No bookings yet — create one from New Booking.</div>';
+    own.forEach(function(t){ h+='<div class="item"><div class="top"><div><b>'+esc(t.client)+'</b><div class="hint">'+esc(dmy(t.date))+' · '+esc(t.from||"")+' → '+esc(t.to||"")+' · PNR '+esc(t.pnr||"—")+'</div></div><div class="money">'+money(t.sale)+'</div></div><button class="btn small primary inv-btn" data-id="'+esc(t.id)+'">Open invoice</button></div>'; });
+    h+='</div>';
+    return h;
+  }
+
+  var AIRLINES=[
+    {c:"PK",n:"PIA",m:"https://www.piac.com.pk/",s:"https://www.piac.com.pk/"},
+    {c:"PA",n:"Airblue",m:"https://www.airblue.com/",s:"https://www.airblue.com/"},
+    {c:"PF",n:"AirSial",m:"https://www.airsial.com/manage-reservation",s:"https://www.airsial.com/flight-status"},
+    {c:"9P",n:"Fly Jinnah",m:"https://www.flyjinnah.com/manage-bookings",s:"https://www.flyjinnah.com/en/manage/flight-status"},
+    {c:"EK",n:"Emirates",m:"https://www.emirates.com/english/manage-booking/",s:"https://www.emirates.com/english/flight-status/"},
+    {c:"FZ",n:"flydubai",m:"https://www.flydubai.com/en/manage-booking",s:"https://www.flydubai.com/en/flight-status"},
+    {c:"QR",n:"Qatar Airways",m:"https://www.qatarairways.com/en/manage-booking.html",s:"https://www.qatarairways.com/en/flight-status.html"},
+    {c:"SV",n:"Saudia",m:"https://www.saudia.com/manage-booking",s:"https://www.saudia.com/flight-status"},
+    {c:"EY",n:"Etihad",m:"https://www.etihad.com/en/manage-booking",s:"https://www.etihad.com/en/flight-status"}
+  ];
+  function renderPnr(){
+    var r=[]; try{ r=JSON.parse(localStorage.getItem("staff_lookups")||"[]"); }catch(e){}
+    var h='<div class="card"><h2>PNR Lookup</h2><div class="hint">Choose airline, enter PNR and last name. Button airline page opens and PNR copies to clipboard.</div>'
+      +'<label>Airline</label><select id="pnrAir"><option value="">— Choose airline —</option>'+AIRLINES.map(function(a){return '<option value="'+a.c+'">'+esc(a.n)+' ('+a.c+')</option>';}).join("")+'</select>'
+      +'<div class="row" style="margin-top:8px"><div><label>PNR</label><input id="pnrCode" maxlength="8" style="text-transform:uppercase"></div><div><label>Last name</label><input id="pnrName" style="text-transform:uppercase"></div></div>'
+      +'<button class="btn primary" id="pnrGo">Open Manage Booking</button><button class="btn gray" id="pnrStatus" style="margin-left:6px">Flight Status</button></div>';
+    if(r.length){ h+='<div class="card"><h2>Recent lookups</h2>'; r.forEach(function(x){ h+='<div class="item"><div class="top"><div><b>'+esc(x.pnr)+'</b><div class="hint">'+esc((AIRLINES.filter(function(a){return a.c===x.code;})[0]||{}).n||x.code)+(x.name?' · '+esc(x.name):'')+'</div></div></div></div>'; }); h+='</div>'; }
+    return h;
+  }
+
+  function bindView(){
+    var v=$("view");
+    v.querySelectorAll(".pay-btn").forEach(function(b){
+      b.onclick = function(){
+        var id=b.getAttribute("data-id"), type=b.getAttribute("data-type");
+        var box=b.closest(".item");
+        var amt=box.querySelector(".pay-amt").value, date=box.querySelector(".pay-date").value, method=box.querySelector(".pay-method").value, note=box.querySelector(".pay-note").value;
+        if(!(Number(amt) > 0)){ msg("Enter an amount greater than 0.", true); return; }
+        b.disabled=true;
+        api("/api/payment",{type:type,id:id,amount:Number(amt),date:date,method:method,note:note}).then(function(j){ DATA=j; render(); msg("Payment recorded."); }).catch(function(e){ msg(e.message,true); b.disabled=false; });
+      };
+    });
+    var save=$("clSave");
+    if(save) save.onclick=function(){
+      var body={id:editingClient||undefined,name:$("clName").value,phone:$("clPhone").value,nic:$("clNic").value,passExp:$("clExp").value,note:$("clNote").value};
+      if(!body.name.trim()){ msg("Name required",true); return; }
+      save.disabled=true;
+      api("/api/client",body).then(function(j){ DATA=j; editingClient=null; render(); msg("Client saved."); }).catch(function(e){ msg(e.message,true); save.disabled=false; });
+    };
+    var cancel=$("clCancel"); if(cancel) cancel.onclick=function(){ editingClient=null; render(); };
+    v.querySelectorAll(".cl-edit").forEach(function(x){ x.onclick=function(){ editingClient=x.getAttribute("data-id"); render(); }; });
+    var cs=$("clSearch"); if(cs) cs.oninput=function(){
+      var val=this.value, pos=this.selectionStart;
+      window.__clientQ=val;
+      render();
+      var n=$("clSearch");
+      if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} }
+    };
+    var bs=$("bkSave"); if(bs) bs.onclick=function(){
+      var body={client:$("bkClient").value,date:$("bkDate").value,from:$("bkFrom").value,to:$("bkTo").value,air:$("bkAir").value,pnr:$("bkPnr").value,detail:$("bkDetail").value,sale:Number($("bkSale").value),paid:$("bkPaid").checked};
+      bs.disabled=true;
+      api("/api/booking",body).then(function(j){ DATA=j; render(); msg("Booking saved. Open it from My Invoices to print."); }).catch(function(e){ msg(e.message,true); bs.disabled=false; });
+    };
+    v.querySelectorAll(".inv-btn").forEach(function(b){ b.onclick=function(){ var t=(DATA.bookings||[]).filter(function(x){return x.id===b.getAttribute("data-id");})[0]; if(t) openInvoice(t); }; });
+    var go=$("pnrGo"), st=$("pnrStatus");
+    function doPnr(status){
+      var code=$("pnrAir").value, pnr=String($("pnrCode").value||"").toUpperCase().replace(/[^A-Z0-9]/g,""), nm=String($("pnrName").value||"").toUpperCase().replace(/[^A-Z ]/g,"");
+      if(!code || pnr.length<5){ msg("Choose airline and enter a valid PNR.",true); return; }
+      var a=AIRLINES.filter(function(x){return x.c===code;})[0]; if(!a) return;
+      var txt=pnr+(nm?" "+nm:"");
+      try{ navigator.clipboard.writeText(txt); }catch(e){}
+      var rec=[]; try{ rec=JSON.parse(localStorage.getItem("staff_lookups")||"[]"); }catch(e){}
+      rec=[{code:code,pnr:pnr,name:nm}].concat(rec.filter(function(x){return !(x.code===code&&x.pnr===pnr);})).slice(0,15);
+      localStorage.setItem("staff_lookups",JSON.stringify(rec));
+      window.open(status?a.s:a.m,"_blank","noopener");
+    }
+    if(go) go.onclick=function(){ doPnr(false); };
+    if(st) st.onclick=function(){ doPnr(true); };
+  }
+
+  function openInvoice(t){
+    var paid=receivedOf(t), rem=remainOf(t);
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(t.client||"")+'-'+esc(t.pnr||"ticket")+'</title><style>body{font-family:Arial,sans-serif;color:#111;margin:0;padding:24px;font-size:13px}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse;margin-top:12px}td,th{padding:6px;border-bottom:1px solid #ddd;text-align:left}.muted{color:#666}.amount{font-size:18px;font-weight:bold;color:#2563eb}.box{border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px}@media print{button{display:none}}</style></head><body>'
+      +'<h1>AB TRAVELS</h1><div class="muted">Ahmed Brothers Hajj & Umra Services (Pvt) Ltd<br>0310-3311199 · 0314-3178560</div>'
+      +'<div class="box"><b>INVOICE</b><table>'
+      +'<tr><th>Passenger</th><td>'+esc(t.client||"")+'</td></tr>'
+      +'<tr><th>PNR / Booking ref</th><td>'+esc(t.pnr||"—")+'</td></tr>'
+      +'<tr><th>Route</th><td>'+esc(t.from||"")+' → '+esc(t.to||"")+'</td></tr>'
+      +'<tr><th>Date</th><td>'+esc(dmy(t.date))+'</td></tr>'
+      +(t.air?'<tr><th>Airline</th><td>'+esc(t.air)+'</td></tr>':'')
+      +(t.detail?'<tr><th>Detail</th><td>'+esc(t.detail)+'</td></tr>':'')
+      +'<tr><th>Sale amount</th><td class="amount">'+money(t.sale)+'</td></tr>'
+      +'<tr><th>Received</th><td>'+money(paid)+'</td></tr>'
+      +'<tr><th>Remaining</th><td>'+money(rem)+'</td></tr>'
+      +'</table></div><div class="muted" style="margin-top:12px">Staff invoice · External/indicative. Please confirm all details with the customer before travel.</div><button onclick="window.print()" style="margin-top:16px;padding:9px 14px">Print / Save PDF</button></body></html>';
+    var w=window.open("","_blank");
+    if(!w){ alert("Popup blocked — please allow popups for this site, then try again."); return; }
+    try{ w.opener = null; }catch(e){}
+    w.document.write(html); w.document.close();
+  }
+
+  $("loginBtn").onclick=function(){
+    var p=$("pw").value;
+    if(!p){ $("loginErr").textContent="Password required"; return; }
+    $("loginBtn").disabled=true; $("loginErr").textContent="";
+    api("/api/login",{password:p}).then(function(){ $("pw").value=""; return load(); })
+      .catch(function(e){ $("loginErr").textContent=e.message; })
+      .then(function(){ $("loginBtn").disabled=false; });
+  };
+  $("pw").addEventListener("keydown",function(e){ if(e.key==="Enter") $("loginBtn").click(); });
+  $("logout").onclick=function(){ api("/api/logout",{}).then(function(){ showLogin(); }).catch(function(){ showLogin(); }); };
+  $("refresh").onclick=function(){
+    var b=$("refresh"); b.disabled=true;
+    load().then(function(){ msg("Updated from GitHub."); }).catch(function(e){ msg(e.message,true); }).then(function(){ b.disabled=false; });
+  };
+  Array.prototype.forEach.call(document.querySelectorAll("#nav button"),function(b){ b.onclick=function(){ setTab(b.getAttribute("data-tab")); }; });
+  api("/api/session").then(function(){ return load(); }).catch(function(e){
+    if(e && e.message === "login required"){ showLogin(); return; }
+    showApp();
+    $("view").innerHTML='<div class="card"><h2>Could not load data</h2><div class="hint">'+esc(e && e.message || e)+'</div><div class="hint">Ask the owner to check the Worker secrets (GITHUB_TOKEN) and try Refresh.</div></div>';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "ab-travels-staff-portal",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Password-protected staff portal for AB Travels",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
