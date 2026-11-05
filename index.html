@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.11</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.12</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -347,7 +347,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.11";
+var APP_VER = "2.12";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -3145,6 +3145,7 @@ function render(){
     refreshDateDisplays(app);
     if(invAutoGen){ invAutoGen = false; var gb2 = document.getElementById("genInv"); if(gb2) gb2.click(); }
   }
+  if(currentTab === "fares") faRestore();
   applyStatPrivacy();
   var t1 = document.querySelector("#tabPA .lbl"), t2 = document.querySelector("#tabPB .lbl");
   if(t1) t1.textContent = S.settings.partnerA;
@@ -4700,6 +4701,8 @@ async function pwDownload(){
 /* ================= PRICE LOOKUP (Ignav flight prices API) ================= */
 var faBusy = false;
 var IGN_LAST = null;
+/* Price Lookup results tab switch par bhi bache rahein — sirf X se clear hon */
+var IGN_STATE = { last:null, req:null, status:"", bad:false, form:null };
 var FA_PRESETS = [
   { from:"KHI", to:"DXB", label:"KHI → DXB" },
   { from:"KHI", to:"JED", label:"KHI → Jeddah" },
@@ -4936,7 +4939,8 @@ function viewFares(){
   html += '</div>';
 
   html += '<div class="card"><h2>Popular routes</h2><div class="hint" style="margin-top:0;">Ek click mein search:</div><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;" id="faPresets"></div>';
-  html += '<div class="hint" style="margin-top:12px; font-weight:600;">🔎 Ya in websites par khud dekhein (hamesha kaam karti hain):</div><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;" id="faQuick"></div></div>';
+  html += '<div class="hint" style="margin-top:12px; font-weight:600;">🔎 Ya in websites par khud dekhein (hamesha kaam karti hain):</div><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;" id="faQuick"></div>';
+  html += '<div class="hint">Google Flights aur Sasta Ticket ke public free APIs nahi hain, is liye un ke live rates yahan automatic nahi aa sakte. Har result ke saath “Sasta Ticket ↗” aur “Google Flights ↗” buttons se wahi route/date compare kar sakte hain.</div></div>';
   html += '<div id="faResults"></div>';
   return html;
 }
@@ -4977,6 +4981,11 @@ function faOfferCard(o, curr){
       + '</div>'
       + '</div>';
   }).join("");
+  var firstSegs = firstLeg.segments;
+  var firstSeg = firstSegs[0], lastSeg = firstSegs[firstSegs.length - 1];
+  var firstDate = String(firstSeg.departure_time_local || "").slice(0, 10);
+  var sastaUrl = "https://www.sastaticket.pk/flights/" + String((firstSeg.departure_airport || "") + (lastSeg.arrival_airport || "")).toLowerCase();
+  var googleUrl = "https://www.google.com/travel/flights?q=" + encodeURIComponent("Flights from " + (firstSeg.departure_airport || "") + " to " + (lastSeg.arrival_airport || "") + (firstDate ? " on " + firstDate : ""));
   return '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">'
     + '<div style="display:flex; gap:12px; align-items:center;">'
     +   '<img src="airlines/'+esc(code)+'.png" alt="'+esc(code)+'" onerror="this.style.display=\'none\'" style="width:42px; height:42px; object-fit:contain; flex:0 0 auto; background:#fff; border-radius:8px;">'
@@ -4995,9 +5004,53 @@ function faOfferCard(o, curr){
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">'
     +   '<button class="btn small fa-copy" data-fa="'+esc(copyTxt)+'" style="margin:0; background:var(--blue-bg); color:var(--blue);">Copy fare</button>'
     +   '<button class="btn small fa-book" data-id="'+esc(o.ignav_id || "")+'" style="margin:0; background:var(--green); color:#fff;">✈ Book / links</button>'
+    +   '<a class="btn small" href="'+esc(sastaUrl)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--gold-bg); color:var(--gold); text-decoration:none;">Sasta Ticket ↗</a>'
+    +   '<a class="btn small" href="'+esc(googleUrl)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--field); color:var(--ink); text-decoration:none;">Google Flights ↗</a>'
     + '</div>'
     + '<div class="fa-links" id="faLinks_'+esc(o.ignav_id || "")+'" style="margin-top:8px;"></div>'
     + '</div>';
+}
+function faFieldVal(id){ return (document.getElementById(id)||{}).value || ""; }
+function faCaptureForm(){
+  return {
+    from:faFieldVal("faFrom"), to:faFieldVal("faTo"), date:faFieldVal("faDate"),
+    trip:faFieldVal("faTrip") || "one", ret:faFieldVal("faRet"),
+    from2:faFieldVal("faFrom2"), to2:faFieldVal("faTo2"), date2:faFieldVal("faDate2"),
+    adults:faFieldVal("faAdults") || "1", cls:faFieldVal("faClass") || "",
+    market:faFieldVal("faMarket") || "PK", max:faFieldVal("faMax") || "15",
+    nonstop:!!((document.getElementById("faNonStop")||{}).checked)
+  };
+}
+function faApplyForm(f){
+  if(!f) return;
+  function set(id, v){ var el=document.getElementById(id); if(el) el.value = (v == null ? "" : v); }
+  set("faFrom", f.from); set("faTo", f.to); set("faDate", f.date);
+  set("faAdults", f.adults); set("faClass", f.cls); set("faMarket", f.market); set("faMax", f.max);
+  set("faFrom2", f.from2); set("faTo2", f.to2); set("faDate2", f.date2);
+  var ns=document.getElementById("faNonStop"); if(ns) ns.checked = !!f.nonstop;
+  var trip=document.getElementById("faTrip");
+  if(trip){
+    trip.value = f.trip || "one";
+    if(trip.onchange) trip.onchange.call(trip);
+  }
+  // Return date ko trip change handler ke baad set karein (handler non-round par clear karta hai)
+  set("faRet", f.ret);
+  refreshDateDisplays(document.getElementById("app"));
+}
+function faRestore(){
+  if(!IGN_STATE.form) return;
+  faApplyForm(IGN_STATE.form);
+  if(IGN_STATE.last) faRenderOffers(IGN_STATE.last, IGN_STATE.req || { __max: Number(IGN_STATE.form.max) || 15 });
+  if(IGN_STATE.status) faSetStatus(IGN_STATE.status, IGN_STATE.bad);
+  if(faBusy){
+    var btn=document.getElementById("faSearch");
+    if(btn){ btn.textContent="Loading…"; btn.disabled=true; }
+  }
+}
+function faClearResults(){
+  IGN_STATE.last = null; IGN_STATE.req = null; IGN_STATE.status = ""; IGN_STATE.bad = false;
+  var host=document.getElementById("faResults"); if(host) host.innerHTML="";
+  faSetStatus("");
 }
 function faRenderOffers(j, req){
   var host = document.getElementById("faResults"); if(!host) return;
@@ -5005,15 +5058,17 @@ function faRenderOffers(j, req){
   var max = Number((req && req.__max) || 15);
   list = list.slice(0, max);
   if(!list.length){
-    host.innerHTML = '<div class="card"><div class="empty">Koi flight nahi mili — date/route change karke dobara try karein. Sasta ticket button se confirm bhi kar sakte hain.</div></div>';
+    host.innerHTML = '<div class="card"><div style="display:flex; align-items:center; gap:8px;"><h2 style="margin:0; flex:1;">No flights found</h2><button class="del" id="faClearResults" title="Clear results" style="background:var(--red-bg); color:var(--red); padding:4px 9px;">✕</button></div><div class="empty">Koi flight nahi mili — date/route change karke dobara try karein. Sasta ticket/Google Flights links neeche hain.</div></div>';
+    var xe = host.querySelector("#faClearResults"); if(xe) xe.onclick = faClearResults;
     return;
   }
   var curr = (list[0].price && list[0].price.currency) || "";
-  var html = '<div class="card"><h2>Results — '+list.length+' fare(s)</h2>';
+  var html = '<div class="card"><div style="display:flex; align-items:center; gap:8px;"><h2 style="margin:0; flex:1;">Results — '+list.length+' fare(s)</h2><button class="del" id="faClearResults" title="Clear results" style="background:var(--red-bg); color:var(--red); padding:4px 9px;">✕</button></div>';
   if(j && j.observed_at) html += '<div class="hint" style="margin-top:0;">Prices fetched: '+esc(String(j.observed_at).replace("T"," ").replace("Z"," UTC"))+'</div>';
   list.forEach(function(o){ html += faOfferCard(o, curr); });
   html += '</div>';
   host.innerHTML = html;
+  var xc = host.querySelector("#faClearResults"); if(xc) xc.onclick = faClearResults;
   var btns = host.querySelectorAll(".fa-copy");
   for(var i=0;i<btns.length;i++){
     btns[i].onclick = function(){ faCopy(this.getAttribute("data-fa")); this.textContent = "✓"; var b = this; setTimeout(function(){ b.textContent = "Copy fare"; }, 1200); };
@@ -5067,6 +5122,9 @@ function ignavSearch(){
   }
   if(faBusy) return;
   faBusy = true;
+  IGN_STATE.form = faCaptureForm();
+  IGN_STATE.last = null; IGN_STATE.req = null; IGN_STATE.status = ""; IGN_STATE.bad = false;
+  var resultHost = document.getElementById("faResults"); if(resultHost) resultHost.innerHTML = "";
   var btn = document.getElementById("faSearch"); if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
   var maxResults = Number((document.getElementById("faMax")||{}).value || 15);
   var adults = Number((document.getElementById("faAdults")||{}).value || 1);
@@ -5089,13 +5147,19 @@ function ignavSearch(){
   if(adults > 1) payload.adults = adults;
   if(cls) payload.cabin_class = cls;
   payload.__max = maxResults;
-  faSetStatus(trip === "multi"
+  var searchMsg = trip === "multi"
     ? ("Searching multi-city " + f + " → " + t + " + " + f2 + " → " + t2 + "…")
-    : ("Searching " + f + " → " + t + " on " + date + (trip === "round" ? (" (return " + ret + ")") : "") + "…"));
+    : ("Searching " + f + " → " + t + " on " + date + (trip === "round" ? (" (return " + ret + ")") : "") + "…");
+  IGN_STATE.status = searchMsg;
+  faSetStatus(searchMsg);
   ignavApi(endpoint, payload).then(function(j){
-    faRenderOffers(j || {}, payload);
     var n = ((j && j.itineraries) || []).length;
-    faSetStatus(n ? ("✓ " + Math.min(n, maxResults) + " fare(s) mil gaye — sab se sasta pehle") : "Koi fare nahi mila.", !n);
+    var msg = n ? ("✓ " + Math.min(n, maxResults) + " fare(s) mil gaye — sab se sasta pehle") : "Koi fare nahi mila.";
+    IGN_STATE.last = j || {}; IGN_STATE.req = payload; IGN_STATE.status = msg; IGN_STATE.bad = !n;
+    if(currentTab === "fares"){
+      faRenderOffers(IGN_STATE.last, payload);
+      faSetStatus(msg, !n);
+    }
   }).catch(function(e){
     var m = String((e && e.message) || e);
     if(m === "NO_KEY") m = "Ignav key missing — Settings mein key ya proxy URL save karein.";
@@ -5103,7 +5167,8 @@ function ignavSearch(){
     else if(e && e.code === "unsupported_search") m = "Is route/date par airline results available nahi — koi nearby date try karein.";
     else if(e && (e.status === 424 || e.status === 503 || e.code === "unable_to_complete_request")) m = "Airline data temporarily available nahi — retry ya nearby date try karein.";
     else if(/Failed to fetch/i.test(m)) m = "Connection nahi bani — proxy URL theek hai? Internet check karein.";
-    faSetStatus("✗ " + m, true);
+    IGN_STATE.status = "✗ " + m; IGN_STATE.bad = true;
+    if(currentTab === "fares") faSetStatus(IGN_STATE.status, true);
   }).then(function(){
     faBusy = false;
     if(btn){ btn.textContent = "🔍 Search flights"; btn.disabled = false; }
