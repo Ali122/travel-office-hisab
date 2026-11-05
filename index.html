@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.17</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.18</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -348,7 +348,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.17";
+var APP_VER = "2.18";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -431,7 +431,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", staffPortalUrl:"", githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -5820,6 +5820,19 @@ function viewSettings(){
   html += '<div class="hint">These expenses are added automatically when a new month is created. If an amount increases, update it here — the new amount is used from the next month.</div>';
   html += '</div>';
 
+  html += '<div class="card"><h2>👔 Staff portal link</h2>'
+        + '<div class="hint" style="margin-top:0;">Waseem jaise staff ke liye alag password-protected portal. Link yahan save karein — Copy link se WhatsApp par bhej dein. Portal ka password yahan nahi rakha jata (wo Cloudflare Worker ke secret me hai).</div>'
+        + '<label>Staff portal URL (workers.dev link)</label>'
+        + '<input id="setStaffUrl" value="'+esc(st.staffPortalUrl||"")+'" placeholder="https://staff-abtravels.xxx.workers.dev" autocomplete="off" style="font-family:monospace;">'
+        + '<div class="row" style="margin-top:8px; align-items:center;">'
+        +   '<button class="btn small green" id="saveStaffUrl" style="flex:1.2; margin-top:0;">💾 Save link</button>'
+        +   '<button class="btn small" id="openStaffPortal" style="flex:1; margin-top:0;">🚀 Open portal</button>'
+        +   '<button class="btn small" id="copyStaffUrl" style="flex:1; margin-top:0;">📋 Copy link</button>'
+        + '</div>'
+        + '<div class="hint" id="staffUrlStatus" style="margin-top:8px; font-weight:600;"></div>'
+        + '<div class="hint">Agar portal abhi deploy nahi hua: computer par <code>staff-worker</code> folder me <code>npm.cmd install</code>, <code>npx.cmd wrangler login</code>, phir secrets (<code>STAFF_PASSWORD</code>, <code>GITHUB_TOKEN</code>) set kar ke <code>npm.cmd run deploy</code> — URL <code>https://staff-abtravels.xxx.workers.dev</code> ban jayega. Details: staff-worker/README.md</div>'
+        + '</div>';
+
   html += '<div class="card"><h2>🐙 GitHub Sync — replaces Google Sheet sync</h2>'
         + '<div class="hint" style="margin-top:0;">Aapka main app data ab aapke private repo ke <code>HisabData.json</code> mein sync hota hai. Token aur repo backup wale same hain; backup snapshots alag <code>backups/</code> folder mein safe rahtay hain. Google Sheet ab sirf monthly imports ke liye reh gayi hai.</div>'
         + '<label>GitHub Token (PAT)</label>'
@@ -7113,6 +7126,54 @@ function bind(){
     showKeyStatus();
   };
   showKeyStatus();
+  // ===== Staff portal link =====
+  var staffUrlInput = document.getElementById("setStaffUrl");
+  var staffUrlResolved = function(){
+    var u = String(S.settings.staffPortalUrl||"").trim();
+    if(!u && staffUrlInput) u = String(staffUrlInput.value||"").trim();
+    if(!u) return "";
+    if(!/^https:\/\//i.test(u)) u = "https://" + u.replace(/^\/\//,"");
+    return u;
+  };
+  var staffUrlSavedMsg = function(sEl){
+    if(sEl) sEl.textContent = String(S.settings.staffPortalUrl||"").trim()
+      ? "✓ Link save ho gaya — Copy link se WhatsApp par bhej dein."
+      : "Link khaali he — pehle staff-worker deploy karein (neeche wale steps).";
+  };
+  var saveStaffBtn = document.getElementById("saveStaffUrl");
+  if(saveStaffBtn) saveStaffBtn.onclick = function(){
+    if(staffUrlInput) S.settings.staffPortalUrl = String(staffUrlInput.value||"").trim();
+    saveLocal();
+    staffUrlSavedMsg(document.getElementById("staffUrlStatus"));
+  };
+  if(staffUrlInput) staffUrlInput.onchange = function(){
+    S.settings.staffPortalUrl = String(this.value||"").trim();
+    saveLocal();
+    staffUrlSavedMsg(document.getElementById("staffUrlStatus"));
+  };
+  var openStaffBtn = document.getElementById("openStaffPortal");
+  if(openStaffBtn) openStaffBtn.onclick = function(){
+    var u = staffUrlResolved();
+    if(!u){ alert("Pehle staff portal ka link dalein aur Save link dabayein."); return; }
+    window.open(u, "_blank");
+  };
+  var copyStaffBtn = document.getElementById("copyStaffUrl");
+  if(copyStaffBtn) copyStaffBtn.onclick = function(){
+    var u = staffUrlResolved();
+    if(!u){ alert("Pehle staff portal ka link dalein aur Save link dabayein."); return; }
+    var done = function(){
+      var s = document.getElementById("staffUrlStatus");
+      if(s) s.textContent = "✓ Link copy ho gaya — WhatsApp par bhej dein. Password alag rakhein (call/SMS).";
+    };
+    var fb = function(){
+      var ta = document.createElement("textarea");
+      ta.value = u; document.body.appendChild(ta);
+      ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ alert("Copy nahi hua."); }
+      document.body.removeChild(ta);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, fb);
+    else fb();
+  };
   var ish = document.getElementById("importSheet");
   if(ish) ish.onclick = function(){
     var u = document.getElementById("setSyncUrl"), iid = document.getElementById("setImportId");
