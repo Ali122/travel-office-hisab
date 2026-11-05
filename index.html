@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.20</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.21</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -348,56 +348,10 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.20";
+var APP_VER = "2.21";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
-/* Cloudflare Worker — Kiwi (Tequila) flight prices proxy. Ignav worker ke saath parallel chalta hai.
-   Tequila key SERVER par rehti hai; worker /kiwi + /health expose karta hai. */
-var KIWI_WORKER_CODE = "// AB Travels — Kiwi (Tequila) flight prices proxy (Cloudflare Worker)\n"
-+ "// Tequila API key SERVER par rehti hai — app/browser mein kabhi nahi aati.\n"
-+ "//\n"
-+ "// SETUP (ek dafa, ~5 min, free):\n"
-+ "// 1) tequila.kiwi.com/portal/signup -> free account -> API key\n"
-+ "// 2) cloudflare.com -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n"
-+ "// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n"
-+ "//      TEQUILA_KEY = (aap ki Tequila key)\n"
-+ "// 4) Worker URL app ke Settings -> Kiwi prices -> Save & test\n"
-+ "\n"
-+ "function json(o, status){\n"
-+ "  return new Response(JSON.stringify(o), { status: status || 200,\n"
-+ "    headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' } });\n"
-+ "}\n"
-+ "\n"
-+ "export default {\n"
-+ "  async fetch(request, env){\n"
-+ "    const url = new URL(request.url);\n"
-+ "    if (url.pathname === '/health')\n"
-+ "      return json({ ok: true, tequila: !!(env.TEQUILA_KEY), ts: new Date().toISOString() });\n"
-+ "    if (url.pathname === '/kiwi'){\n"
-+ "      if (!env.TEQUILA_KEY) return json({ ok: false, error: 'TEQUILA_KEY secret set nahi hai — Worker -> Settings -> Variables and Secrets' }, 500);\n"
-+ "      const q = url.searchParams;\n"
-+ "      const params = new URLSearchParams({\n"
-+ "        fly_from: (q.get('fly_from') || '').toUpperCase(),\n"
-+ "        fly_to: (q.get('fly_to') || '').toUpperCase(),\n"
-+ "        date_from: q.get('date_from') || '',\n"
-+ "        date_to: q.get('date_to') || q.get('date_from') || '',\n"
-+ "        curr: q.get('curr') || 'PKR',\n"
-+ "        limit: q.get('limit') || '30',\n"
-+ "        sort: q.get('sort') || 'price'\n"
-+ "      });\n"
-+ "      if (!params.get('fly_from') || !params.get('fly_to') || !params.get('date_from'))\n"
-+ "        return json({ ok: false, error: 'fly_from, fly_to, date_from required' }, 400);\n"
-+ "      const r = await fetch('https://api.tequila.kiwi.com/v2/search?' + params, { headers: { apikey: env.TEQUILA_KEY } });\n"
-+ "      const txt = await r.text();\n"
-+ "      if (!r.ok) return json({ ok: false, error: 'Kiwi HTTP ' + r.status + ': ' + txt.slice(0, 200) }, 502);\n"
-+ "      let data = [];\n"
-+ "      try { data = JSON.parse(txt).data || []; } catch(e){ return json({ ok: false, error: 'Kiwi parse error' }, 502); }\n"
-+ "      return json({ ok: true, count: data.length, data: data });\n"
-+ "    }\n"
-+ "    return json({ ok: false, error: 'Not found' }, 404);\n"
-+ "  }\n"
-+ "};";
 var GAS_CODE = "function doGet(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var action = p.action ? String(p.action).trim().toLowerCase() : \"\";\n  if(action === \"gh-setup\") return githubSetupResponse();\n  var p = (e && e.parameter) ? e.parameter : {};\n  var want = p.ssid ? String(p.ssid).trim() : \"\";\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Could not open the spreadsheet (check the File ID): \"+err, debug:{spreadsheet:\"\", ssid:want, gasVer:4}});\n  }\n  var sh = ss.getSheetByName(\"HisabData\");\n  if(!sh && !want){ sh = ss.insertSheet(\"HisabData\"); }\n  var d = sh ? sh.getRange(\"A1\").getValue() : \"\";\n  var out = {ok:true, gasVer:4, data:(d||\"\"), debug:{spreadsheet: ss.getName(), ssid: ss.getId(), requested: want, gasVer: 4, sheets: ss.getSheets().map(function(s){ return s.getName(); })}};\n  out.bookings = readSheetRows(ss, \"Daily Bookings\");\n  out.expenses = readSheetRows(ss, \"Daily Expenses\");\n  out.qarza = readSheetRows(ss, \"Qarza Tracker\");\n  out.partners = readPartners(ss);\n  out.partnersRows = readSheetRows(ss, \"PARTNERS\");\n  out.summary = readSummary(ss);\n  return jsonOut(out);\n}\n\nfunction doPost(e){\n  var p = (e && e.parameter) ? e.parameter : {};\n  var body = {};\n  try{ body = JSON.parse((e.postData && e.postData.contents) || \"{}\") || {}; }catch(err){ body = {}; }\n  var want = p.ssid ? String(p.ssid).trim() : (body.ssid ? String(body.ssid).trim() : \"\");\n  var ss;\n  try{\n    ss = want ? SpreadsheetApp.openById(want) : SpreadsheetApp.getActiveSpreadsheet();\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed (check the File ID): \"+err});\n  }\n  try{\n    var sh = ss.getSheetByName(\"HisabData\") || ss.insertSheet(\"HisabData\");\n    if(body && body.data != null) sh.getRange(\"A1\").setValue(String(body.data));\n  }catch(err){\n    return jsonOut({ok:false, gasVer:4, err:\"Sheet write failed: \"+err});\n  }\n  return jsonOut({ok:true, gasVer:4, ssid: ss.getId(), file: ss.getName()});\n}\n\nfunction githubSetupResponse(){\n  var props = PropertiesService.getScriptProperties();\n  var pat = props.getProperty(\"GITHUB_TOKEN\");\n  if(!pat) return jsonOut({ok:false, gasVer:4, err:\"GitHub token is not configured in this script. Set Script Property GITHUB_TOKEN first.\"});\n  var repo = props.getProperty(\"GITHUB_REPO\") || \"travel-office-hisab-backup\";\n  return jsonOut({ok:true, gasVer:4, github:{pat:pat, repo:repo}});\n}\n\nfunction jsonOut(o){\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction readSheetRows(ss, name){\n  try{\n    var sh = ss.getSheetByName(name); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var hi = 0;\n    for(var r = 0; r < Math.min(rows.length, 5); r++){\n      var line = rows[r].map(function(c){ return String(c).toLowerCase(); });\n      if(line.some(function(c){ return c.indexOf(\"date\") !== -1; })){ hi = r; break; }\n    }\n    if(rows.length < hi + 2) return [];\n    var head = rows[hi];\n    return rows.slice(hi + 1).filter(function(r){ return String(r.join(\"\")) !== \"\"; }).map(function(r){\n      var o = {};\n      head.forEach(function(h, i){\n        var v = r[i];\n        if(v instanceof Date) v = Utilities.formatDate(v, Session.getScriptTimeZone(), \"yyyy-MM-dd\");\n        o[String(h).trim()] = v;\n      });\n      return o;\n    });\n  }catch(err){ return []; }\n}\n\nfunction readSummary(ss){\n  try{\n    var sh = ss.getSheetByName(\"Monthly Summary\"); if(!sh) return [];\n    var rows = sh.getDataRange().getValues();\n    var out = [];\n    for(var i = 1; i < rows.length; i++){\n      var lbl = String(rows[i][0]||\"\").trim();\n      var val = rows[i][1];\n      if(lbl || (val !== \"\" && val != null)) out.push({row: i+1, label: lbl, value: (typeof val === \"number\" ? val : String(val))});\n    }\n    return out;\n  }catch(err){ return []; }\n}\n\nfunction readPartners(ss){\n  try{\n    var sh = ss.getSheetByName(\"PARTNERS\"); if(!sh) return null;\n    var h = sh.getRange(1, 2, 1, 2).getValues()[0];\n    return { A: String(h[0]||\"\").trim(), B: String(h[1]||\"\").trim() };\n  }catch(err){ return null; }\n}\n";
 
 var TXT = {
@@ -477,7 +431,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", staffPortalUrl:"", githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"", kiwiProxy:"",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", staffPortalUrl:"", githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -4781,60 +4735,6 @@ function ignavProxy(){
   if(!/^https:\/\//i.test(p)) p = "https://" + p;
   return p;
 }
-/* Kiwi (Tequila) proxy — Ignav ke saath parallel free source */
-function kiwiProxy(){
-  var p = String(S.settings.kiwiProxy||"").trim().replace(/\/+$/, "");
-  if(!p) return "";
-  if(!/^https:\/\//i.test(p)) p = "https://" + p;
-  return p;
-}
-function kiwiMapOffer(d){
-  if(!d || !(Number(d.price) > 0)) return null;
-  var outSegs = [], inSegs = [];
-  (d.route||[]).forEach(function(s){
-    if(s.vehicle_type && s.vehicle_type !== "aircraft") return; // train/bus legs skip
-    var seg = {
-      marketing_carrier_code: String(s.airline||"").toUpperCase(),
-      flight_number: (s.flight_no != null) ? String(s.flight_no) : "",
-      departure_airport: String(s.flyFrom||"").toUpperCase(),
-      arrival_airport: String(s.flyTo||"").toUpperCase(),
-      departure_time_local: s.local_departure || "",
-      arrival_time_local: s.local_arrival || ""
-    };
-    if(s.return === 1) inSegs.push(seg); else outSegs.push(seg);
-  });
-  if(!outSegs.length) return null;
-  var legs = [];
-  var dOut = (d.duration && d.duration.outbound) || ((d.duration && d.duration.total) || 0);
-  legs.push({ segments: outSegs, duration_minutes: Math.round((Number(dOut)||0)/60), carrier: (d.airlines||[]).join(", ") });
-  if(inSegs.length){
-    var dRet = (d.duration && d.duration.return) || 0;
-    legs.push({ segments: inSegs, duration_minutes: Math.round((Number(dRet)||0)/60), carrier: (d.airlines||[]).join(", ") });
-  }
-  return {
-    kiwi_link: d.deep_link || "",
-    price: { amount: Number(d.price)||0, currency: d.currency || "", status: "unverified" },
-    cabin_class: "economy",
-    legs: legs
-  };
-}
-function kiwiFetch(f, t, date, market){
-  var px = kiwiProxy();
-  if(!px) return Promise.resolve(null);
-  var parts = date.split("-");
-  var dfmt = (parts.length === 3) ? (parts[2] + "/" + parts[1] + "/" + parts[0]) : date; // Tequila: DD/MM/YYYY
-  var q = new URLSearchParams({ fly_from: f, fly_to: t, date_from: dfmt, date_to: dfmt, curr: (market || "PKR"), limit: "30", sort: "price" });
-  return fetch(px + "/kiwi?" + q)
-    .then(function(r){ return r.json(); })
-    .then(function(j){
-      if(!j || !j.ok || !j.data || !j.data.length) return null;
-      var list = [];
-      j.data.forEach(function(d){ var it = kiwiMapOffer(d); if(it) list.push(it); });
-      list.sort(function(a,b){ return ((a.price && a.price.amount)||0) - ((b.price && b.price.amount)||0); });
-      return list.length ? list : null;
-    })
-    .catch(function(){ return null; });
-}
 function ignavRequest(url, init, attempt){
   return fetch(url, init).then(ignavRead).catch(function(e){
     var retryable = e && (e.status === 424 || e.status === 503 || e.code === "unable_to_complete_request");
@@ -5120,7 +5020,7 @@ function faOfferCard(o, curr){
     +   '<img src="airlines/'+esc(code)+'.png" alt="'+esc(code)+'" onerror="this.style.display=\'none\'" style="width:42px; height:42px; object-fit:contain; flex:0 0 auto; background:#fff; border-radius:8px;">'
     +   '<div style="flex:1; min-width:0;">'
     +     '<div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline; flex-wrap:wrap;">'
-    +       '<div><b>'+esc(code)+(first.flight_number ? ' '+esc(first.flight_number) : '')+'</b> <span style="color:var(--muted); font-size:12px;">'+esc(airlineName)+(rawLegs.length > 2 ? ' · '+rawLegs.length+' legs' : '')+'</span>'+(o.kiwi_link ? ' <span style="color:var(--gold); font-size:10px; font-weight:800; border:1px solid var(--gold); border-radius:999px; padding:1px 7px; margin-left:4px;">Kiwi</span>' : '')+'</div>'
+    +       '<div><b>'+esc(code)+(first.flight_number ? ' '+esc(first.flight_number) : '')+'</b> <span style="color:var(--muted); font-size:12px;">'+esc(airlineName)+(rawLegs.length > 2 ? ' · '+rawLegs.length+' legs' : '')+'</span></div>'
     +       '<div style="font-size:19px; font-weight:800; color:var(--blue); white-space:nowrap;">'+esc(price)+'</div>'
     +     '</div>'
     +     legsHtml
@@ -5132,7 +5032,7 @@ function faOfferCard(o, curr){
     + '</div>'
     + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">'
     +   '<button class="btn small fa-copy" data-fa="'+esc(copyTxt)+'" style="margin:0; background:var(--blue-bg); color:var(--blue);">Copy fare</button>'
-    +   (o.kiwi_link ? '<a class="btn small" href="'+esc(o.kiwi_link)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--green); color:#fff; text-decoration:none;">✈ Kiwi par book ↗</a>' : '<button class="btn small fa-book" data-id="'+esc(o.ignav_id || "")+'" style="margin:0; background:var(--green); color:#fff;">✈ Book / links</button>')
+    +   '<button class="btn small fa-book" data-id="'+esc(o.ignav_id || "")+'" style="margin:0; background:var(--green); color:#fff;">✈ Book / links</button>'
     +   '<a class="btn small" href="'+esc(sastaUrl)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--gold-bg); color:var(--gold); text-decoration:none;">Sasta Ticket ↗</a>'
     +   '<a class="btn small" href="'+esc(googleUrl)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--field); color:var(--ink); text-decoration:none;">Google Flights ↗</a>'
     +   '<a class="btn small" href="'+esc(sky)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--blue-bg); color:var(--blue); text-decoration:none;">Skyscanner ↗</a>'
@@ -5346,8 +5246,6 @@ function ignavSearch(){
   IGN_STATE.status = searchMsg;
   faSetStatus(searchMsg);
   if(trip === "one") faLoadSasta(f, t, sastaSeq);
-  // Kiwi (Tequila) parallel source — proxy configured ho to chalta hai, Ignav se independent
-  var kiwiPromise = (trip === "one" && kiwiProxy()) ? kiwiFetch(f, t, date, market) : null;
   ignavApi(endpoint, payload).then(function(j){
     var n = ((j && j.itineraries) || []).length;
     var msg = n ? ("✓ " + Math.min(n, maxResults) + " fare(s) mil gaye — sab se sasta pehle") : "Koi fare nahi mila.";
@@ -5366,21 +5264,6 @@ function ignavSearch(){
     IGN_STATE.status = "✗ " + m; IGN_STATE.bad = true;
     if(currentTab === "fares") faSetStatus(IGN_STATE.status, true);
   }).then(function(){
-    if(kiwiPromise){
-      kiwiPromise.then(function(kl){
-        if(kl && kl.length){
-          if(!IGN_STATE.last) IGN_STATE.last = {};
-          if(!IGN_STATE.last.itineraries) IGN_STATE.last.itineraries = [];
-          IGN_STATE.last.itineraries = IGN_STATE.last.itineraries.concat(kl)
-            .sort(function(a,b){ return ((a.price && a.price.amount)||0) - ((b.price && b.price.amount)||0); });
-          IGN_STATE.bad = false;
-          if(currentTab === "fares"){
-            faRenderOffers(IGN_STATE.last, IGN_STATE.req);
-            faSetStatus("✓ " + IGN_STATE.last.itineraries.length + " fare(s) — Ignav + Kiwi, sab se sasta pehle.");
-          }
-        }
-      }).catch(function(){});
-    }
     faBusy = false;
     if(btn){ btn.textContent = "🔍 Search flights"; btn.disabled = false; }
   });
@@ -6025,17 +5908,6 @@ function viewSettings(){
   html += '<div class="hint">Prices <b>indicative</b> hain — booking consolidator/airline portal se hoti hai. Har search ek credit use karti hai.</div>';
   html += '</div>';
 
-  html += '<div class="card"><h2>🥝 Kiwi (Tequila) prices — extra free source</h2>'
-        + '<div class="hint" style="margin-top:0;">Ignav ke saath parallel chalta hai — Price Lookup search me Kiwi ke fares bhi aa jate hain (source badge "Kiwi"). Tequila key Cloudflare Worker ke secret me rehti hai — app/backup mein nahi.</div>'
-        + '<div class="hint">⚠ Tequila par <b>naye public signup band ho chuke hein</b> (Kiwi policy May 2024 se invitation-only). Agar aap ke paas pehle se Tequila account he: tequila.kiwi.com par email dalein → magic link → Gmail (spam bhi) check karein → login ke baad <b>My applications</b> → <b>+ Add application</b> se API key lein. Naya account banana ho to Kiwi.com se partnership invitation chahiye. Key na ho to ghabraiye nahi — Ignav akela bhi kaam karta he.</div>'
-        + '<textarea id="kiwiWorkerCode" readonly style="width:100%; height:150px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:8px; margin-top:8px;">'+esc(KIWI_WORKER_CODE)+'</textarea>'
-        + '<button class="btn small primary" id="copyKiwiCode" style="margin-top:8px;">Copy worker code</button>'
-        + '<label style="margin-top:12px;">Worker URL (proxy)</label>'
-        + '<input id="setKiwiProxy" value="'+esc(st.kiwiProxy||"")+'" placeholder="https://xxx.workers.dev" autocomplete="off" style="font-family:monospace;">'
-        + '<button class="btn small green" id="saveKiwi" style="margin-top:8px; width:100%;">💾 Save &amp; test connection</button>'
-        + '<div class="hint" id="kiwiStatus" style="margin-top:6px; font-weight:600;"></div>'
-        + '</div>';
-
   html += '<div class="card"><h2>'+esc(T("backuph"))+'</h2>';
   html += '<button class="btn green" id="exportData">'+esc(T("exbtn"))+'</button>';
   html += '<label style="margin-top:14px;">Report month</label>';
@@ -6132,7 +6004,6 @@ function ghStripSecretsForSave(s){
     delete c.settings.githubPat;
     delete c.settings.ignavKey;
     delete c.settings.ignavProxy;   // proxy URL device-specific — shared state mein na jaye
-    delete c.settings.kiwiProxy;    // Kiwi proxy URL bhi device-specific
   }
   return c;
 }
@@ -7394,49 +7265,6 @@ function bind(){
       faSetIgnavStatus("⚠ Key save ho gayi, lekin proxy ke baghair browser call block hogi. Worker URL bhi add karein.", true);
     }
   };
-  // ===== Kiwi (Tequila) — save & test =====
-  var copyKiwiBtn = document.getElementById("copyKiwiCode");
-  if(copyKiwiBtn) copyKiwiBtn.onclick = function(){
-    var done = function(){ var s = document.getElementById("kiwiStatus"); if(s){ s.textContent = "✓ Worker code copy ho gaya."; s.style.color = "var(--green)"; } };
-    var fb = function(){
-      var ta = document.createElement("textarea");
-      ta.value = KIWI_WORKER_CODE; document.body.appendChild(ta);
-      ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ alert("Copy nahi hua."); }
-      document.body.removeChild(ta);
-    };
-    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(KIWI_WORKER_CODE).then(done, fb);
-    else fb();
-  };
-  var ski = document.getElementById("saveKiwi");
-  if(ski){
-    var setKiwiStatus = function(msg, bad){
-      var el = document.getElementById("kiwiStatus");
-      if(el){ el.textContent = msg; el.style.color = bad ? "var(--red)" : "var(--green)"; el.style.fontWeight = "600"; }
-    };
-    ski.onclick = function(){
-      S.settings.kiwiProxy = String((document.getElementById("setKiwiProxy")||{}).value||"").trim().replace(/\/+$/, "");
-      saveLocal();
-      var px = kiwiProxy();
-      if(!px){ setKiwiStatus("Kuch bhi save nahi hua — Worker URL dalein.", true); return; }
-      setKiwiStatus("Connection check ho raha hai…");
-      fetch(px + "/health", { headers: { "Accept": "application/json" } })
-        .then(function(r){ return r.text().then(function(t){ var j=null; try{ j=JSON.parse(t); }catch(e){} return { status:r.status, j:j, t:t }; }); })
-        .then(function(res){
-          if(res.status >= 200 && res.status < 300){
-            if(res.j && res.j.tequila){
-              setKiwiStatus("✓ Connected — Price Lookup search me Kiwi fares bhi aa jayenge.");
-            } else {
-              setKiwiStatus("⚠ Worker reachable hai lekin TEQUILA_KEY secret abhi set nahi — Worker → Settings → Variables and Secrets me dalein.", true);
-            }
-          } else {
-            setKiwiStatus("✗ Worker response: " + res.status + " " + String(res.t||"").slice(0,120), true);
-          }
-        })
-        .catch(function(){
-          setKiwiStatus("✗ Worker reach nahi hui — URL sahi? Deploy hua? (Ad-blocker bhi block kar sakta hai)", true);
-        });
-    };
-  }
   var cu = document.getElementById("checkUpdates");
   if(cu) cu.onclick = function(){ runUpdateCheck(document.getElementById("updStatus")); };
   var ub = document.getElementById("updateBtn");
