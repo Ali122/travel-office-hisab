@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "provider": "sasta",
+  "origin": "KHI",
+  "destination": "RUH",
+  "currency": "PKR",
+  "amount": 102220,
+  "price_basis": "per_person",
+  "taxes_included": null,
+  "fare_breakdown": null,
+  "source_url": "https://www.sastaticket.pk/flights/cheap-flights-from-karachi-to-riyadh",
+  "observed_at": "2026-11-05T13:20:26.233Z",
+  "headline": "Cheap Flights from Karachi (KHI) to Riyadh (RUH) (PKR 102,220)"
+}

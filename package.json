@@ -1,0 +1,12 @@
+{
+  "name": "travel-office-hisab-price-feed",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sasta route-price snapshot scraper for Travel Office Hisab",
+  "scripts": {
+    "scrape": "node scrape.js"
+  },
+  "dependencies": {
+    "playwright": "^1.49.1"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "provider": "sasta",
+  "origin": "KHI",
+  "destination": "MED",
+  "currency": "PKR",
+  "amount": 76098,
+  "price_basis": "per_person",
+  "taxes_included": null,
+  "fare_breakdown": null,
+  "source_url": "https://www.sastaticket.pk/flights/cheap-flights-from-karachi-to-madinah",
+  "observed_at": "2026-11-05T13:20:30.481Z",
+  "headline": "Cheap Flights from Karachi (KHI) to Madinah (MED) (PKR 76,098)"
+}

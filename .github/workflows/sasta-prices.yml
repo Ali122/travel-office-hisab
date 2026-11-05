@@ -1,0 +1,49 @@
+name: Sasta route prices
+
+on:
+  schedule:
+    # Top routes only. GitHub may delay scheduled jobs; this is a cached
+    # indicative feed, not real-time availability.
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sasta-route-prices
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Scrape Sasta route pages
+        run: node scrape.js
+
+      - name: Commit price snapshots
+        run: |
+          git config user.name "ab-travels-price-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/sasta
+          if git diff --cached --quiet; then
+            echo "No price changes"
+            exit 0
+          fi
+          git commit -m "Update Sasta route prices [skip ci]"
+          git push

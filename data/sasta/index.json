@@ -1,0 +1,104 @@
+{
+  "v": 1,
+  "provider": "sasta",
+  "observed_at": "2026-11-05T13:20:31.399Z",
+  "results": [
+    {
+      "origin": "KHI",
+      "destination": "DXB",
+      "amount": 59046,
+      "file": "data/sasta/khi-dxb.json"
+    },
+    {
+      "origin": "LHE",
+      "destination": "DXB",
+      "amount": 75006,
+      "file": "data/sasta/lhe-dxb.json"
+    },
+    {
+      "origin": "ISB",
+      "destination": "DXB",
+      "amount": 72635,
+      "file": "data/sasta/isb-dxb.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "JED",
+      "amount": 79631,
+      "file": "data/sasta/khi-jed.json"
+    },
+    {
+      "origin": "LHE",
+      "destination": "JED",
+      "amount": 100790,
+      "file": "data/sasta/lhe-jed.json"
+    },
+    {
+      "origin": "MUX",
+      "destination": "DXB",
+      "amount": 75006,
+      "file": "data/sasta/mux-dxb.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "LHE",
+      "amount": 26050,
+      "file": "data/sasta/khi-lhe.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "ISB",
+      "amount": 22050,
+      "file": "data/sasta/khi-isb.json"
+    },
+    {
+      "origin": "LHE",
+      "destination": "KHI",
+      "amount": 23201,
+      "file": "data/sasta/lhe-khi.json"
+    },
+    {
+      "origin": "ISB",
+      "destination": "KHI",
+      "amount": 21828,
+      "file": "data/sasta/isb-khi.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "PEW",
+      "amount": 29082,
+      "file": "data/sasta/khi-pew.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "DOH",
+      "amount": 58291,
+      "file": "data/sasta/khi-doh.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "AUH",
+      "amount": 62102,
+      "file": "data/sasta/khi-auh.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "SHJ",
+      "amount": 59422,
+      "file": "data/sasta/khi-shj.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "RUH",
+      "amount": 102220,
+      "file": "data/sasta/khi-ruh.json"
+    },
+    {
+      "origin": "KHI",
+      "destination": "MED",
+      "amount": 76098,
+      "file": "data/sasta/khi-med.json"
+    }
+  ],
+  "errors": []
+}

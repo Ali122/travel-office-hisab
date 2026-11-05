@@ -84,13 +84,19 @@ Current version: **2.02**.
 Current version: **2.03**.
 
 ## Version
-Current version: **2.06** (merged friend's v2.04/v2.05 dialog + date work with Price Lookup).
+Current version: **2.15** (header update button + Sasta cached route feed).
 
 ## Price Lookup - Ignav (v2.12) - Cloudflare Worker proxy
 - Amadeus Self-Service was decommissioned 17 July 2026 (all free keys disabled) - that integration is removed.
 - New provider: Ignav (ignav.com). First 1,000 successful requests are a one-time free allowance (not monthly); after that $2 per 1,000. Failed requests are not billed. API key stays in a Cloudflare Worker proxy (browser calls are blocked by Ignav). Setup: Settings -> Flight prices - Ignav -> copy worker code -> deploy on Cloudflare -> set IGNAV_API_KEY secret -> paste Worker URL.
 - Price Lookup tab: one-way, round-trip and multi-city (2 legs), airport autocomplete, adults, cabin class, non-stop, market (PKR/AED/SAR/GBP/USD/INR/QAR), max results; results show airline + flight number, times, duration, stops/via airports and price, with Copy fare and Book/links.
 - Security: the Ignav API key is stripped from backup files, GitHub sync payloads, undo snapshots and share links (same treatment as the GitHub PAT); it stays on the device and survives restores.
+
+## Sasta route price snapshots (free)
+- `.github/workflows/sasta-prices.yml` runs Playwright Chromium every 30 minutes on a public repo (free Actions minutes) and reads Sasta's public SEO route pages.
+- Top 16 routes only; output is `data/sasta/<origin>-<destination>.json` with a route-level `amount`, `observed_at`, `source_url`. It is cached/indicative, not date-specific availability.
+- Price Lookup fetches `data/sasta/khi-dxb.json` (etc.) and shows a **Sasta Ticket — route price · External / indicative** card under Ignav results. Missing file / failed scrape = badge hidden, manual Sasta link remains.
+- The scraper does not log in, bypass CAPTCHA or book. If Sasta changes markup/WAF, the job fails gracefully and the last good JSON stays.
 
 ## Price Lookup fix (v2.08): Ignav requires a server proxy
 - Cause of 'check connection': Ignav's API is not callable from browser JavaScript (key must stay server-side). Direct calls fail.

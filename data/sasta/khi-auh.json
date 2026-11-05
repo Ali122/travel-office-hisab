@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "provider": "sasta",
+  "origin": "KHI",
+  "destination": "AUH",
+  "currency": "PKR",
+  "amount": 62102,
+  "price_basis": "per_person",
+  "taxes_included": null,
+  "fare_breakdown": null,
+  "source_url": "https://www.sastaticket.pk/flights/cheap-flights-from-karachi-to-abu-dhabi",
+  "observed_at": "2026-11-05T13:20:17.060Z",
+  "headline": "Cheap Flights from Karachi (KHI) to Abu Dhabi (AUH) (PKR 62,102)"
+}

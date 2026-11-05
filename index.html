@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.14</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.15</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -348,7 +348,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.14";
+var APP_VER = "2.15";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -4703,7 +4703,7 @@ async function pwDownload(){
 var faBusy = false;
 var IGN_LAST = null;
 /* Price Lookup results tab switch par bhi bache rahein — sirf X se clear hon */
-var IGN_STATE = { last:null, req:null, status:"", bad:false, form:null };
+var IGN_STATE = { last:null, req:null, status:"", bad:false, form:null, sasta:null, seq:0 };
 var FA_PRESETS = [
   { from:"KHI", to:"DXB", label:"KHI → DXB" },
   { from:"KHI", to:"JED", label:"KHI → Jeddah" },
@@ -4943,6 +4943,7 @@ function viewFares(){
   html += '<div class="hint" style="margin-top:12px; font-weight:600;">🔎 Ya in websites par khud dekhein (hamesha kaam karti hain):</div><div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;" id="faQuick"></div>';
   html += '<div class="hint">Google Flights aur Sasta Ticket ke public free APIs nahi hain, is liye un ke live rates yahan automatic nahi aa sakte. Har result ke saath “Sasta Ticket ↗” aur “Google Flights ↗” buttons se wahi route/date compare kar sakte hain.</div></div>';
   html += '<div id="faResults"></div>';
+  html += '<div id="faSastaResults"></div>';
   return html;
 }
 function faOfferCard(o, curr){
@@ -5062,15 +5063,74 @@ function faRestore(){
   if(!IGN_STATE.form) return;
   faApplyForm(IGN_STATE.form);
   if(IGN_STATE.last) faRenderOffers(IGN_STATE.last, IGN_STATE.req || { __max: Number(IGN_STATE.form.max) || 15 });
+  faRenderSasta();
   if(IGN_STATE.status) faSetStatus(IGN_STATE.status, IGN_STATE.bad);
   if(faBusy){
     var btn=document.getElementById("faSearch");
     if(btn){ btn.textContent="Loading…"; btn.disabled=true; }
   }
 }
+function faAgeText(iso){
+  var t = Date.parse(String(iso || ""));
+  if(!isFinite(t)) return "";
+  var sec = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if(sec < 60) return "just now";
+  if(sec < 3600) return Math.round(sec / 60) + " min ago";
+  if(sec < 86400) return Math.round(sec / 3600) + " hr ago";
+  return Math.round(sec / 86400) + " day(s) ago";
+}
+function faSastaClear(){
+  IGN_STATE.sasta = null;
+  IGN_STATE.seq++;
+  faRenderSasta();
+}
+function faRenderSasta(){
+  var host = document.getElementById("faSastaResults");
+  if(!host) return;
+  var st = IGN_STATE.sasta;
+  if(!st || st.status !== "ok" || !st.data || !(Number(st.data.amount) > 0)){ host.innerHTML = ""; return; }
+  var d = st.data;
+  var amount = faMoney(d.amount, d.currency || "PKR");
+  var age = faAgeText(d.observed_at);
+  var src = faSafeUrl(d.source_url || "");
+  host.innerHTML = '<div class="card"><div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">'
+    + '<h2 style="margin:0; flex:1;">Sasta Ticket — route price</h2>'
+    + '<span class="pill" style="background:var(--gold-bg); color:var(--gold);">External / indicative</span>'
+    + '<button class="del" id="faSastaClear" title="Clear Sasta result" style="background:var(--red-bg); color:var(--red); padding:4px 9px;">✕</button>'
+    + '</div>'
+    + '<div style="font-size:22px; font-weight:800; color:var(--blue); margin-top:8px;">'+esc(amount)+'</div>'
+    + '<div class="hint" style="margin-top:2px;">'+esc(d.origin || "")+' → '+esc(d.destination || "")
+    + (age ? ' · updated '+esc(age) : '')+' · route-level price, not date-specific</div>'
+    + (src ? '<a href="'+esc(src)+'" target="_blank" rel="noopener noreferrer" class="btn small" style="margin-top:8px; display:inline-block; background:var(--gold-bg); color:var(--gold); text-decoration:none;">Open Sasta Ticket ↗</a>' : '')
+    + '<div class="hint">Sasta public route page se cached price hai. Booking se pehle Sasta par date/availability confirm karein. Manual Sasta link har fare par bhi mojood hai.</div>'
+    + '</div>';
+  var xb = document.getElementById("faSastaClear");
+  if(xb) xb.onclick = faSastaClear;
+}
+function faLoadSasta(from, to, seq){
+  if(seq !== IGN_STATE.seq) return;
+  IGN_STATE.sasta = { status:"loading" };
+  faRenderSasta();
+  var file = "data/sasta/" + String(from || "").toLowerCase() + "-" + String(to || "").toLowerCase() + ".json";
+  fetch(file + "?t=" + Date.now(), { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error("no file"); return r.json(); })
+    .then(function(d){
+      if(seq !== IGN_STATE.seq) return;
+      if(!d || !(Number(d.amount) > 0)){ IGN_STATE.sasta = null; }
+      else { IGN_STATE.sasta = { status:"ok", data:d }; }
+      faRenderSasta();
+    })
+    .catch(function(){
+      if(seq !== IGN_STATE.seq) return;
+      IGN_STATE.sasta = null;
+      faRenderSasta();
+    });
+}
 function faClearResults(){
   IGN_STATE.last = null; IGN_STATE.req = null; IGN_STATE.status = ""; IGN_STATE.bad = false;
+  IGN_STATE.sasta = null; IGN_STATE.seq++;
   var host=document.getElementById("faResults"); if(host) host.innerHTML="";
+  faRenderSasta();
   faSetStatus("");
 }
 function faRenderOffers(j, req){
@@ -5145,7 +5205,10 @@ function ignavSearch(){
   faBusy = true;
   IGN_STATE.form = faCaptureForm();
   IGN_STATE.last = null; IGN_STATE.req = null; IGN_STATE.status = ""; IGN_STATE.bad = false;
+  IGN_STATE.sasta = null; IGN_STATE.seq++;
+  var sastaSeq = IGN_STATE.seq;
   var resultHost = document.getElementById("faResults"); if(resultHost) resultHost.innerHTML = "";
+  faRenderSasta();
   var btn = document.getElementById("faSearch"); if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
   var maxResults = Number((document.getElementById("faMax")||{}).value || 15);
   var adults = Number((document.getElementById("faAdults")||{}).value || 1);
@@ -5173,6 +5236,7 @@ function ignavSearch(){
     : ("Searching " + f + " → " + t + " on " + date + (trip === "round" ? (" (return " + ret + ")") : "") + "…");
   IGN_STATE.status = searchMsg;
   faSetStatus(searchMsg);
+  if(trip === "one") faLoadSasta(f, t, sastaSeq);
   ignavApi(endpoint, payload).then(function(j){
     var n = ((j && j.itineraries) || []).length;
     var msg = n ? ("✓ " + Math.min(n, maxResults) + " fare(s) mil gaye — sab se sasta pehle") : "Koi fare nahi mila.";
