@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.12</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.13</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -347,7 +347,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.12";
+var APP_VER = "2.13";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -4984,8 +4984,26 @@ function faOfferCard(o, curr){
   var firstSegs = firstLeg.segments;
   var firstSeg = firstSegs[0], lastSeg = firstSegs[firstSegs.length - 1];
   var firstDate = String(firstSeg.departure_time_local || "").slice(0, 10);
+  var searchForm = IGN_STATE.form || {};
+  var pax = Math.max(1, Number(searchForm.adults) || 1);
+  var cabinCode = String(searchForm.cls || "economy");
+  if(cabinCode === "premium_economy") cabinCode = "premiumeconomy";
+  var skyFrom = String(firstSeg.departure_airport || "").toLowerCase();
+  var skyTo = String(lastSeg.arrival_airport || "").toLowerCase();
+  var skyDate = firstDate.replace(/-/g, "").slice(2);
+  var sky = "https://www.skyscanner.net/transport/flights/" + skyFrom + "/" + skyTo + "/" + skyDate + "/";
+  if(searchForm.trip === "round" && searchForm.ret){
+    sky += String(searchForm.ret).replace(/-/g, "").slice(2) + "/?adultsv2=" + pax + "&cabinclass=" + cabinCode + "&rtn=1";
+  } else {
+    sky += "?adultsv2=" + pax + "&cabinclass=" + cabinCode + "&rtn=0";
+  }
+  var kayak = "https://www.kayak.com/flights/" + String(firstSeg.departure_airport || "") + "-" + String(lastSeg.arrival_airport || "") + "/" + firstDate;
+  if(searchForm.trip === "round" && searchForm.ret) kayak += "/" + searchForm.ret;
+  kayak += "?sort=bestflight_a";
   var sastaUrl = "https://www.sastaticket.pk/flights/" + String((firstSeg.departure_airport || "") + (lastSeg.arrival_airport || "")).toLowerCase();
-  var googleUrl = "https://www.google.com/travel/flights?q=" + encodeURIComponent("Flights from " + (firstSeg.departure_airport || "") + " to " + (lastSeg.arrival_airport || "") + (firstDate ? " on " + firstDate : ""));
+  var googleQuery = "Flights from " + (firstSeg.departure_airport || "") + " to " + (lastSeg.arrival_airport || "") + (firstDate ? " on " + firstDate : "");
+  if(searchForm.trip === "round" && searchForm.ret) googleQuery += " through " + searchForm.ret;
+  var googleUrl = "https://www.google.com/travel/flights?q=" + encodeURIComponent(googleQuery);
   return '<div style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">'
     + '<div style="display:flex; gap:12px; align-items:center;">'
     +   '<img src="airlines/'+esc(code)+'.png" alt="'+esc(code)+'" onerror="this.style.display=\'none\'" style="width:42px; height:42px; object-fit:contain; flex:0 0 auto; background:#fff; border-radius:8px;">'
@@ -5006,6 +5024,8 @@ function faOfferCard(o, curr){
     +   '<button class="btn small fa-book" data-id="'+esc(o.ignav_id || "")+'" style="margin:0; background:var(--green); color:#fff;">✈ Book / links</button>'
     +   '<a class="btn small" href="'+esc(sastaUrl)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--gold-bg); color:var(--gold); text-decoration:none;">Sasta Ticket ↗</a>'
     +   '<a class="btn small" href="'+esc(googleUrl)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--field); color:var(--ink); text-decoration:none;">Google Flights ↗</a>'
+    +   '<a class="btn small" href="'+esc(sky)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--blue-bg); color:var(--blue); text-decoration:none;">Skyscanner ↗</a>'
+    +   '<a class="btn small" href="'+esc(kayak)+'" target="_blank" rel="noopener noreferrer" style="margin:0; background:var(--green-bg); color:var(--green); text-decoration:none;">Kayak ↗</a>'
     + '</div>'
     + '<div class="fa-links" id="faLinks_'+esc(o.ignav_id || "")+'" style="margin-top:8px;"></div>'
     + '</div>';
