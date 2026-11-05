@@ -108,3 +108,9 @@ Current version: **2.16** (partial ticket payments from the staff portal + pendi
 ## Price Lookup fix (v2.08): Ignav requires a server proxy
 - Cause of 'check connection': Ignav's API is not callable from browser JavaScript (key must stay server-side). Direct calls fail.
 - Fix: one-click Cloudflare Worker proxy code inside Settings (free plan). Worker adds the key server-side and exposes /health, /fares, /round-trip, /booking-links with CORS.
+
+## Price Lookup — Kiwi/Tequila (v2.19)
+- Second free source alongside Ignav. `KIWI_WORKER_CODE` (Settings → Kiwi prices) deploys a separate Cloudflare Worker that proxies `api.tequila.kiwi.com/v2/search` with the key stored server-side as `TEQUILA_KEY`.
+- Setup: tequila.kiwi.com/portal/signup → free key → deploy worker → set secret → paste Worker URL → Save & test.
+- One-way searches hit the worker's `/kiwi` endpoint in parallel with Ignav; results are converted to the same itinerary shape and merged into the sorted list with a **Kiwi** badge and a direct "Kiwi par book" deep link. Prices show as *unverified* (indicative).
+- Currency follows the Pricing market selector (PKR default). `kiwiProxy` URL is device-specific (stripped from shared state, like `ignavProxy`).
