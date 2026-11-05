@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.13</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.14</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -300,6 +300,7 @@
     <div class="tr">&ldquo;And whoever fears Allah &mdash; He will make for him a way out, and provide for him from where he does not expect.&rdquo; &mdash; At-Talaq 65:2&ndash;3</div>
     <div class="ur" dir="rtl" lang="ur">اور جو اللہ سے ڈرے، اللہ اس کے لیے نکلنے کا راستہ بنا دیتا ہے اور اسے ایسی جگہ سے رزق دیتا ہے جہاں سے اسے گمان بھی نہ ہو۔</div>
   </div>
+  <button id="updateBtn" class="hints-btn" title="Check for updates" aria-label="Check for updates" style="padding:6px 9px;">↻</button>
   <button id="themeBtn" class="hints-btn" title="Theme" aria-label="Change theme">🌙</button>
 </header>
 
@@ -347,7 +348,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.13";
+var APP_VER = "2.14";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -6011,6 +6012,35 @@ function ghBakRestore(){
 }
 
 /* ================= EVENTS ================= */
+function runUpdateCheck(statusEl){
+  if(statusEl) statusEl.textContent = "Checking…";
+  fetch(location.pathname + "?_upd=" + Date.now(), { cache:"no-store" })
+    .then(function(r){ return r.text(); })
+    .then(async function(txt){
+      var m = txt.match(/APP_VER = "([0-9.]+)"/);
+      var live = m ? m[1] : null;
+      if(!live){
+        if(statusEl) statusEl.textContent = "Version not found.";
+        appAlert("Could not check for a new version — the website could not be reached (internet?).", "Update check failed", "error");
+        return;
+      }
+      if(live === APP_VER){
+        if(statusEl) statusEl.textContent = "You have the latest version (v"+APP_VER+").";
+        appAlert("You have the latest version: v"+APP_VER+"\n\nIf the header still shows an old number, clear the browser cache.", "You're up to date", "success");
+        return;
+      }
+      var go = await appConfirm("A new version is live: v"+live+" (yours: v"+APP_VER+")\n\nReload the app to the new version now?", "Update available", { okText:"Reload now", cancelText:"Later", type:"info" });
+      if(go){
+        // Cache-busted URL — GitHub Pages can keep the old index.html in the browser cache.
+        try{ location.replace(location.pathname + "?v=" + encodeURIComponent(live)); }
+        catch(e){ location.reload(); }
+      }
+    })
+    .catch(function(){
+      if(statusEl) statusEl.textContent = "Check failed.";
+      appAlert("Could not check for updates — check your internet.", "Update check failed", "error");
+    });
+}
 function bind(){
   var app = document.getElementById("app");
 
@@ -7092,36 +7122,9 @@ function bind(){
     }
   };
   var cu = document.getElementById("checkUpdates");
-  if(cu) cu.onclick = function(){
-    var st2 = document.getElementById("updStatus");
-    if(st2) st2.textContent = "Checking…";
-    fetch(location.pathname + "?_upd=" + Date.now(), { cache:"no-store" })
-      .then(function(r){ return r.text(); })
-      .then(async function(txt){
-        var m = txt.match(/APP_VER = "([0-9.]+)"/);
-        var live = m ? m[1] : null;
-        if(!live){
-          if(st2) st2.textContent = "Version not found.";
-          appAlert("Could not check for a new version — the website could not be reached (internet?).", "Update check failed", "error");
-          return;
-        }
-        if(live === APP_VER){
-          if(st2) st2.textContent = "You have the latest version (v"+APP_VER+").";
-          appAlert("You have the latest version: v"+APP_VER+"\n\nIf the header still shows an old number, clear the browser cache.", "You're up to date", "success");
-          return;
-        }
-        var go = await appConfirm("A new version is live: v"+live+" (yours: v"+APP_VER+")\n\nReload the app to the new version now?", "Update available", { okText:"Reload now", cancelText:"Later", type:"info" });
-        if(go){
-          // Cache-busted URL — GitHub Pages can keep the old index.html in the browser cache.
-          try{ location.replace(location.pathname + "?v=" + encodeURIComponent(live)); }
-          catch(e){ location.reload(); }
-        }
-      })
-      .catch(function(){
-        if(st2) st2.textContent = "Check failed.";
-        appAlert("Could not check for updates — check your internet.", "Update check failed", "error");
-      });
-  };
+  if(cu) cu.onclick = function(){ runUpdateCheck(document.getElementById("updStatus")); };
+  var ub = document.getElementById("updateBtn");
+  if(ub) ub.onclick = function(){ runUpdateCheck(null); };
   var ghSyncNow = document.getElementById("ghSyncNow");
   if(ghSyncNow) ghSyncNow.onclick = function(){
     if(!githubSyncConfigured()){ alert("Pehle GitHub token save karein."); return; }
