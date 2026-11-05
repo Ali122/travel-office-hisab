@@ -293,8 +293,10 @@
 
   function openInvoice(t){
     var paid=receivedOf(t), rem=remainOf(t);
+    var biz=(DATA && DATA.business) || {};
+    var company=biz.company || "AB Travels", p1=biz.phone1 || "0310-3311199", p2=biz.phone2 || "0314-3178560";
     var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(t.client||"")+'-'+esc(t.pnr||"ticket")+'</title><style>body{font-family:Arial,sans-serif;color:#111;margin:0;padding:24px;font-size:13px}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse;margin-top:12px}td,th{padding:6px;border-bottom:1px solid #ddd;text-align:left}.muted{color:#666}.amount{font-size:18px;font-weight:bold;color:#2563eb}.box{border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:12px}@media print{button{display:none}}</style></head><body>'
-      +'<h1>AB TRAVELS</h1><div class="muted">Ahmed Brothers Hajj & Umra Services (Pvt) Ltd<br>0310-3311199 · 0314-3178560</div>'
+      +'<h1>'+esc(company)+'</h1><div class="muted">Ahmed Brothers Hajj & Umra Services (Pvt) Ltd<br>'+esc(p1)+' · '+esc(p2)+'</div>'
       +'<div class="box"><b>INVOICE</b><table>'
       +'<tr><th>Passenger</th><td>'+esc(t.client||"")+'</td></tr>'
       +'<tr><th>PNR / Booking ref</th><td>'+esc(t.pnr||"—")+'</td></tr>'

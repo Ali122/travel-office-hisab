@@ -1,4 +1,4 @@
-# AB Travels — Staff Portal
+﻿# AB Travels â€” Staff Portal
 
 A separate, password-protected Cloudflare Worker for staff. It reads and writes the same
 private `HisabData.json` file used by the owner app, so no second database is needed.
@@ -18,16 +18,19 @@ airline IDs, the GitHub token, backups or other staff data.
 
 ```powershell
 cd staff-worker
-npm install
-npx wrangler login
+npm.cmd install
+npx.cmd wrangler login
 ```
+
+> On Windows, the `.cmd` suffix avoids PowerShell's script execution policy blocking
+> `npm.ps1` / `npx.ps1`.
 
 ## 2. GitHub token
 
 Create a **fine-grained personal access token** for the private backup repository:
 
 - Repository: `Ali122/travel-office-hisab-backup`
-- Permission: **Contents — Read and write**
+- Permission: **Contents â€” Read and write**
 
 Do not paste the token into any file in this repository.
 
@@ -37,18 +40,18 @@ Run these from the `staff-worker` folder. Wrangler asks for the value interactiv
 nothing is saved in the repo.
 
 ```powershell
-npx wrangler secret put STAFF_PASSWORD
-npx wrangler secret put GITHUB_TOKEN
+npx.cmd wrangler secret put STAFF_PASSWORD
+npx.cmd wrangler secret put GITHUB_TOKEN
 ```
 
-Optional but recommended — a random string, for example 32+ characters:
+Optional but recommended â€” a random string, for example 32+ characters:
 
 ```powershell
-npx wrangler secret put SESSION_SECRET
+npx.cmd wrangler secret put SESSION_SECRET
 ```
 
-- `STAFF_PASSWORD` — the password staff type on the login screen.
-- `SESSION_SECRET` — signs the session cookie. If omitted, `STAFF_PASSWORD` is used.
+- `STAFF_PASSWORD` â€” the password staff type on the login screen.
+- `SESSION_SECRET` â€” signs the session cookie. If omitted, `STAFF_PASSWORD` is used.
 - Changing either secret invalidates all existing staff sessions.
 - Repository defaults are `Ali122/travel-office-hisab-backup` and branch `main`.
   Override with `GITHUB_REPO` / `GITHUB_BRANCH` if needed.
@@ -56,7 +59,7 @@ npx wrangler secret put SESSION_SECRET
 ## 4. Deploy
 
 ```powershell
-npm run deploy
+npm.cmd run deploy
 ```
 
 The Worker name is `staff-abtravels`, so the URL will look like:
@@ -67,11 +70,11 @@ https://staff-abtravels.<your-subdomain>.workers.dev
 
 Open the URL, enter the staff password, and test:
 
-1. Pending Payments → add a small partial payment
-2. Clients → search, edit, add a client
-3. New Booking → save an unpaid booking
-4. My Invoices → open and print it
-5. PNR Lookup → open an airline page
+1. Pending Payments â†’ add a small partial payment
+2. Clients â†’ search, edit, add a client
+3. New Booking â†’ save an unpaid booking
+4. My Invoices â†’ open and print it
+5. PNR Lookup â†’ open an airline page
 
 Then open the owner app and press **Pull now** (or reload) to confirm the payment and
 booking appear in `HisabData.json`.
@@ -79,7 +82,7 @@ booking appear in `HisabData.json`.
 ## Local development
 
 ```powershell
-npm run dev
+npm.cmd run dev
 ```
 
 Use a `.dev.vars` file for local secrets (it is not committed):
@@ -109,11 +112,11 @@ SESSION_SECRET=local-random-string
 
 - Never commit `STAFF_PASSWORD`, `GITHUB_TOKEN`, `SESSION_SECRET` or `.dev.vars`.
 - Use a long, unique staff password. Share the portal link only with staff.
-- If a device is lost, change `STAFF_PASSWORD` — all sessions are logged out.
+- If a device is lost, change `STAFF_PASSWORD` â€” all sessions are logged out.
 - The staff browser never receives the GitHub token. GitHub is called only by the Worker.
 
 ## Rollback
 
 ```powershell
-npx wrangler rollback
+npx.cmd wrangler rollback
 ```

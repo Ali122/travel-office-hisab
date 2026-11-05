@@ -247,6 +247,11 @@ function staffView(s) {
     receivables,
     tickets,
     bookings: tickets.filter((t) => t.createdBy === "staff"),
+    business: {
+      company: cleanText(s.settings && s.settings.invCompany, 80) || "AB Travels",
+      phone1: cleanText(s.settings && s.settings.invPhone1, 40) || "0310-3311199",
+      phone2: cleanText(s.settings && s.settings.invPhone2, 40) || "0314-3178560"
+    },
     staffName: "Staff"
   };
 }
