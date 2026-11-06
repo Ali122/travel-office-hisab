@@ -116,3 +116,15 @@ Current version: **2.23** (staff portal link saves and syncs immediately; partia
 - Currency follows the Pricing market selector (PKR default). `kiwiProxy` URL is device-specific (stripped from shared state, like `ignavProxy`).
 ## Kiwi/Tequila removed (v2.21)
 - Tequila public signup closed May 2024 (invitation-only per Kiwi.com policy), so the v2.19 Kiwi integration was fully reverted — Ignav is again the only live source in Price Lookup. The v2.19 worker code remains in git history if a Tequila key is ever obtained.
+## Telegram price bot (v2.24)
+- New Settings card: "Telegram price bot" with a one-click copy of `pricebot-worker.js` (also kept in the repo root).
+- One Cloudflare Worker does both jobs: the Ignav proxy for the app and the Telegram bot with a 1-minute cron.
+- Bot commands: `/price KHI DXB 01-12-2026` (one-way or `... 15-12-2026` round trip, options `adults=2 cabin=business market=AE nonstop`), `/watch ... target=85000 every=10`, `/urgent 1 60` (every minute for 60 minutes), `/list`, `/stop 1|all`, `/book 1`, `/budget`.
+- Alerts on target price hit or a 5%+ drop, max one alert per 10 minutes; only `verified` fares can alert.
+- First `/start` claims the bot (owner chat stored in KV); every other chat is refused (`This bot is private`).
+- Safety: daily search budget (default 60, `MAX_DAILY_REQUESTS`), reserved before each Ignav call; protects the 1,000 one-time free searches and the KV 1,000 writes/day limit.
+- Secrets (`IGNAV_API_KEY`, `TELEGRAM_BOT_TOKEN`, optional `TELEGRAM_WEBHOOK_SECRET`) live only in the Worker; nothing is stored in the app or its backups.
+- Setup guide: `PRICEBOT.md`.
+
+## Version
+Current version: **2.24**.
