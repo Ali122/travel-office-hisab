@@ -4,11 +4,11 @@
   "origin": "LHE",
   "destination": "DXB",
   "currency": "PKR",
-  "amount": 75006,
+  "amount": 72635,
   "price_basis": "per_person",
   "taxes_included": null,
   "fare_breakdown": null,
   "source_url": "https://www.sastaticket.pk/flights/cheap-flights-from-lahore-to-dubai",
-  "observed_at": "2026-11-05T20:50:38.040Z",
-  "headline": "Cheap Flights from Lahore (LHE) to Dubai (DXB) (PKR 75,006)"
+  "observed_at": "2026-11-06T01:36:13.317Z",
+  "headline": "Cheap Flights from Lahore (LHE) to Dubai (DXB) (PKR 72,635)"
 }
