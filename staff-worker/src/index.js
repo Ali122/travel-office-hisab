@@ -347,6 +347,11 @@ async function api(req, env, url) {
         list.push(c);
       }
       if (b.id && !c) return { error: { code: "NOT_FOUND", message: "client not found" } };
+      const nameChanged = !c || normName(c.name) !== normName(name);
+      if (nameChanged) {
+        const dup = list.find((x) => x !== c && normName(x.name) === normName(name));
+        if (dup) return { error: { code: "DUPLICATE", message: "A client with this name already exists. Edit that client instead." } };
+      }
       const data = {
         name,
         phone: cleanText(b.phone, 60),
@@ -357,7 +362,7 @@ async function api(req, env, url) {
       if (c) Object.assign(c, data);
       else { c = { id: uid(), ...data }; list.push(c); }
     });
-    if (res.error) return fail(res.error.code, res.error.message, 404);
+    if (res.error) return fail(res.error.code, res.error.message, res.error.code === "NOT_FOUND" ? 404 : 400);
     return json({ ok: true, ...staffView(res.data) });
   }
 
