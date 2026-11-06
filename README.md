@@ -84,7 +84,7 @@ Current version: **2.02**.
 Current version: **2.03**.
 
 ## Version
-Current version: **2.16** (partial ticket payments from the staff portal + pending balance display).
+Current version: **2.23** (staff portal link saves and syncs immediately; partial ticket payments from the staff portal + pending balance display).
 
 ## Price Lookup - Ignav (v2.12) - Cloudflare Worker proxy
 - Amadeus Self-Service was decommissioned 17 July 2026 (all free keys disabled) - that integration is removed.
