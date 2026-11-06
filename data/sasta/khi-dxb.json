@@ -4,11 +4,11 @@
   "origin": "KHI",
   "destination": "DXB",
   "currency": "PKR",
-  "amount": 59046,
+  "amount": 84475,
   "price_basis": "per_person",
   "taxes_included": null,
   "fare_breakdown": null,
   "source_url": "https://www.sastaticket.pk/flights/cheap-flights-from-karachi-to-dubai",
-  "observed_at": "2026-11-06T08:32:17.191Z",
-  "headline": "Cheap Flights from Karachi (KHI) to Dubai (DXB) (PKR 59,046)"
+  "observed_at": "2026-11-06T16:21:20.405Z",
+  "headline": "Cheap Flights from Karachi (KHI) to Dubai (DXB) (PKR 84,475)"
 }
