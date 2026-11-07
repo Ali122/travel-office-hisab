@@ -5,9 +5,15 @@
  *      The Ignav API key stays here on the server, never in the browser.
  *
  *   2) Telegram flight-price bot      (/telegram, plus a 1-minute cron)
+ *      Normal message: "DXB to KHI 15 December", "DXB KHI 15 Dec har 30 minute",
+ *      "EK601 DXB KHI 15 December", "... kal raat 10 baje tak"
  *      /price KHI DXB 01-12-2026        -> cheapest fares right now
  *      /watch KHI DXB 01-12-2026        -> check automatically, alert on price drop
  *      /urgent <id> 60                  -> check every minute for 60 minutes
+ *      /interval /pause /resume /list /stop /book /budget
+ *
+ *   3) App proxy budget: MAX_DAILY_PROXY (default 200), optional ALLOWED_ORIGIN check.
+ *      Both are best effort; keep the Ignav dashboard spending limit as the hard stop.
  *
  * SETUP (one time, free plan, no credit card):
  *   1) Create the Worker, paste this file, Deploy.
@@ -1199,7 +1205,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker</h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.25</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li></ul>" +
     "<p>" + (env.TELEGRAM_BOT_TOKEN ? (info.indexOf("not set") >= 0 ? "<a href=\"/setup\">Connect the bot</a>" : "Bot connected.") : "") + "</p>" +
