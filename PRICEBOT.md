@@ -3,6 +3,9 @@
 Aap ka apna Telegram bot: route bhejein, sasta fare wapas aata hai. Price girne par khud
 alert karta hai, aur urgent ticket ke liye **har minute** check kar sakta hai.
 
+**Current bot: v2.29** — default quiet hours **02:00–09:00 PKT** (`/quiet on|off`), aur
+30+ minute watches par har check ke baad price update (request waste nahi hoti).
+
 Sab kuch ek hi Cloudflare Worker par chalta hai (free plan). Wahi Worker app ka Ignav proxy
 bhi hai, is liye app ki `Price Lookup` bhi isi URL se kaam karti hai.
 
@@ -83,6 +86,10 @@ ke buttons deta hai — mobile se ek tap.
 /stop 1        /stop all
 /book 1                                      airline/OTA booking links
 /budget                                      aaj ke searches
+/quiet                                       quiet hours status
+/quiet on                                    enable quiet hours
+/quiet off                                   disable quiet hours
+/quiet 02:00-09:00                           custom quiet window (Pakistan time)
 /id                                          apna chat ID
 /share 123456789                             (owner) team member add
 /share                                       team list
@@ -106,14 +113,24 @@ Har fare ke saath **check ka waqt** aur **source (Ignav)** likha hota hai.
 | Normal price message ya `/price` | **1** |
 | `/watch` banate waqt | **1** (turant price) |
 | Watch ka har interval check | **1** per check |
-| `/list`, `/stop`, `/pause`, `/resume`, `/budget`, `/help`, `/id`, `/share` | **0** |
+| `/list`, `/stop`, `/pause`, `/resume`, `/budget`, `/quiet`, `/help`, `/id`, `/share` | **0** |
 
 Misaal: `every=120` + `until` agle din 13:00 → banate waqt 1 call, phir har ~2 ghante par 1 call; waqt poora hote hi watch khud delete ho jata hai (aur message aata hai).
 
 ### Alerts kab aate hain
-- **Target hit**: fare `target=` se kam ya barabar.
-- **Drop**: pichli price se **5% ya zyada** kami.
+- **Price update**: 30+ minute interval wale watches par **har check ke baad** current price
+  aur pichli price se change bhejta hai (request waste nahi hoti).
+- **Alert**: fare `target=` se kam ya barabar, ya pichli price se **5% ya zyada** kami.
+- Chhote intervals (1/5/10/15 min) aur urgent mode mein sirf alerts — har minute price
+  update se spam nahi hota.
 - Sirf `verified` fares par alert; ek alert ke baad 10 minute ka cooldown.
+
+### Quiet hours (default 02:00–09:00 PKT)
+- Default **ON**: 02:00–09:00 Pakistan time mein koi automatic check nahi hota, is liye
+  raat bhar Ignav searches waste nahi hoti.
+- 09:00 ke baad pehla check current price ka update bhejta hai (ya target/5% alert).
+- `/quiet` status · `/quiet off` band · `/quiet on` chalu · `/quiet 01:00-09:00` custom.
+- Sirf owner quiet hours change kar sakta hai; team members status dekh sakte hain.
 
 ---
 

@@ -84,7 +84,7 @@ Current version: **2.02**.
 Current version: **2.03**.
 
 ## Version
-Current version: **2.28** (invoice: Fly Jinnah/Air Arabia auto non-refundable removed; WhatsApp/Email/LocalSend/Blip share buttons in one row; staff portal link sync).
+Current version: **2.29** (price bot: default quiet hours 02:00–09:00 PKT + `/quiet` toggle + price update after every 30+ min check; invoice share row WhatsApp/Email/LocalSend/Blip; Fly Jinnah/Air Arabia auto non-refundable removed).
 
 ## Price Lookup - Ignav (v2.12) - Cloudflare Worker proxy
 - Amadeus Self-Service was decommissioned 17 July 2026 (all free keys disabled) - that integration is removed.

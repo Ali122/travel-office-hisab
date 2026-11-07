@@ -43,6 +43,9 @@ const MAX_DAILY_PROXY = 200; // fare searches per day for the browser app (best 
 const DROP_PCT = 0.05;    // alert when the price falls at least 5%
 const MAX_WATCHES = 5;
 const WATCH_TTL = 60 * 60 * 24 * 120;
+const QUIET_KEY = "settings:quiet";
+const QUIET_DEFAULT = { enabled: true, start: "02:00", end: "09:00" };
+const PERIODIC_MIN_EVERY = 30; // 30+ min watches: send a price update after every check
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                             */
@@ -414,6 +417,65 @@ function pktNowText() {
   return pktIso().slice(0, 16).replace("T", " ") + " PKT";
 }
 
+/* ------------------------------------------------------------------ */
+/* Quiet hours (Pakistan time)                                        */
+/*   Default: 02:00-09:00 PKT, enabled. No automatic checks in this    */
+/*   window, so Ignav searches are not wasted while you sleep.         */
+/* ------------------------------------------------------------------ */
+
+function pktMinutes() {
+  const d = new Date(Date.now() + 5 * 3600 * 1000);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+
+function pad2(n) {
+  return ("0" + Number(n)).slice(-2);
+}
+
+function parseHHMM(s) {
+  const m = String(s || "").match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]), mi = Number(m[2]);
+  if (h > 23 || mi > 59) return null;
+  return h * 60 + mi;
+}
+
+function parseQuietRange(s) {
+  const m = String(s || "").match(/^(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  const sh = Number(m[1]), sm = Number(m[2] || 0), eh = Number(m[3]), em = Number(m[4] || 0);
+  if (sh > 23 || eh > 23 || sm > 59 || em > 59) return null;
+  return { start: pad2(sh) + ":" + pad2(sm), end: pad2(eh) + ":" + pad2(em) };
+}
+
+async function getQuiet(env) {
+  let q = null;
+  try {
+    if (env.KV) {
+      const raw = await env.KV.get(QUIET_KEY);
+      if (raw) q = JSON.parse(raw);
+    }
+  } catch (e) { q = null; }
+  const start = q && parseHHMM(q.start) != null ? q.start : QUIET_DEFAULT.start;
+  const end = q && parseHHMM(q.end) != null ? q.end : QUIET_DEFAULT.end;
+  const enabled = q && q.enabled != null ? !!q.enabled : QUIET_DEFAULT.enabled;
+  return { enabled, start, end, startMin: parseHHMM(start), endMin: parseHHMM(end) };
+}
+
+async function saveQuiet(env, q) {
+  await env.KV.put(QUIET_KEY, JSON.stringify({ enabled: !!q.enabled, start: q.start, end: q.end }));
+}
+
+function inQuiet(q, mins) {
+  if (!q || !q.enabled || q.startMin == null || q.endMin == null || q.startMin === q.endMin) return false;
+  if (q.startMin < q.endMin) return mins >= q.startMin && mins < q.endMin;
+  return mins >= q.startMin || mins < q.endMin; // overnight window
+}
+
+function quietLabel(q) {
+  return q && q.enabled ? (q.start + "–" + q.end + " PKT") : "off";
+}
+
 function addDaysIso(iso, n) {
   const d = new Date(iso + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);
@@ -601,12 +663,15 @@ const HELP =
   "<code>/list</code> · <code>/stop 1</code> · <code>/stop all</code>\n\n" +
   "<b>Urgent (har minute)</b>\n" +
   "<code>/urgent 1 60</code> — watch #1 har minute, 60 minute tak\n\n" +
+  "<b>Quiet hours (default 02:00–09:00 PKT)</b>\n" +
+  "<code>/quiet</code> — status · <code>/quiet on</code> · <code>/quiet off</code>\n" +
+  "<code>/quiet 02:00-09:00</code> — custom window (Pakistan time)\n\n" +
   "<b>Book link</b> <code>/book 1</code> · <b>Budget</b> <code>/budget</code>\n\n" +
   "<b>Team (dono ko alerts)</b>\n" +
   "<code>/id</code> — apna chat ID\n" +
   "Owner: <code>/share 123456789</code> — member add (us ka ID)\n" +
   "<code>/share</code> — team list · <code>/unshare 123456789</code> — remove\n\n" +
-  "<i>Har price check = 1 Ignav search. /list /stop /budget /help = 0 searches.</i>";
+  "<i>Har check = 1 Ignav search. 30+ min watches par har check ke baad price update; chhote/urgent par sirf target/5% alerts. /list /stop /budget /quiet /help = 0 searches.</i>";
 
 async function doPrice(env, chat, r, extra, flight) {
   const want = String(flight || "").toUpperCase().replace(/\s/g, "");
@@ -1030,6 +1095,46 @@ async function cmdBudget(env, chat, arg) {
     "<i>Ignav free allowance 1,000 searches (one-time). Har minute check = 60/hour.</i>");
 }
 
+async function cmdQuiet(env, chat, args) {
+  const owner = await teamChat(env);
+  const q = await getQuiet(env);
+  const arg = String((args && args[0]) || "").trim().toLowerCase();
+  const isOwner = !owner || String(owner) === String(chat);
+
+  if (!arg) {
+    return send(env, chat,
+      "🌙 <b>Quiet hours</b>\n" +
+      "Status: <b>" + (q.enabled ? "ON" : "OFF") + "</b>" +
+      (q.enabled ? " · " + esc(q.start + "–" + q.end + " PKT") : "") + "\n" +
+      "<i>Is waqt koi automatic check nahi hota — Ignav searches bachti hain.</i>\n\n" +
+      (isOwner
+        ? "<code>/quiet on</code> · <code>/quiet off</code>\n<code>/quiet 02:00-09:00</code> (Pakistan time)"
+        : "Sirf owner quiet hours change kar sakta hai."));
+  }
+  if (!isOwner) return send(env, chat, "Sirf owner quiet hours change kar sakta hai.");
+
+  if (arg === "on" || arg === "off") {
+    q.enabled = arg === "on";
+    await saveQuiet(env, q);
+    return send(env, chat,
+      "🌙 Quiet hours <b>" + (q.enabled ? "ON" : "OFF") + "</b>" +
+      (q.enabled ? " · " + esc(q.start + "–" + q.end + " PKT") : "") + ".");
+  }
+
+  const range = parseQuietRange(arg);
+  if (range) {
+    q.enabled = true;
+    q.start = range.start;
+    q.end = range.end;
+    await saveQuiet(env, q);
+    return send(env, chat,
+      "🌙 Quiet hours <b>ON</b> · " + esc(q.start + "–" + q.end + " PKT") + ".\n" +
+      "<i>Is waqt koi automatic check nahi hoga.</i>");
+  }
+
+  return send(env, chat, "Misaal: <code>/quiet on</code> · <code>/quiet off</code> · <code>/quiet 02:00-09:00</code>");
+}
+
 async function cmdShare(env, chat, args) {
   const owner = await teamChat(env);
   if (!owner || String(owner) !== String(chat)) {
@@ -1145,6 +1250,7 @@ async function handleUpdate(env, upd) {
   if (cmd === "/resume") return cmdPause(env, chat, args[0], false);
   if (cmd === "/book" || cmd === "/booking") return cmdBook(env, chat, args[0]);
   if (cmd === "/budget" || cmd === "/usage") return cmdBudget(env, chat, args[0]);
+  if (cmd === "/quiet" || cmd === "/night") return cmdQuiet(env, chat, args);
 
   // Anything that is not a command is treated as a normal message:
   // "DXB to KHI 15 December", "KHI UET 15-12-2026 har ghantay", "kal raat 10 baje tak" ...
@@ -1179,8 +1285,29 @@ function alertText(w, best, old) {
   return s;
 }
 
+function updateText(w, best, old) {
+  const p = best.price || {};
+  let s = "⏱ <b>Price update</b> — watch #" + w.id + "\n" + routeText(w) + "\n\n";
+  s += "Current: <b>" + esc(money(p.amount, p.currency)) + "</b>";
+  if (old != null && Number(old) > 0) {
+    const diff = Number(p.amount) - Number(old);
+    const pct = Math.abs((diff / Number(old)) * 100);
+    s += "\nPrevious: " + esc(money(old, p.currency));
+    if (Math.abs(diff) >= 1) s += " (" + (diff < 0 ? "▼ " : "▲ ") + pct.toFixed(1) + "%)";
+    else s += " (no change)";
+  }
+  if (w.target) s += "\nTarget: " + esc(money(w.target, p.currency));
+  s += "\n" + legLine(best.outbound, "Out");
+  if (best.inbound) s += "\n" + legLine(best.inbound, "Ret");
+  s += "\n\n🕒 " + pktNowText() + " · source: Ignav · every " + (w.every || DEFAULT_EVERY) + " min";
+  s += "\n<code>/list</code> · <code>/pause " + w.id + "</code> · <code>/stop " + w.id + "</code>";
+  return s;
+}
+
 async function checkAll(env) {
   if (!env.KV) return;
+  const quiet = await getQuiet(env);
+  const nowMin = pktMinutes();
   const list = await env.KV.list({ prefix: "w:", limit: 100 });
   const now = Date.now();
   for (const k of list.keys) {
@@ -1189,6 +1316,7 @@ async function checkAll(env) {
     let w = null;
     try { w = JSON.parse(raw); } catch (e) { continue; }
     if (!w || !w.chat) continue;
+    if (inQuiet(quiet, nowMin)) continue;
 
     const ttl = { expirationTtl: WATCH_TTL };
 
@@ -1244,14 +1372,18 @@ async function checkAll(env) {
     const firstBelow = target > 0 && amount <= target && !(w.lastAlertAmount != null && Number(w.lastAlertAmount) <= target);
     const dropped = old != null && amount < old && amount <= old * (1 - DROP_PCT);
     const cooldownOk = now - (w.lastAlertAt || 0) > 10 * 60000;
+    const alertNow = (firstBelow || dropped) && cooldownOk;
 
     await env.KV.put(k.name, JSON.stringify(w), ttl);
 
-    if ((firstBelow || dropped) && cooldownOk) {
+    if (alertNow) {
       w.lastAlertAt = now;
       w.lastAlertAmount = amount;
       await env.KV.put(k.name, JSON.stringify(w), ttl);
       try { await notifyAll(env, alertText(w, best, old)); } catch (e) { /* ignore */ }
+    } else if (every >= PERIODIC_MIN_EVERY && !w.urgentUntil) {
+      // The request has already been spent — send the price it saw.
+      try { await notifyAll(env, updateText(w, best, old)); } catch (e) { /* ignore */ }
     }
   }
 }
@@ -1325,6 +1457,9 @@ async function statusPage(env) {
   rows.push("<li>Ignav key: " + (env.IGNAV_API_KEY ? "<span class=\"ok\">set</span>" : "<span class=\"bad\">missing</span>") + "</li>");
   rows.push("<li>Telegram token: " + (env.TELEGRAM_BOT_TOKEN ? "<span class=\"ok\">set</span>" : "<span class=\"bad\">missing</span>") + "</li>");
   rows.push("<li>KV binding (KV): " + (env.KV ? "<span class=\"ok\">ok</span>" : "<span class=\"bad\">missing</span>") + "</li>");
+  let quiet = null;
+  try { quiet = await getQuiet(env); } catch (e) { quiet = null; }
+  rows.push("<li>Quiet hours: " + (quiet && quiet.enabled ? "<span class=\"ok\">on</span> " + esc(quiet.start + "–" + quiet.end + " PKT") : "<span class=\"bad\">off</span>") + "</li>");
   let used = "?", owner = "?", team = [];
   if (env.KV) {
     try { used = Number((await env.KV.get(budgetKey())) || 0); } catch (e) { used = "?"; }
@@ -1341,7 +1476,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.27</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.29</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
