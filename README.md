@@ -134,5 +134,8 @@ Current version: **2.23** (staff portal link saves and syncs immediately; partia
 - Every fare and alert shows the check time (PKT) and the source (Ignav, verified only).
 - App proxy now has its own best-effort daily counter (`MAX_DAILY_PROXY`, default 200) and an optional `ALLOWED_ORIGIN` check, so the public `/fares` route cannot silently drain the whole Ignav allowance. The Ignav dashboard spending limit remains the hard stop.
 
+## Invoice overnight arrival (v2.26)
+- Invoice ab arrival ki apni date dikhata hai. Agar flight raat ko utarti hai (arrival time departure se chhota, e.g. 11:05 PM → 2:05 AM), to arrival `02/12/26 (+1)` — agle din — print hoti hai, departure ki date nahi.
+
 ## Version
-Current version: **2.25**.
+Current version: **2.26**.

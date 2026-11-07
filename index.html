@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.25</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.26</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -348,7 +348,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.25";
+var APP_VER = "2.26";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -2264,6 +2264,31 @@ function invTimeTxt(t){
   h = h % 12 || 12;
   return h + ":" + m + " " + ap;
 }
+/* Arrival date: agar flight raat ko utti hai (arrival time departure se chhota),
+   to arrival agle din hoti hai — 23:05 (1 Dec) -> 02:05 (2 Dec). */
+function invIsoAddDays(iso, n){
+  var m = String(iso||"").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return "";
+  var dt = new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  if(isNaN(dt.getTime())) return "";
+  dt.setDate(dt.getDate() + (Number(n)||0));
+  return dt.getFullYear() + "-" + ("0"+(dt.getMonth()+1)).slice(-2) + "-" + ("0"+dt.getDate()).slice(-2);
+}
+function invArrDateInfo(leg){
+  if(!leg) return null;
+  var iso = String(leg.date||"").slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)) iso = isoDate(leg.dateTxt);
+  if(!iso) return null;
+  var dep = parseTimeInput(leg.time || leg.timeTxt || "");
+  var arr = parseTimeInput(leg.arr || leg.arrTxt || "");
+  var days = 0;
+  if(dep && arr){
+    var t1 = Number(dep.slice(0,2))*60 + Number(dep.slice(3,5));
+    var t2 = Number(arr.slice(0,2))*60 + Number(arr.slice(3,5));
+    if(t2 < t1) days = 1;
+  }
+  return { iso: invIsoAddDays(iso, days), days: days };
+}
 var INV_NR_ALWAYS = ["9P","G9"];
 function invAlwaysNR(code){ return INV_NR_ALWAYS.indexOf(String(code||"").toUpperCase()) >= 0; }
 function invFlightBlock(leg, title, seats){
@@ -2279,13 +2304,17 @@ function invFlightBlock(leg, title, seats){
     var fromAir = airportFind(l.from), toAir = airportFind(l.to);
     var fromTxt = fromAir ? (fromAir.name + " (" + l.from + ")") : (fromCity ? (fromCity + " (" + l.from + ")") : l.from);
     var toTxt = toAir ? (toAir.name + " (" + l.to + ")") : (toCity ? (toCity + " (" + l.to + ")") : l.to);
-    var dateTxt = legDateTxt(l);
+    var depDateTxt = legDateTxt(l);
+    var arrInfo = invArrDateInfo(l);
+    var arrDateTxt = (arrInfo && arrInfo.iso)
+      ? (dmy(arrInfo.iso) + (arrInfo.days ? " (+1)" : ""))
+      : depDateTxt;
     var depTime = l.timeTxt || invTimeTxt(l.time);
     var arrTime = l.arrTxt || invTimeTxt(l.arr);
     return '<table style="width:100%; border-collapse:collapse;"><tr>'
       + '<td style="width:41%; vertical-align:top; text-align:left; padding:0;">'
       + (depTime ? '<div style="font-size:20px; font-weight:800; line-height:1.15; color:#0f172a; white-space:nowrap;">'+esc(depTime)+'</div>' : '')
-      + (dateTxt ? '<div style="font-size:11.5px; font-weight:700; color:#475569; margin-top:2px;">'+esc(dateTxt)+'</div>' : '')
+      + (depDateTxt ? '<div style="font-size:11.5px; font-weight:700; color:#475569; margin-top:2px;">'+esc(depDateTxt)+'</div>' : '')
       + '<div style="font-size:11.5px; font-weight:700; color:#64748b; margin-top:3px; line-height:1.35; text-transform:uppercase; word-break:break-word;">'+esc(fromTxt)+'</div>'
       + '</td>'
       + '<td style="width:18%; vertical-align:middle; text-align:center; padding:0 6px;">'
@@ -2296,7 +2325,7 @@ function invFlightBlock(leg, title, seats){
       + '<td style="width:41%; vertical-align:top; text-align:right; padding:0;">'
       + (arrTime ? '<div style="font-size:20px; font-weight:800; line-height:1.15; color:#0f172a; white-space:nowrap;">'+esc(arrTime)+'</div>'
                     : (depTime ? '<div style="font-size:20px; font-weight:800; line-height:1.15;">&nbsp;</div>' : ''))
-      + (dateTxt ? '<div style="font-size:11.5px; font-weight:700; color:#475569; margin-top:2px;">'+esc(dateTxt)+'</div>' : '')
+      + (arrDateTxt ? '<div style="font-size:11.5px; font-weight:700; color:#475569; margin-top:2px;">'+esc(arrDateTxt)+'</div>' : '')
       + '<div style="font-size:11.5px; font-weight:700; color:#64748b; margin-top:3px; line-height:1.35; text-transform:uppercase; word-break:break-word;">'+esc(toTxt)+'</div>'
       + '</td>'
       + '</tr></table>';
@@ -2333,7 +2362,9 @@ function invLayoverHtml(leg1, cx){
   var place = (city && code) ? (city + " (" + code + ")") : (city || code || "connection");
   var txt = "Connection at " + place;
   if(leg1.arr && cx.time && leg1.date && cx.date){
-    var t1 = new Date(leg1.date + "T" + leg1.arr + ":00").getTime();
+    var aInfo = invArrDateInfo(leg1);
+    var arrIso = (aInfo && aInfo.iso) ? aInfo.iso : leg1.date;
+    var t1 = new Date(arrIso + "T" + leg1.arr + ":00").getTime();
     var t2 = new Date(cx.date + "T" + cx.time + ":00").getTime();
     var mins = Math.round((t2 - t1) / 60000);
     if(isFinite(mins) && mins >= 0 && mins <= 2880){
@@ -2746,22 +2777,43 @@ function invCxSet(which, open){
 }
 function invCxAuto(){
   [["out","invCx","invDate"],["ret","invRetCx","invRetDate"]].forEach(function(p){
-    var f = document.getElementById(p[1]+"From"), cd = document.getElementById(p[1]+"Date"), md = document.getElementById(p[2]);
+    var f = document.getElementById(p[1]+"From"), cd = document.getElementById(p[1]+"Date");
     if(f && String(f.value||"").trim()) invCxSet(p[0], true);
     if(cd){
-      if(!cd.value && md && md.value){ cd.value = md.value; syncDateDisplay(cd); }
-      else if(cd.value && md && md.value && cd.value !== md.value) cd.setAttribute("data-manual","1");
+      var autoIso = invCxDateFor(p[0]);
+      if(!cd.value && autoIso){ cd.value = autoIso; syncDateDisplay(cd); }
+      else if(cd.value && autoIso && isoDate(cd.value) !== autoIso) cd.setAttribute("data-manual","1");
     }
   });
+}
+/* Connection date = main departure/return date, +1 din agar pehli flight raat ke baad utarti hai */
+function invCxDateFor(which){
+  var pre = which === "out" ? "invCx" : "invRetCx";
+  var md = document.getElementById(which === "out" ? "invDate" : "invRetDate");
+  var mt = document.getElementById(which === "out" ? "invTime" : "invRetTime");
+  var a1 = document.getElementById(pre + "Arr1");
+  if(!md || !md.value) return "";
+  var iso = isoDate(md.value);
+  if(!iso) return "";
+  var dep = parseTimeInput((mt && mt.value) || "");
+  var arr = parseTimeInput((a1 && a1.value) || "");
+  var days = 0;
+  if(dep && arr){
+    var t1 = Number(dep.slice(0,2))*60 + Number(dep.slice(3,5));
+    var t2 = Number(arr.slice(0,2))*60 + Number(arr.slice(3,5));
+    if(t2 < t1) days = 1;
+  }
+  return invIsoAddDays(iso, days);
 }
 /* Connection date follows the main departure/return date unless the user changed it */
 function invCxSyncDate(which){
   var pre = which === "out" ? "invCx" : "invRetCx";
-  var md = document.getElementById(which === "out" ? "invDate" : "invRetDate");
   var cd = document.getElementById(pre + "Date");
-  if(!md || !cd) return;
+  if(!cd) return;
   if(cd.getAttribute("data-manual") === "1") return;
-  cd.value = md.value || "";
+  var iso = invCxDateFor(which);
+  if(!iso) return;
+  cd.value = iso;
   syncDateDisplay(cd);
 }
 function readInvCx(prefix, mainLeg){
@@ -6666,15 +6718,19 @@ function bind(){
   if(idt) idt.onchange = function(){ invCxSyncDate("out"); };
   var rdt = document.getElementById("invRetDate");
   if(rdt) rdt.onchange = function(){ invCxSyncDate("ret"); };
+  [["invTime","invCxArr1","out"],["invRetTime","invRetCxArr1","ret"]].forEach(function(p){
+    [p[0], p[1]].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.onchange = function(){ invCxSyncDate(p[2]); };
+    });
+  });
   var icd = document.getElementById("invCxDate");
   if(icd) icd.onchange = function(){
-    var md = document.getElementById("invDate");
-    if(md && this.value === md.value) this.removeAttribute("data-manual"); else this.setAttribute("data-manual","1");
+    if(this.value === invCxDateFor("out")) this.removeAttribute("data-manual"); else this.setAttribute("data-manual","1");
   };
   var rcd = document.getElementById("invRetCxDate");
   if(rcd) rcd.onchange = function(){
-    var md2 = document.getElementById("invRetDate");
-    if(md2 && this.value === md2.value) this.removeAttribute("data-manual"); else this.setAttribute("data-manual","1");
+    if(this.value === invCxDateFor("ret")) this.removeAttribute("data-manual"); else this.setAttribute("data-manual","1");
   };
   var ipb = document.getElementById("invPrintBtn");
   if(ipb) ipb.onclick = printInvoice;
