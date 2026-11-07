@@ -137,5 +137,11 @@ Current version: **2.23** (staff portal link saves and syncs immediately; partia
 ## Invoice overnight arrival (v2.26)
 - Invoice ab arrival ki apni date dikhata hai. Agar flight raat ko utarti hai (arrival time departure se chhota, e.g. 11:05 PM → 2:05 AM), to arrival `02/12/26 (+1)` — agle din — print hoti hai, departure ki date nahi.
 
+## Shared price bot (v2.27)
+- Team access: owner `/share <chat_id>` se member add karta hai (`/unshare` se remove, max 10). Member apna ID `/id` se le sakta hai.
+- Ek hi watch list sab members ke liye: koi bhi `/watch`/`/stop`/`/interval` chalaye, sab par asar hota hai.
+- Price alerts, budget/end-time messages aur naya-watch notice **tamam allowed chats** ko jate hain.
+- Worker status page par owner aur team chats dikhte hain; bot version `v2.27`.
+
 ## Version
-Current version: **2.26**.
+Current version: **2.27**.

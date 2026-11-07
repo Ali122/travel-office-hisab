@@ -42,7 +42,9 @@ bhi hai, is liye app ki `Price Lookup` bhi isi URL se kaam karti hai.
    - Sab green hona chahiye. Phir `https://YOUR-WORKER.workers.dev/setup` kholein →
      **✅ Bot connected**.
 8. Telegram mein apna bot kholein → **`/start`** bhejein.
-   Pehla `/start` bot ko aap ke naam lock karta hai; koi doosra insaan use nahi kar sakta.
+   Pehla `/start` bot ko aap ke naam lock karta hai. Team member add karne ke liye
+   us se bot par **`/id`** bhejwayein, phir aap **`/share <uska id>`** bhejein — dono ko
+   alerts jayenge aur dono tracks dekh/edit kar sakte hain.
 
 App mein: **Settings → Flight prices → Worker URL** mein wahi `https://YOUR-WORKER.workers.dev`
 daal kar **Save & test connection** → green badge.
@@ -81,11 +83,32 @@ ke buttons deta hai — mobile se ek tap.
 /stop 1        /stop all
 /book 1                                      airline/OTA booking links
 /budget                                      aaj ke searches
+/id                                          apna chat ID
+/share 123456789                             (owner) team member add
+/share                                       team list
+/unshare 123456789                           (owner) member remove
 ```
 
 Date `01-12-2026`, `2026-12-01`, `15 December`, `today`, `tomorrow`, `kal` — sab chalte hain.
 `until` aur aakhri waqt **Pakistan time** mein hai; waqt poora hone par watch khud band ho jata hai.
 Har fare ke saath **check ka waqt** aur **source (Ignav)** likha hota hai.
+
+### Team / shared access
+- Member pehle bot par `/start` aur `/id` bheje (us ka chat ID milega).
+- Owner `/share <id>` bheje — us member ko welcome message jata hai.
+- Ab dono ke liye **ek hi** watch list hai: koi bhi `/watch` lagaye, sab ko dikhega;
+  price alert, budget warning, end-time message **sab allowed chats** ko jayenge.
+- Owner `/unshare <id>` se access band kar sakta hai. Max 10 members.
+
+### Searches ka hisab (kitni call lagti hai)
+| Kaam | Ignav searches |
+|---|---|
+| Normal price message ya `/price` | **1** |
+| `/watch` banate waqt | **1** (turant price) |
+| Watch ka har interval check | **1** per check |
+| `/list`, `/stop`, `/pause`, `/resume`, `/budget`, `/help`, `/id`, `/share` | **0** |
+
+Misaal: `every=120` + `until` agle din 13:00 → banate waqt 1 call, phir har ~2 ghante par 1 call; waqt poora hote hi watch khud delete ho jata hai (aur message aata hai).
 
 ### Alerts kab aate hain
 - **Target hit**: fare `target=` se kam ya barabar.
@@ -118,7 +141,7 @@ Behtar tareeqa: watch sirf us waqt lagayein jab ticket actually book karwana ho.
 | Problem | Wajah / hal |
 |---|---|
 | Bot jawab nahi deta | `/setup` dobara kholein; Worker → status page par webhook `not set` na ho |
-| `This bot is private` | Pehla `/start` kisi aur ne kiya tha. KV se `owner` key delete karein, phir `/start` |
+| `This bot is private` | Aap allowed list mein nahi. Owner se `/share <aap ka id>` karwayein (apna id `/id` se) |
 | `IGNAV_API_KEY secret is not set` | Worker → Variables and Secrets mein secret add karein |
 | `KV binding ... not set` | Worker → Bindings mein KV namespace, variable name **KV** |
 | `Unauthorized` / 401 from Ignav | Key ghalat ya expire; dashboard se nayi key |
@@ -133,10 +156,11 @@ Behtar tareeqa: watch sirf us waqt lagayein jab ticket actually book karwana ho.
 
 - Bot token aur Ignav key **sirf Worker** par (secrets). App, backup, GitHub sync, share links
   mein kabhi nahi jate.
-- Bot private hai: pehla `/start` owner set karta hai. Chahein to `TELEGRAM_WEBHOOK_SECRET`
+- Bot private rehta hai: pehla `/start` owner set karta hai; baqi log sirf owner ke
+  `/share <id>` ke baad andar aa sakte hain. Chahein to `TELEGRAM_WEBHOOK_SECRET`
   bhi set karein (Telegram ke har request par verify hota hai).
-- Kisi ko bot ka username dein to wo `/start` nahi kar sakta (owner already set) — sirf aap
-  commands chala sakte hain.
+- Shared members poore team ke watches dekh/edit kar sakte hain (jaan bujh kar diya gaya
+  team feature hai) — sirf bharose wale logon ko `/share` karein.
 - App ka proxy (`/fares` wagera) daily `MAX_DAILY_PROXY` se band hota hai, taake koi aur aap ki
   Ignav allowance khatam na kar sake. Ye **best-effort** cap hai: KV mein atomic increment nahi,
   is liye bohat zyada parallel requests par kuch calls cap se nikal sakti hain. **Asal hard stop

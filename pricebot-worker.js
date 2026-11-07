@@ -110,6 +110,50 @@ function budgetCap(env) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Shared access (team)                                                */
+/*   owner  = first chat that sent /start                              */
+/*   share  = extra chat IDs added by the owner with /share <id>       */
+/* Watches live under the owner key, so everyone allowed sees the      */
+/* same list, and every alert goes to all allowed chats.               */
+/* ------------------------------------------------------------------ */
+
+async function teamChat(env) {
+  if (!env.KV) return "";
+  try { return String((await env.KV.get("owner")) || ""); } catch (e) { return ""; }
+}
+
+async function sharedChats(env) {
+  if (!env.KV) return [];
+  let a = [];
+  try { a = JSON.parse((await env.KV.get("share")) || "[]"); } catch (e) { a = []; }
+  if (!Array.isArray(a)) a = [];
+  return a.map(String).filter(Boolean);
+}
+
+async function allowedChats(env) {
+  const owner = await teamChat(env);
+  const list = owner ? [owner] : [];
+  (await sharedChats(env)).forEach(function (c) {
+    if (list.indexOf(c) < 0) list.push(c);
+  });
+  return list;
+}
+
+async function isAllowed(env, chat) {
+  return (await allowedChats(env)).indexOf(String(chat)) >= 0;
+}
+
+async function notifyAll(env, html, extra) {
+  const list = await allowedChats(env);
+  const sent = [];
+  for (const c of list) {
+    try { await send(env, c, html, extra); sent.push(c); } catch (e) { /* ignore */ }
+  }
+  return sent;
+}
+
+
+/* ------------------------------------------------------------------ */
 /* Ignav                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -557,7 +601,12 @@ const HELP =
   "<code>/list</code> · <code>/stop 1</code> · <code>/stop all</code>\n\n" +
   "<b>Urgent (har minute)</b>\n" +
   "<code>/urgent 1 60</code> — watch #1 har minute, 60 minute tak\n\n" +
-  "<b>Book link</b> <code>/book 1</code> · <b>Budget</b> <code>/budget</code>";
+  "<b>Book link</b> <code>/book 1</code> · <b>Budget</b> <code>/budget</code>\n\n" +
+  "<b>Team (dono ko alerts)</b>\n" +
+  "<code>/id</code> — apna chat ID\n" +
+  "Owner: <code>/share 123456789</code> — member add (us ka ID)\n" +
+  "<code>/share</code> — team list · <code>/unshare 123456789</code> — remove\n\n" +
+  "<i>Har price check = 1 Ignav search. /list /stop /budget /help = 0 searches.</i>";
 
 async function doPrice(env, chat, r, extra, flight) {
   const want = String(flight || "").toUpperCase().replace(/\s/g, "");
@@ -646,10 +695,13 @@ async function createWatch(env, chat, r, o) {
   if (have.length >= MAX_WATCHES) {
     return send(env, chat, "Max " + MAX_WATCHES + " watches. Pehle <code>/stop ID</code> karein.");
   }
+  const team = (await teamChat(env)) || String(chat);
   const everyRaw = Number((o && o.every) || DEFAULT_EVERY);
   const every = Math.min(1440, Math.max(1, Math.floor(isFinite(everyRaw) ? everyRaw : DEFAULT_EVERY)));
   const target = Number((o && o.target) || 0);
-  const id = String(Math.floor(100 + Math.random() * 900));
+  const usedIds = have.map(function (x) { return String(x.id); });
+  let id = "";
+  do { id = String(Math.floor(100 + Math.random() * 900)); } while (usedIds.indexOf(id) >= 0);
   const w = {
     id: id, chat: String(chat), origin: r.origin, destination: r.destination,
     departure: r.departure, ret: r.ret, adults: r.adults, cabin: r.cabin,
@@ -658,7 +710,7 @@ async function createWatch(env, chat, r, o) {
     target: isFinite(target) && target > 0 ? target : 0,
     createdAt: Date.now(), lastCheckAt: 0, lastAmount: null, lastAlertAt: 0, lastAlertAmount: null
   };
-  await env.KV.put("w:" + chat + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+  await env.KV.put("w:" + team + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
 
   let nowTxt = "";
   try {
@@ -670,7 +722,7 @@ async function createWatch(env, chat, r, o) {
       w.lastCurrency = best.price.currency || "PKR";
       w.lastBestId = best.ignav_id || "";
       w.lastCheckAt = Date.now();
-      await env.KV.put("w:" + chat + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+      await env.KV.put("w:" + team + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
       nowTxt = "\n\nAbhi sab se sasta: <b>" + esc(money(w.lastAmount, w.lastCurrency)) + "</b>" +
         (best.outbound && best.outbound.segments && best.outbound.segments[0]
           ? " — " + esc(String(best.outbound.segments[0].marketing_carrier_code || "") + " " + String(best.outbound.segments[0].flight_number || ""))
@@ -690,6 +742,15 @@ async function createWatch(env, chat, r, o) {
     nowTxt +
     "\n\nNeeche se interval badlein ya band karein.\nUrgent (har minute): <code>/urgent " + id + " 60</code>",
     { reply_markup: intervalButtons(id) });
+
+  const teamList = await allowedChats(env);
+  for (const c of teamList) {
+    if (String(c) === String(chat)) continue;
+    try {
+      await send(env, c, "👥 Naya watch #" + id + " add hua — " + routeTitle(w) +
+        " · har " + every + " min" + (w.until ? " · band " + esc(untilLabel(w.until)) + " PKT" : ""));
+    } catch (e) { /* ignore */ }
+  }
   return id;
 }
 
@@ -740,7 +801,8 @@ async function handleNatural(env, chat, text) {
 
 async function watches(env, chat) {
   const out = [];
-  const list = await env.KV.list({ prefix: "w:" + chat + ":" });
+  const team = (await teamChat(env)) || String(chat);
+  const list = await env.KV.list({ prefix: "w:" + team + ":" });
   for (const k of list.keys) {
     const raw = await env.KV.get(k.name);
     if (!raw) continue;
@@ -772,23 +834,25 @@ async function cmdList(env, chat) {
 
 async function cmdStop(env, chat, arg) {
   const ws = await watches(env, chat);
+  const team = (await teamChat(env)) || String(chat);
   if (!arg) return send(env, chat, "ID dein: <code>/stop 1</code> ya <code>/stop all</code>.");
   if (/^all$/i.test(arg)) {
-    for (const w of ws) await env.KV.delete("w:" + chat + ":" + w.id);
+    for (const w of ws) await env.KV.delete("w:" + team + ":" + w.id);
     return send(env, chat, "🗑 " + ws.length + " watch band kar diye.");
   }
   const id = String(arg).replace(/[^0-9]/g, "");
   if (!ws.some(function (w) { return String(w.id) === id; })) {
     return send(env, chat, "Watch #" + esc(arg) + " nahi mila. <code>/list</code> dekhein.");
   }
-  await env.KV.delete("w:" + chat + ":" + id);
+  await env.KV.delete("w:" + team + ":" + id);
   await send(env, chat, "🗑 Watch #" + id + " band.");
 }
 
 async function cmdPause(env, chat, arg, on) {
   const id = String(arg || "").replace(/[^0-9]/g, "");
   if (!id) return send(env, chat, "Misaal: <code>/pause 123</code> ya <code>/resume 123</code>");
-  const key = "w:" + chat + ":" + id;
+  const team = (await teamChat(env)) || String(chat);
+  const key = "w:" + team + ":" + id;
   const raw = await env.KV.get(key);
   if (!raw) return send(env, chat, "Watch #" + id + " nahi mila. <code>/list</code> dekhein.");
   const w = JSON.parse(raw);
@@ -803,19 +867,19 @@ async function handleCallback(env, cq) {
   const data = String((cq && cq.data) || "");
   if (!chat) return;
   if (!env.KV) return;
-  const owner = await env.KV.get("owner");
-  if (!owner || String(owner) !== String(chat)) {
+  if (!(await isAllowed(env, chat))) {
     try { await tg(env, "answerCallbackQuery", { callback_query_id: cq.id, text: "Private bot", show_alert: true }); } catch (e) { /* ignore */ }
     return;
   }
   try { await tg(env, "answerCallbackQuery", { callback_query_id: cq.id, text: "OK" }); } catch (e) { /* ignore */ }
+  const team = (await teamChat(env)) || String(chat);
   const parts = data.split(":");
   const kind = parts[0];
 
   if (kind === "iv") {
     const id = String(parts[1] || "").replace(/[^0-9]/g, "");
     const mins = Number(parts[2]);
-    const key = "w:" + chat + ":" + id;
+    const key = "w:" + team + ":" + id;
     const raw = await env.KV.get(key);
     if (!raw) return send(env, chat, "Watch nahi mila. <code>/list</code> dekhein.");
     const w = JSON.parse(raw);
@@ -830,13 +894,13 @@ async function handleCallback(env, cq) {
 
   if (kind === "st") {
     const id = String(parts[1] || "").replace(/[^0-9]/g, "");
-    await env.KV.delete("w:" + chat + ":" + id);
+    await env.KV.delete("w:" + team + ":" + id);
     return send(env, chat, "🗑 Watch #" + id + " band.");
   }
 
   if (kind === "ps") {
     const id = String(parts[1] || "").replace(/[^0-9]/g, "");
-    const key = "w:" + chat + ":" + id;
+    const key = "w:" + team + ":" + id;
     const raw = await env.KV.get(key);
     if (!raw) return send(env, chat, "Watch nahi mila.");
     const w = JSON.parse(raw);
@@ -900,7 +964,8 @@ async function cmdUrgent(env, chat, args) {
   const id = String(args[0] || "").replace(/[^0-9]/g, "");
   const mins = Math.min(720, Math.max(1, Math.floor(Number(args[1] || 60)) || 60));
   if (!id) return send(env, chat, "Misaal: <code>/urgent 1 60</code> (watch #1, 60 minute har minute check)");
-  const key = "w:" + chat + ":" + id;
+  const team = (await teamChat(env)) || String(chat);
+  const key = "w:" + team + ":" + id;
   const raw = await env.KV.get(key);
   if (!raw) return send(env, chat, "Watch #" + id + " nahi mila. <code>/list</code> dekhein.");
   const w = JSON.parse(raw);
@@ -918,7 +983,8 @@ async function cmdInterval(env, chat, args) {
   if (!id || !Number.isInteger(mins) || mins < 1 || mins > 1440) {
     return send(env, chat, 'Misaal: <code>/interval 123 60</code> (har 60 minute).');
   }
-  const key = 'w:' + chat + ':' + id;
+  const team = (await teamChat(env)) || String(chat);
+  const key = 'w:' + team + ':' + id;
   const raw = await env.KV.get(key);
   if (!raw) return send(env, chat, 'Watch nahi mila. <code>/list</code> dekhein.');
   const w = JSON.parse(raw);
@@ -964,6 +1030,68 @@ async function cmdBudget(env, chat, arg) {
     "<i>Ignav free allowance 1,000 searches (one-time). Har minute check = 60/hour.</i>");
 }
 
+async function cmdShare(env, chat, args) {
+  const owner = await teamChat(env);
+  if (!owner || String(owner) !== String(chat)) {
+    const extra = await sharedChats(env);
+    const list = await allowedChats(env);
+    return send(env, chat,
+      "👥 <b>Team access</b>\n" +
+      list.map(function (c) {
+        const role = String(c) === String(owner) ? " (owner)" : "";
+        return "• <code>" + esc(c) + "</code>" + role;
+      }).join("\n") +
+      (extra.length ? "" : "\n\nSirf aap abhi allowed hain.") +
+      "\n\n<i>Naya member add sirf owner kar sakta hai: <code>/share ID</code></i>");
+  }
+
+  const raw = String((args && args[0]) || "").replace(/[^0-9-]/g, "");
+  if (!raw) {
+    const list = await allowedChats(env);
+    let msg = "👥 <b>Team access</b>\n" + list.map(function (c) {
+      return "• <code>" + esc(c) + "</code>" + (String(c) === String(owner) ? " (owner)" : "");
+    }).join("\n");
+    msg += "\n\n<b>Add:</b> <code>/share 123456789</code>\n<b>Remove:</b> <code>/unshare 123456789</code>";
+    msg += "\n<i>Sarmad se kahein bot par <code>/id</code> bheje, phir wo number yahan add karein.</i>";
+    return send(env, chat, msg);
+  }
+
+  const id = String(Number(raw));
+  if (!/^-?\d+$/.test(id)) return send(env, chat, "Chat ID sahi nahi. Misaal: <code>/share 123456789</code>");
+  if (id === String(owner)) return send(env, chat, "Ye aap ka hi chat ID hai (owner).");
+
+  const list = await sharedChats(env);
+  if (list.indexOf(id) >= 0) return send(env, chat, "✅ <code>" + esc(id) + "</code> pehle se team mein hai.");
+
+  if (list.length >= 10) return send(env, chat, "Max 10 team members. Pehle <code>/unshare ID</code> karein.");
+
+  list.push(id);
+  await env.KV.put("share", JSON.stringify(list));
+
+  await send(env, chat, "✅ <code>" + esc(id) + "</code> team mein add ho gaya.\nAb us chat ko bhi alerts jayenge aur wo <code>/list</code>, <code>/watch</code>, <code>/stop</code> sab chala sakta hai.");
+  try {
+    await send(env, id, "👋 <b>AB Travels price bot — access mil gaya.</b>\n\nAb aap bhi tracks dekh sakte hain aur price alerts aap ko bhi aayenge.\n\n<code>/list</code> — sab tracks\n<code>/price DXB KHI 15-12-2026</code> — price\n<code>/help</code> — poori madad");
+  } catch (e) {
+    await send(env, chat, "⚠️ Add to ho gaya, lekin us chat ko welcome message nahi gaya (shayad us ne bot ko /start nahi kiya). Us se kahein pehle bot par <code>/start</code> bheje.");
+  }
+}
+
+async function cmdUnshare(env, chat, arg) {
+  const owner = await teamChat(env);
+  if (!owner || String(owner) !== String(chat)) {
+    return send(env, chat, "Sirf owner team members remove kar sakta hai.");
+  }
+  const raw = String(arg || "").replace(/[^0-9-]/g, "");
+  if (!raw) return send(env, chat, "Misaal: <code>/unshare 123456789</code>");
+  const id = String(Number(raw));
+  const list = await sharedChats(env);
+  const next = list.filter(function (c) { return c !== id; });
+  if (next.length === list.length) return send(env, chat, "Ye ID team mein nahi mila. <code>/share</code> se list dekhein.");
+  await env.KV.put("share", JSON.stringify(next));
+  await send(env, chat, "🗑 <code>" + esc(id) + "</code> team se remove ho gaya.");
+  try { await send(env, id, "🔒 Aap ka access band kar diya gaya hai."); } catch (e) { /* ignore */ }
+}
+
 /* ------------------------------------------------------------------ */
 /* webhook + scheduler                                                 */
 /* ------------------------------------------------------------------ */
@@ -980,25 +1108,32 @@ async function handleUpdate(env, upd) {
   const cmd = parsed.cmd;
 
   if (cmd === "/start" || cmd === "start") {
-    const owner = await env.KV.get("owner");
+    const owner = await teamChat(env);
     if (!owner) {
       await env.KV.put("owner", String(chat));
-      await send(env, chat, "👋 <b>AB Travels price bot ready.</b>\n\nYe bot sirf aap ka hai — aap ka chat lock ho gaya hai.\n\n" + HELP);
-    } else if (String(owner) === String(chat)) {
+      await send(env, chat, "👋 <b>AB Travels price bot ready.</b>\n\nYe bot sirf aap ka hai — aap ka chat lock ho gaya hai.\nTeam member add karne ke liye: <code>/share ID</code>.\n\n" + HELP);
+    } else if (await isAllowed(env, chat)) {
       await send(env, chat, "👋 Welcome back.\n\n" + HELP);
     } else {
-      await send(env, chat, "🔒 This bot is private.");
+      await send(env, chat, "🔒 This bot is private.\n\nApna chat ID: <code>" + esc(chat) + "</code>\nOwner se kahein: <code>/share " + esc(chat) + "</code>");
     }
     return;
   }
   if (cmd === "/help" || cmd === "help" || cmd === "/commands") return send(env, chat, HELP);
   if (cmd === "/id") return send(env, chat, "Chat ID: <code>" + esc(chat) + "</code>");
 
-  const owner = await env.KV.get("owner");
-  if (!owner) return send(env, chat, "Pehle <code>/start</code> bhejein — bot aap ke naam lock ho jayega.");
-  if (String(owner) !== String(chat)) return send(env, chat, "🔒 This bot is private.");
-
   const args = parsed.args.slice();
+
+  // Team commands answer everyone (owner-only actions are enforced inside),
+  // so a new member can always see who has access.
+  if (cmd === "/share" || cmd === "/team" || cmd === "/access") return cmdShare(env, chat, args);
+  if (cmd === "/unshare") return cmdUnshare(env, chat, args[0]);
+
+  const owner = await teamChat(env);
+  if (!owner) return send(env, chat, "Pehle <code>/start</code> bhejein — bot aap ke naam lock ho jayega.");
+  if (!(await isAllowed(env, chat))) {
+    return send(env, chat, "🔒 This bot is private.\n\nApna chat ID: <code>" + esc(chat) + "</code>\nOwner se kahein: <code>/share " + esc(chat) + "</code>");
+  }
 
   if (cmd === "/price" || cmd === "/fare" || cmd === "/fares") return cmdPrice(env, chat, args, parsed.opts);
   if (cmd === "/watch" || cmd === "/track") return cmdWatch(env, chat, args, parsed.opts);
@@ -1059,7 +1194,7 @@ async function checkAll(env) {
 
     if (w.until && now >= w.until) {
       await env.KV.delete(k.name);
-      try { await send(env, w.chat, '⏱ Watch #' + esc(w.id) + ' ka waqt poora; tracking band.'); } catch (e) { /* ignore */ }
+      try { await notifyAll(env, '⏱ Watch #' + esc(w.id) + ' ka waqt poora; tracking band.'); } catch (e) { /* ignore */ }
       continue;
     }
 
@@ -1068,7 +1203,7 @@ async function checkAll(env) {
       w.every = w.baseEvery || DEFAULT_EVERY;
       w.urgentUntil = 0;
       await env.KV.put(k.name, JSON.stringify(w), ttl);
-      await send(env, w.chat, "⏱ Urgent mode khatam — watch #" + w.id + " ab har " + w.every + " min. /urgent " + w.id + " 60 se dobara on.");
+      await notifyAll(env, "⏱ Urgent mode khatam — watch #" + w.id + " ab har " + w.every + " min. /urgent " + w.id + " 60 se dobara on.");
       continue;
     }
 
@@ -1086,7 +1221,7 @@ async function checkAll(env) {
       if (e && e.code !== "BUDGET" && now - (w.lastErrorAt || 0) > 3600000) {
         w.lastErrorAt = now;
         await env.KV.put(k.name, JSON.stringify(w), ttl);
-        try { await send(env, w.chat, "⚠️ Watch #" + w.id + " check fail: " + esc(e.message)); } catch (e2) { /* ignore */ }
+        try { await notifyAll(env, "⚠️ Watch #" + w.id + " check fail: " + esc(e.message)); } catch (e2) { /* ignore */ }
       }
       continue;
     }
@@ -1116,7 +1251,7 @@ async function checkAll(env) {
       w.lastAlertAt = now;
       w.lastAlertAmount = amount;
       await env.KV.put(k.name, JSON.stringify(w), ttl);
-      try { await send(env, w.chat, alertText(w, best, old)); } catch (e) { /* ignore */ }
+      try { await notifyAll(env, alertText(w, best, old)); } catch (e) { /* ignore */ }
     }
   }
 }
@@ -1190,10 +1325,11 @@ async function statusPage(env) {
   rows.push("<li>Ignav key: " + (env.IGNAV_API_KEY ? "<span class=\"ok\">set</span>" : "<span class=\"bad\">missing</span>") + "</li>");
   rows.push("<li>Telegram token: " + (env.TELEGRAM_BOT_TOKEN ? "<span class=\"ok\">set</span>" : "<span class=\"bad\">missing</span>") + "</li>");
   rows.push("<li>KV binding (KV): " + (env.KV ? "<span class=\"ok\">ok</span>" : "<span class=\"bad\">missing</span>") + "</li>");
-  let used = "?", owner = "?";
+  let used = "?", owner = "?", team = [];
   if (env.KV) {
     try { used = Number((await env.KV.get(budgetKey())) || 0); } catch (e) { used = "?"; }
     try { owner = (await env.KV.get("owner")) || "(none — send /start)"; } catch (e) { owner = "?"; }
+    try { team = await allowedChats(env); } catch (e) { team = []; }
   }
   let info = "";
   if (env.TELEGRAM_BOT_TOKEN) {
@@ -1205,9 +1341,10 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.25</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.27</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
-    "<li>Owner chat: <code>" + esc(owner) + "</code></li></ul>" +
+    "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
+    "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
     "<p>" + (env.TELEGRAM_BOT_TOKEN ? (info.indexOf("not set") >= 0 ? "<a href=\"/setup\">Connect the bot</a>" : "Bot connected.") : "") + "</p>" +
     "<p><small>App proxy: <code>/health</code> <code>/fares</code> <code>/round-trip</code> <code>/booking-links</code></small></p>");
 }
