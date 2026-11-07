@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.36</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.37</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.36";
+var APP_VER = "2.37";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -434,7 +434,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", staffPortalUrl:"https://staff-abtravels.umair5075.workers.dev", ntfyTopic:"", ntfyServer:"", ntfyOn:true, githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", staffPortalUrl:"https://staff-abtravels.umair5075.workers.dev", tgBotToken:"", tgChatIds:"", tgNotifyOn:true, githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -3104,7 +3104,7 @@ function invSaveToFiles(){
   }).then(function(){
     saveNow(function(){});
     try{
-      ntfySend("Invoice saved to Ticket Files",
+      tgSend("Invoice saved to Ticket Files",
         [d.name || (d.paxNames || [])[0] || "", d.pnr ? ("PNR " + d.pnr) : "", "by " + fileDeviceName()]
           .filter(Boolean).join(" · "), { priority:"high", tags:"receipt" });
     }catch(e){}
@@ -5991,24 +5991,21 @@ function viewSettings(){
         + '<div class="hint">Agar portal abhi deploy nahi hua: computer par <code>staff-worker</code> folder me <code>npm.cmd install</code>, <code>npx.cmd wrangler login</code>, phir secrets (<code>STAFF_PASSWORD</code>, <code>GITHUB_TOKEN</code>) set kar ke <code>npm.cmd run deploy</code> — URL <code>https://staff-abtravels.xxx.workers.dev</code> ban jayega. Details: staff-worker/README.md</div>'
         + '</div>';
 
-  html += '<div class="card"><h2>🔔 Team notifications (free push)</h2>'
-        + '<div class="hint" style="margin-top:0;">When you add a ticket or upload a file, every subscribed phone gets a notification. Each device subscribes once with the free <b>ntfy</b> app — no account, email or OTP. Staff bookings and payments also notify.</div>'
-        + '<label>Notification server</label>'
-        + '<input id="setNtfyServer" value="'+esc(st.ntfyServer||"")+'" placeholder="https://ntfy.sh" autocomplete="off" style="font-family:monospace;">'
-        + '<div class="hint">Default <code>https://ntfy.sh</code>. Agar us network par ntfy.sh block ho (TLS error / "check internet"), to <code>https://ntfy.envs.net</code> ya <code>https://ntfy.adminforge.de</code> daal kar Save karein — phone ke ntfy app mein bhi wahi server add karein.</div>'
-        + '<label>Notification topic (keep it secret)</label>'
-        + '<input id="setNtfyTopic" value="'+esc(st.ntfyTopic||"")+'" placeholder="abtravels-xxxxxxxx" autocomplete="off" style="font-family:monospace;">'
+  html += '<div class="card"><h2>🤖 Team notifications (Telegram)</h2>'
+        + '<div class="hint" style="margin-top:0;">Naya ticket, file ya invoice save hone par team ke sab phones par <b>Telegram</b> notification aayega. ntfy ka system hat gaya he — Telegram push bilkul reliable he, battery settings ki zaroorat nahi.</div>'
+        + '<label>Bot token (@BotFather se)</label>'
+        + '<input type="password" id="setTgToken" value="'+esc(st.tgBotToken||"")+'" placeholder="123456:ABC-DEF…" autocomplete="off" style="font-family:monospace;">'
+        + '<div class="hint">Telegram → @BotFather → <code>/newbot</code> → token copy karein. (Price bot ka token pehle se he to wahan se bhi le sakte hain.)</div>'
+        + '<label style="margin-top:8px;">Chat IDs (comma se alag)</label>'
+        + '<input id="setTgChats" value="'+esc(st.tgChatIds||"")+'" placeholder="123456789, 987654321" autocomplete="off" style="font-family:monospace;">'
+        + '<div class="hint">Chat ID nikalne ke liye: pehle apne bot ko Telegram se koi message bhejein, phir browser me kholein: <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> — <code>"chat":{"id":123…}</code> wala number copy karein. Har team member apni ID isi tarah nikal kar de.</div>'
         + '<div class="row" style="margin-top:8px; align-items:center;">'
-        +   '<button class="btn small primary" id="ntfySave" style="flex:1.2; margin-top:0;">💾 Save &amp; send test</button>'
-        +   '<button class="btn small" id="ntfyNew" style="flex:1; margin-top:0;">🎲 New topic</button>'
+        +   '<button class="btn small primary" id="tgSave" style="flex:1.2; margin-top:0;">💾 Save &amp; send test</button>'
+        +   '<button class="btn small btn-del" id="tgRemove" style="flex:1; margin-top:0;">🚫 Remove</button>'
         + '</div>'
-        + '<div class="row" style="margin-top:8px; align-items:center;">'
-        +   '<button class="btn small" id="ntfyCopyTopic" style="flex:1; margin-top:0;">📋 Copy topic</button>'
-        +   '<button class="btn small" id="ntfyCopyLink" style="flex:1; margin-top:0;">🔗 Copy subscribe link</button>'
-        + '</div>'
-        + '<label style="display:flex; gap:8px; align-items:center; margin-top:10px;"><input type="checkbox" id="setNtfyOn" style="width:auto"'+(st.ntfyOn!==false?' checked':'')+'> Send notifications for new tickets and files</label>'
-        + '<div class="hint" id="ntfyStatus" style="margin-top:8px; font-weight:600;"></div>'
-        + '<div class="hint"><b>Team setup (once per phone):</b> install <b>ntfy</b> from Play Store / App Store → tap <b>+</b> → (agar default nahi to server URL add karein) → paste the topic → <b>Subscribe</b>. On a PC, open the subscribe link and press <b>Subscribe</b>.<br>Anyone who knows the topic can read the notifications — share it only with your team. Notifications include client names and PNRs.</div>'
+        + '<label style="display:flex; gap:8px; align-items:center; margin-top:10px;"><input type="checkbox" id="setTgOn" style="width:auto"'+(st.tgNotifyOn!==false?' checked':'')+'> Send notifications for new tickets and files</label>'
+        + '<div class="hint" id="tgStatus" style="margin-top:8px; font-weight:600;"></div>'
+        + '<div class="hint">Token sirf isi device par save hota he — sync/backup me nahi jata. Team members ko sirf bot ko message kar ke apni chat ID deni he, app ki zaroorat nahi.</div>'
         + '</div>';
 
   html += '<div class="card"><h2>🐙 GitHub Sync — replaces Google Sheet sync</h2>'
@@ -6198,6 +6195,10 @@ function ghStripSecretsForSave(s){
     delete c.settings.githubPat;
     delete c.settings.ignavKey;
     delete c.settings.ignavProxy;   // proxy URL device-specific — shared state mein na jaye
+    delete c.settings.ntfyTopic;    // ntfy system removed (v2.37) — Telegram ab
+    delete c.settings.ntfyServer;
+    delete c.settings.ntfyOn;
+    delete c.settings.tgBotToken;   // Telegram bot token bhi secret — sync/backup me nahi jata
     delete c.settings.ocrApiKey;    // OCR.space key bhi secret hai — sync/backup mein nahi jani chahiye (pull par local se wapas aa jati hai)
   }
   return c;
@@ -6462,52 +6463,26 @@ function fileCaption(f){
   if(f.pnr) bits.push("PNR " + f.pnr);
   return company + (bits.length ? " — " + bits.join(" — ") : "") + " — ticket attached.";
 }
-/* ---------- team push notifications (ntfy — free, no account) ---------- */
-function ntfyBase(){
-  var s = String((S.settings && S.settings.ntfyServer) || "").trim().replace(/\/+$/, "");
-  if(!s) return "https://ntfy.sh";
-  if(!/^https?:\/\//i.test(s)) s = "https://" + s;
-  return s;
+/* ---------- team push notifications (Telegram — free, reliable, no battery drama) ---------- */
+function tgChatIds(){
+  return String((S.settings && S.settings.tgChatIds) || "").trim().split(/[,;\s]+/).filter(Boolean);
 }
-function ntfyTopic(){
-  return String((S.settings && S.settings.ntfyTopic) || "").trim().toLowerCase();
+function tgNotifyOn(){
+  return !(S.settings && S.settings.tgNotifyOn === false);
 }
-function ntfyNewTopic(){
-  return ("abtravels-" + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6))
-    .replace(/[^a-z0-9_-]/g, "").slice(0, 60);
-}
-function ntfySend(title, message, opts){
+function tgSend(title, message, opts){
   opts = opts || {};
-  var topic = ntfyTopic();
-  if(!topic) return Promise.resolve(false);
-  if(!opts.force && S.settings.ntfyOn === false) return Promise.resolve(false);
-  var appUrl = /^https?:/i.test(location.origin) ? (location.origin + location.pathname)
-    : "https://ali122.github.io/travel-office-hisab/";
-  var headers = {
-    "Title": (String(title || "AB Travels").replace(/[^\x20-\x7E]/g, "").slice(0, 80) || "AB Travels"),
-    "Priority": opts.priority || "default",
-    "Tags": opts.tags || "ticket",
-    "Click": appUrl
-  };
-  return fetch(ntfyBase() + "/" + encodeURIComponent(topic), {
-    method: "POST",
-    body: String(message || "").slice(0, 3500),
-    headers: headers
-  }).then(function(r){ return r.ok; }).catch(function(){ return false; });
-}
-function ntfyCopy(text, statusId, okMsg){
-  var done = function(){
-    var s = document.getElementById(statusId);
-    if(s){ s.textContent = okMsg; s.style.color = "var(--green)"; }
-  };
-  var fb = function(){
-    var ta = document.createElement("textarea");
-    ta.value = text; document.body.appendChild(ta);
-    ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ alert("Copy failed."); }
-    document.body.removeChild(ta);
-  };
-  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fb);
-  else fb();
+  var token = String((S.settings && S.settings.tgBotToken) || "").trim();
+  var chats = tgChatIds();
+  if(!token || !chats.length) return Promise.resolve(false);
+  if(!opts.force && !tgNotifyOn()) return Promise.resolve(false);
+  var text = (title ? "<b>" + esc(title) + "</b>\n" : "") + String(message || "");
+  var reqs = chats.map(function(chat){
+    var q = new URLSearchParams({ chat_id: chat, text: text, parse_mode: "HTML", disable_web_page_preview: "1" });
+    // no-cors: Telegram API response browser me nahi khulti, lekin message foran deliver ho jata he
+    return fetch("https://api.telegram.org/bot" + token + "/sendMessage?" + q.toString(), { mode: "no-cors" });
+  });
+  return Promise.all(reqs).then(function(){ return true; }).catch(function(){ return false; });
 }
 /* ---------- filename se client / PNR guess ---------- */
 function fileGuess(name){
@@ -6619,7 +6594,7 @@ function fileUploadAll(){
       var okCount = arr.length - failed;
       if(okCount > 0 && !meta.silent){
         try{
-          ntfySend("New ticket file" + (okCount > 1 ? "s (" + okCount + ")" : ""),
+          tgSend("New ticket file" + (okCount > 1 ? "s (" + okCount + ")" : ""),
             [meta.client, meta.pnr ? ("PNR " + meta.pnr) : "", okCount + " file(s)", "by " + meta.by]
               .filter(Boolean).join(" · "), { priority:"high", tags:"inbox_tray" });
         }catch(e){}
@@ -7401,7 +7376,7 @@ function bind(){
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
     try{
-      ntfySend("New ticket added", [client, kind, detailTxt, "Sale " + money(sale), "by " + fileDeviceName()]
+      tgSend("New ticket added", [client, kind, detailTxt, "Sale " + money(sale), "by " + fileDeviceName()]
         .filter(Boolean).join(" · "), { priority:"high", tags:"ticket" });
     }catch(e){}
     setCardOpen("tkhist", true);
@@ -8213,48 +8188,55 @@ function bind(){
     if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, fb);
     else fb();
   };
-  // ===== Team notifications (ntfy) =====
-  var ntfyInput = document.getElementById("setNtfyTopic");
-  var ntfyServerInput = document.getElementById("setNtfyServer");
-  var ntfyStatus = function(msg, bad){
-    var s = document.getElementById("ntfyStatus");
+  // ===== Team notifications (Telegram) =====
+  var tgTokenInput = document.getElementById("setTgToken");
+  var tgChatsInput = document.getElementById("setTgChats");
+  var tgStatus = function(msg, bad){
+    var s = document.getElementById("tgStatus");
     if(s){ s.textContent = msg; s.style.color = bad ? "var(--red)" : "var(--green)"; }
   };
-  var ntfySaveBtn = document.getElementById("ntfySave");
-  if(ntfySaveBtn) ntfySaveBtn.onclick = function(){
-    var t = String((ntfyInput && ntfyInput.value) || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
-    if(!t){ alert("Enter a topic name first (or press New topic)."); return; }
-    var srv = String((ntfyServerInput && ntfyServerInput.value) || "").trim().replace(/\/+$/, "");
-    if(srv && !/^https?:\/\//i.test(srv)) srv = "https://" + srv;
-    S.settings.ntfyTopic = t;
-    S.settings.ntfyServer = srv;
-    S.settings.ntfyOn = !!(document.getElementById("setNtfyOn") || {}).checked;
-    if(ntfyInput) ntfyInput.value = t;
-    if(ntfyServerInput) ntfyServerInput.value = srv;
-    save();
-    ntfyStatus("Sending test to " + ntfyBase() + " …");
-    ntfySend("AB Travels test", "Notifications connected. New tickets, files, staff bookings and payments will appear here.", { priority:"default", tags:"white_check_mark", force:true }).then(function(ok){
-      ntfyStatus(ok ? "✓ Test sent via " + ntfyBase() + " — check the ntfy app on your phone."
-                    : "Test nahi gaya (" + ntfyBase() + "). Server reachable nahi — VPN on karein ya doosra server (ntfy.envs.net) try karein.", !ok);
+  var ntfyCleanup = function(){
+    ["ntfyTopic","ntfyServer","ntfyOn"].forEach(function(k){
+      if(S.settings && S.settings[k] !== undefined) delete S.settings[k];
     });
   };
-  var ntfyNewBtn = document.getElementById("ntfyNew");
-  if(ntfyNewBtn) ntfyNewBtn.onclick = function(){
-    var t = ntfyNewTopic();
-    if(ntfyInput) ntfyInput.value = t;
-    ntfyStatus("New topic generated — press Save & send test, then share the topic with your team.", false);
+  var tgSaveBtn = document.getElementById("tgSave");
+  if(tgSaveBtn) tgSaveBtn.onclick = function(){
+    var token = String((tgTokenInput && tgTokenInput.value) || "").trim();
+    var chats = String((tgChatsInput && tgChatsInput.value) || "").trim().replace(/[^0-9,\s]/g, "").replace(/\s*,\s*/g, ",");
+    if(!token){ alert("Bot token dalhein (@BotFather se)."); return; }
+    if(!chats){ alert("Kam az kam aik chat ID dalhein."); return; }
+    S.settings.tgBotToken = token;
+    S.settings.tgChatIds = chats;
+    S.settings.tgNotifyOn = !!(document.getElementById("setTgOn") || {}).checked;
+    ntfyCleanup();
+    if(tgTokenInput) tgTokenInput.value = token;
+    if(tgChatsInput) tgChatsInput.value = chats;
+    save();
+    tgStatus("Test message bhej rahe hain…");
+    tgSend("AB Travels test", "Notifications Telegram par connected. New tickets, files aur invoices yahan aayenge.", { force:true }).then(function(ok){
+      tgStatus(ok ? "✓ Test bhej diya — apne Telegram par check karein (1-2 second). Agar na aaye to token/chat ID dobara check karein."
+                  : "✗ Test nahi gaya — token aur chat ID dobara check karein.", !ok);
+    });
   };
-  var ntfyCopyTopic = document.getElementById("ntfyCopyTopic");
-  if(ntfyCopyTopic) ntfyCopyTopic.onclick = function(){
-    var t = String((ntfyInput && ntfyInput.value) || S.settings.ntfyTopic || "").trim().toLowerCase();
-    if(!t){ alert("Create a topic first."); return; }
-    ntfyCopy(t, "ntfyStatus", "✓ Topic copied — send it to your team on WhatsApp.");
+  if(tgTokenInput) tgTokenInput.onchange = function(){
+    S.settings.tgBotToken = String(this.value||"").trim();
+    ntfyCleanup();
+    save();
   };
-  var ntfyCopyLink = document.getElementById("ntfyCopyLink");
-  if(ntfyCopyLink) ntfyCopyLink.onclick = function(){
-    var t = String((ntfyInput && ntfyInput.value) || S.settings.ntfyTopic || "").trim().toLowerCase();
-    if(!t){ alert("Create a topic first."); return; }
-    ntfyCopy(ntfyBase() + "/" + encodeURIComponent(t), "ntfyStatus", "✓ Subscribe link copied — open it on a PC or paste the topic in the ntfy app (same server).");
+  if(tgChatsInput) tgChatsInput.onchange = function(){
+    S.settings.tgChatIds = String(this.value||"").trim().replace(/[^0-9,\s]/g, "").replace(/\s*,\s*/g, ",");
+    ntfyCleanup();
+    save();
+  };
+  var tgRemoveBtn = document.getElementById("tgRemove");
+  if(tgRemoveBtn) tgRemoveBtn.onclick = function(){
+    if(!confirm("Telegram notifications remove kar dein?")) return;
+    S.settings.tgBotToken = "";
+    S.settings.tgChatIds = "";
+    ntfyCleanup();
+    save();
+    tgStatus("Notifications remove ho gaye.", true);
   };
   var ish = document.getElementById("importSheet");
   if(ish) ish.onclick = function(){

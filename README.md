@@ -185,3 +185,9 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 
 ## Version
 Current version: **2.36**.
+
+## Team notifications via Telegram — ntfy removed (v2.37)
+- The ntfy system (topic/server settings, ntfy.sh push) is fully removed after repeated mobile delivery problems. Telegram is now the notification channel: reliable push on every phone, no battery settings, no extra app beyond Telegram.
+- New Settings card **🤖 Team notifications (Telegram)**: paste the **bot token** (from @BotFather — the same token the price bot uses) and **chat IDs** of every team member (each member messages the bot once, then copies their ID from `https://api.telegram.org/bot<TOKEN>/getUpdates`). Save & send test.
+- Sends directly from the browser via the Bot API (`sendMessage`, no-cors GET) — no worker changes needed. Fires on: new sale/ticket, new Ticket Files upload, invoice saved to Ticket Files.
+- `tgBotToken` is device-local and stripped from sync/backups (like the PAT and Ignav key). Leftover `ntfyTopic`/`ntfyServer`/`ntfyOn` keys are stripped from sync and deleted locally when the Telegram card is saved — this also silences the staff worker's ntfy calls (its code reads the removed topic key). Staff booking/payment notifications will need a small staff-worker update later if wanted.
