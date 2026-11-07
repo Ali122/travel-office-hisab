@@ -265,11 +265,14 @@ function staffView(s) {
   // download through /api/file?id=... so the GitHub token never reaches the browser.
   const files = (s.fileTickets || []).map((f) => ({
     id: f.id,
-    title: f.title || f.name || "File",
+    kind: f.kind || "file",
+    title: f.title || f.name || (f.kind === "link" ? "Link" : "File"),
     client: f.client || "",
     pnr: f.pnr || "",
     note: f.note || "",
     name: f.name || "",
+    url: f.url || "",
+    text: String(f.text || "").slice(0, 2000),
     size: Number(f.size) || 0,
     type: f.type || "application/pdf",
     uploadedAt: Number(f.uploadedAt) || 0,

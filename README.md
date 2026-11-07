@@ -161,5 +161,20 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - If ntfy.sh is unreachable, the app keeps working; only the notification fails (silently in the background).
 - The Worker reads the topic from `HisabData.json`, so staff-originated notifications work without any extra Worker secret.
 
+## Ticket Files: links, notes and pasted documents (v2.35)
+- New **Paste link / document** card in Ticket Files:
+  - **Link** — e.g. a Google Drive or airline booking URL. Stored as a clickable entry with Open link / Copy / WhatsApp.
+  - **Note / document text** — paste a document's text (max 4,000 characters). Stored in the synced data with View / Copy / WhatsApp.
+  - **📋 Paste from clipboard** — a PDF/image in the clipboard is uploaded as a file; text/URL fills the form. Pasting a PDF/image into the note box also works.
+- **These entries never send a push notification.** Notifications remain only for real ticket-file uploads, new sales, staff bookings and staff payments.
+- Links are the cheapest option for big documents: keep the file on Drive and paste the link, so GitHub storage is not used.
+- Staff portal shows links with Open/Copy and notes with View/Copy.
+
+## GitHub storage — not unlimited
+- GitHub Free is **not unlimited**: recommended repo size is under **1 GB** (soft; GitHub may contact you above it), a single file is capped at **100 MB**, and Git LFS gives 1 GB free (not used here).
+- Each Ticket File upload is one commit. Deleting a file removes it from the current tree but the old copy stays in git history, so the repo does not shrink immediately.
+- A typical 200 KB ticket PDF ≈ 5,000 files per 1 GB. That is years of normal use, but use Drive links for big documents and delete old ticket files occasionally.
+- GitHub Pages (the app itself) is limited to 1 GB site size and 100 GB/month soft bandwidth; the app is under 1 MB.
+
 ## Version
-Current version: **2.34**.
+Current version: **2.35**.

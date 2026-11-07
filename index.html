@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.34</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.35</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.34";
+var APP_VER = "2.35";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -6608,7 +6608,7 @@ function fileUploadAll(){
     if(idx >= arr.length){
       saveNow(function(){});
       var okCount = arr.length - failed;
-      if(okCount > 0){
+      if(okCount > 0 && !meta.silent){
         try{
           ntfySend("New ticket file" + (okCount > 1 ? "s (" + okCount + ")" : ""),
             [meta.client, meta.pnr ? ("PNR " + meta.pnr) : "", okCount + " file(s)", "by " + meta.by]
@@ -6630,28 +6630,51 @@ function fileUploadAll(){
 }
 /* ---------- row / view ---------- */
 function fileRow(f){
+  var kind = f.kind || "file";
   var when = f.uploadedAt ? new Date(f.uploadedAt).toLocaleString() : "";
-  var label = f.client || f.title || f.name || "File";
-  var search = (label + " " + (f.pnr || "") + " " + (f.name || "") + " " + (f.note || "")).toLowerCase();
+  var label = f.client || f.title || f.name || (kind === "link" ? "Link" : kind === "note" ? "Note" : "File");
+  var search = (label + " " + (f.pnr || "") + " " + (f.name || "") + " " + (f.note || "") + " " + (f.url || "") + " " + (f.text || "")).toLowerCase();
+  var tag = kind === "link" ? ' <span class="pill">LINK</span>' : kind === "note" ? ' <span class="pill">NOTE</span>' : '';
+  var meta = "";
+  if(kind === "link") meta = esc(f.url || "");
+  else if(kind === "note") meta = esc(String(f.text || "").replace(/\s+/g, " ").slice(0, 140)) + (String(f.text || "").length > 140 ? "…" : "");
+  else meta = esc(f.name || "") + ' · ' + fileSizeTxt(f.size);
+  var buttons = "";
+  if(kind === "link"){
+    buttons = '<button class="btn small file-wa" data-id="' + esc(f.id) + '" style="background:#25D366; color:#fff;">WhatsApp</button>'
+      + '<button class="btn small file-open" data-id="' + esc(f.id) + '">Open link</button>'
+      + '<button class="btn small file-copy" data-id="' + esc(f.id) + '">Copy</button>'
+      + '<button class="del file-del" data-id="' + esc(f.id) + '">✕</button>';
+  } else if(kind === "note"){
+    buttons = '<button class="btn small file-wa" data-id="' + esc(f.id) + '" style="background:#25D366; color:#fff;">WhatsApp</button>'
+      + '<button class="btn small file-open" data-id="' + esc(f.id) + '">View</button>'
+      + '<button class="btn small file-copy" data-id="' + esc(f.id) + '">Copy</button>'
+      + '<button class="del file-del" data-id="' + esc(f.id) + '">✕</button>';
+  } else {
+    buttons = '<button class="btn small file-wa" data-id="' + esc(f.id) + '" style="background:#25D366; color:#fff;">WhatsApp</button>'
+      + '<button class="btn small file-share" data-id="' + esc(f.id) + '">Share</button>'
+      + '<button class="btn small file-open" data-id="' + esc(f.id) + '">Open</button>'
+      + '<button class="btn small file-save" data-id="' + esc(f.id) + '" title="Download">⬇</button>'
+      + '<button class="del file-del" data-id="' + esc(f.id) + '">✕</button>';
+  }
+  var detail = kind === "note"
+    ? '<div id="fileText-' + esc(f.id) + '" style="display:none; white-space:pre-wrap; word-break:break-word; margin-top:8px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; font-size:12.5px;">' + esc(f.text || "") + '</div>'
+    : '';
   return '<div data-search="' + esc(search) + '" style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">'
     + '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">'
     + '<div style="min-width:0;">'
-    + '<b>' + esc(label) + '</b> '
+    + '<b>' + esc(label) + '</b>' + tag + ' '
     + (f.pnr ? '<span class="pill">PNR ' + esc(f.pnr) + '</span>' : '')
     + '<div style="font-size:12.5px; color:var(--muted); word-break:break-word;">'
-    + esc(f.name || "") + ' · ' + fileSizeTxt(f.size)
+    + meta
     + (when ? ' · ' + esc(when) : '')
     + (f.uploadedBy ? ' · ' + esc(f.uploadedBy) : '')
     + '</div>'
     + (f.note ? '<div style="font-size:12px; color:var(--muted);">' + esc(f.note) + '</div>' : '')
     + '</div></div>'
-    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">'
-    + '<button class="btn small file-wa" data-id="' + esc(f.id) + '" style="background:#25D366; color:#fff;">WhatsApp</button>'
-    + '<button class="btn small file-share" data-id="' + esc(f.id) + '">Share</button>'
-    + '<button class="btn small file-open" data-id="' + esc(f.id) + '">Open</button>'
-    + '<button class="btn small file-save" data-id="' + esc(f.id) + '" title="Download">⬇</button>'
-    + '<button class="del file-del" data-id="' + esc(f.id) + '">✕</button>'
-    + '</div></div>';
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">' + buttons + '</div>'
+    + detail
+    + '</div>';
 }
 function viewFiles(){
   var files = (S.fileTickets || []).slice().sort(function(a, b){ return (Number(b.uploadedAt) || 0) - (Number(a.uploadedAt) || 0); });
@@ -6684,6 +6707,25 @@ function viewFiles(){
         + (fileFlash ? esc(fileFlash.msg) : '') + '</div>'
         + '<div class="hint">PDF / JPG / PNG, max 20 MB per file. Phone par PDF share karne se WhatsApp mein file khud attach ho jati hai; PC par file download hoti hai aur WhatsApp Web khulta hai.</div>'
         + '</div>';
+  html += '<div class="card" id="pasteCard"><h2>🔗 Paste link / document</h2>'
+        + '<div class="hint" style="margin-top:0;">Google Drive link, airline booking link, ya document ka text yahan paste karein. Ye entries Ticket Files mein sab ko dikhengi — lekin in par <b>koi notification nahi</b> jayegi.</div>'
+        + '<div class="row" style="margin-top:10px;">'
+        + '<div><label>Type</label><select id="pasteKind"><option value="link">Link</option><option value="note">Note / document text</option></select></div>'
+        + '<div><label>Title</label><input id="pasteTitle" placeholder="e.g. Dubai ticket — Google Drive" autocomplete="off"></div>'
+        + '</div>'
+        + '<div class="row" style="margin-top:8px;">'
+        + '<div><label>Client (optional)</label><input id="pasteClient" list="fileClientNames" placeholder="Client name" autocomplete="off"></div>'
+        + '<div><label>PNR (optional)</label><input id="pastePnr" placeholder="ABC123" style="text-transform:uppercase;" autocomplete="off"></div>'
+        + '</div>'
+        + '<div id="pasteLinkWrap" style="margin-top:8px;"><label>Link (URL)</label><input id="pasteUrl" placeholder="https://drive.google.com/..." inputmode="url" autocomplete="off"></div>'
+        + '<div id="pasteTextWrap" style="display:none; margin-top:8px;"><label>Document text / note</label><textarea id="pasteText" rows="4" placeholder="Yahan document ka text paste karein (max 4000 characters)…" style="width:100%; min-height:90px;"></textarea></div>'
+        + '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">'
+        + '<button class="btn primary" id="pasteSave">＋ Add to Ticket Files</button>'
+        + '<button class="btn" id="pasteClip">📋 Paste from clipboard</button>'
+        + '</div>'
+        + '<div class="hint" id="pasteStatus" style="margin-top:8px; font-weight:600;"></div>'
+        + '<div class="hint">Clipboard se PDF/image paste karein to file upload hogi — notification ke baghair. Text/URL paste karein to form khud bhar jayega. Bara document ho to Google Drive link paste karein (GitHub storage bachta hai).</div>'
+        + '</div>';
   html += '<div class="card"><h2>All ticket files (' + files.length + ')</h2>';
   if(files.length){
     html += '<input id="fileSearch" placeholder="Client / PNR / file name se dhoondein…" style="margin-bottom:8px;">'
@@ -6697,6 +6739,146 @@ function viewFiles(){
   html += '</div>';
   return html;
 }
+/* ---------- paste link / note / document (silent: no notification) ---------- */
+function filePasteStatus(msg, bad){
+  var s = document.getElementById("pasteStatus");
+  if(s){ s.textContent = msg || ""; s.style.color = bad ? "var(--red)" : "var(--green)"; }
+}
+function fileNormalizeUrl(u){
+  u = String(u || "").trim();
+  if(!u) return "";
+  if(!/^[a-z][a-z0-9+.-]*:\/\//i.test(u)) u = "https://" + u;
+  try{
+    var x = new URL(u);
+    return /^https?:$/i.test(x.protocol) ? x.href : "";
+  }catch(e){ return ""; }
+}
+function fileCopyText(t){
+  t = String(t || "");
+  var fb = function(){
+    var ta = document.createElement("textarea");
+    ta.value = t; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    document.body.removeChild(ta);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(fb);
+  else fb();
+}
+function fileAddLinkNote(kind, title, url, text, client, pnr){
+  var fallback = kind === "link" ? (url || "Link") : "Note";
+  var e = {
+    id: fileUid(),
+    kind: kind,
+    title: title || fallback,
+    name: title || fallback,
+    url: kind === "link" ? (url || "") : "",
+    text: kind === "note" ? (text || "") : "",
+    client: client || "",
+    pnr: String(pnr || "").toUpperCase(),
+    note: "",
+    size: kind === "note" ? String(text || "").length : 0,
+    type: kind === "link" ? "text/uri-list" : "text/plain",
+    uploadedAt: Date.now(),
+    uploadedBy: fileDeviceName()
+  };
+  if(!Array.isArray(S.fileTickets)) S.fileTickets = [];
+  S.fileTickets.push(e);
+  return e;
+}
+function filePasteKindChanged(){
+  var kind = (document.getElementById("pasteKind") || {}).value || "link";
+  var lw = document.getElementById("pasteLinkWrap");
+  var tw = document.getElementById("pasteTextWrap");
+  if(lw) lw.style.display = kind === "link" ? "" : "none";
+  if(tw) tw.style.display = kind === "note" ? "" : "none";
+}
+function fileSilentUpload(file){
+  if(!file) return Promise.resolve();
+  if(!githubSyncConfigured()){
+    filePasteStatus("GitHub sync off hai — Settings → GitHub Sync mein token save karein.", true);
+    return Promise.resolve();
+  }
+  var meta = {
+    client: ((document.getElementById("pasteClient") || {}).value || "").trim(),
+    pnr: ((document.getElementById("pastePnr") || {}).value || "").trim(),
+    note: "Pasted document",
+    by: fileDeviceName(),
+    silent: true
+  };
+  filePasteStatus("Uploading " + file.name + " (" + fileSizeTxt(file.size) + ")…");
+  return fileUploadOne(file, meta).then(function(){
+    saveNow(function(){});
+    fileSetFlash("✓ Pasted document uploaded — no notification sent.");
+    render();
+  }).catch(function(e){
+    filePasteStatus("Upload failed — " + ((e && e.message) || e), true);
+  });
+}
+function filePasteSave(){
+  var kind = (document.getElementById("pasteKind") || {}).value || "link";
+  var title = ((document.getElementById("pasteTitle") || {}).value || "").trim();
+  var client = ((document.getElementById("pasteClient") || {}).value || "").trim();
+  var pnr = ((document.getElementById("pastePnr") || {}).value || "").trim();
+  var url = "", text = "";
+  if(kind === "link"){
+    url = fileNormalizeUrl((document.getElementById("pasteUrl") || {}).value);
+    if(!url){ alert("Enter a valid http/https link."); return; }
+  } else {
+    text = String((document.getElementById("pasteText") || {}).value || "").trim();
+    if(!text){ alert("Paste the document text or note first."); return; }
+    if(text.length > 4000){ alert("Note is too long (max 4000 characters). Upload the document as a PDF or paste a Drive link instead."); return; }
+  }
+  fileAddLinkNote(kind, title, url, text, client, pnr);
+  saveNow(function(){});
+  fileSetFlash("✓ Link/note added — no notification sent.");
+  render();
+}
+function fileClipboardPaste(){
+  if(!(navigator.clipboard && navigator.clipboard.read)){
+    filePasteStatus("This browser does not support the clipboard button — click the text box and press Ctrl+V.", true);
+    return;
+  }
+  filePasteStatus("Reading clipboard…");
+  navigator.clipboard.read().then(function(items){
+    var fileItem = null, fileType = "", textItem = null;
+    (items || []).forEach(function(it){
+      (it.types || []).forEach(function(t){
+        if(!fileItem && (t === "application/pdf" || /^image\//i.test(t))){ fileItem = it; fileType = t; }
+        if(!textItem && t === "text/plain") textItem = it;
+      });
+    });
+    var textP = textItem ? textItem.getType("text/plain").then(function(b){ return b.text(); }).catch(function(){ return ""; }) : Promise.resolve("");
+    return textP.then(function(text){
+      if(fileItem){
+        return fileItem.getType(fileType).then(function(blob){
+          var ext = fileType === "application/pdf" ? ".pdf" : (/png/i.test(fileType) ? ".png" : (/jpe?g/i.test(fileType) ? ".jpg" : ".img"));
+          var name = "pasted-" + fileDateStamp() + "-" + Math.random().toString(36).slice(2, 6) + ext;
+          return fileSilentUpload(new File([blob], name, { type: fileType }));
+        });
+      }
+      if(text && text.trim()){
+        var clean = text.trim();
+        var u = fileNormalizeUrl(clean);
+        var k = document.getElementById("pasteKind");
+        if(u && !/\s/.test(clean)){
+          if(k) k.value = "link";
+          var ue = document.getElementById("pasteUrl"); if(ue) ue.value = u;
+          var te = document.getElementById("pasteTitle"); if(te && !te.value) te.value = "Pasted link";
+        } else {
+          if(k) k.value = "note";
+          var xe = document.getElementById("pasteText"); if(xe) xe.value = clean.slice(0, 4000);
+          var tt = document.getElementById("pasteTitle"); if(tt && !tt.value) tt.value = "Pasted note";
+        }
+        filePasteKindChanged();
+        filePasteStatus("✓ Clipboard pasted — check it and press Add.");
+      } else {
+        filePasteStatus("No text, PDF or image found in the clipboard.", true);
+      }
+    });
+  }).catch(function(e){
+    filePasteStatus("Clipboard permission was not granted — click the text box and press Ctrl+V.", true);
+  });
+}
 /* ---------- actions ---------- */
 function fileStatusLive(msg, bad){
   fileSetFlash(msg, bad);
@@ -6704,6 +6886,16 @@ function fileStatusLive(msg, bad){
   if(st){ st.textContent = msg || ""; st.style.color = bad ? "var(--red)" : "var(--green)"; }
 }
 function fileOpenEntry(f){
+  var kind = f.kind || "file";
+  if(kind === "link"){
+    try{ window.open(f.url, "_blank", "noopener"); }catch(e){}
+    return;
+  }
+  if(kind === "note"){
+    var d = document.getElementById("fileText-" + f.id);
+    if(d) d.style.display = d.style.display === "none" ? "block" : "none";
+    return;
+  }
   var w = null;
   try{ w = window.open("", "_blank"); }catch(e){}
   fileStatusLive("File load ho rahi hai…");
@@ -6719,6 +6911,35 @@ function fileOpenEntry(f){
   });
 }
 function fileShareEntry(f, target){
+  var kind = f.kind || "file";
+  if(kind === "link" || kind === "note"){
+    var body = kind === "link" ? (f.url || "") : (f.text || "");
+    var line = [f.title || f.client || "", (f.title && f.client) ? f.client : "", f.pnr ? ("PNR " + f.pnr) : ""]
+      .filter(Boolean).join(" · ");
+    var text = (line ? line + "\n\n" : "") + body;
+    var phone = fileClientPhone(f.client);
+    if(target === "wa" && !navigator.share && !phone){
+      var typed = window.prompt("Client ka WhatsApp number (e.g. 03001234567):", "");
+      if(typed === null) return;
+      phone = String(typed || "").trim();
+    }
+    if(navigator.share){
+      navigator.share({ title:f.title || "AB Travels", text:text }).then(function(){ fileStatusLive(""); }, function(e){
+        if(e && e.name === "AbortError") return;
+        fileCopyText(text);
+        fileStatusLive("Copy ho gaya — WhatsApp mein paste kar dein.", true);
+      });
+      return;
+    }
+    fileCopyText(text);
+    if(target === "wa"){
+      try{ window.open("https://wa.me/" + fileWaDigits(phone) + "?text=" + encodeURIComponent(text), "_blank", "noopener"); }catch(e){}
+      fileStatusLive("Link/note copy ho gaya — WhatsApp mein paste kar dein.");
+    } else {
+      fileStatusLive("✓ Copy ho gaya.");
+    }
+    return;
+  }
   var caption = fileCaption(f);
   fileStatusLive("File tayyar ho rahi hai…");
   fileBlobFor(f).then(function(blob){
@@ -6774,7 +6995,14 @@ function fileShareEntry(f, target){
   });
 }
 function fileDeleteEntry(f){
-  if(!confirm("Delete \"" + (f.name || "file") + "\" from all devices?\n\nFile GitHub se bhi hat jayegi.")) return;
+  var kind = f.kind || "file";
+  var what = kind === "link" ? "link" : kind === "note" ? "note" : "file";
+  if(!confirm("Delete this " + what + " from all devices?" + (kind === "file" ? "\n\nThe file will also be removed from GitHub." : ""))) return;
+  if(kind !== "file"){
+    S.fileTickets = (S.fileTickets || []).filter(function(x){ return x.id !== f.id; });
+    saveNow(function(){ fileSetFlash("✓ Deleted."); render(); });
+    return;
+  }
   fileSetFlash("Deleting…"); render();
   var path = "/contents/" + filePathEncode(f.file);
   function delWith(sha){
@@ -6857,6 +7085,35 @@ function bindFilesTab(app){
   app.querySelectorAll(".file-del").forEach(function(b){
     b.onclick = function(){ var f = fileEntry(b.getAttribute("data-id")); if(f) fileDeleteEntry(f); };
   });
+  app.querySelectorAll(".file-copy").forEach(function(b){
+    b.onclick = function(){
+      var f = fileEntry(b.getAttribute("data-id"));
+      if(!f) return;
+      fileCopyText((f.kind === "link") ? (f.url || "") : (f.text || ""));
+      fileStatusLive("✓ Copy ho gaya.");
+    };
+  });
+  // ===== Paste link / note / document =====
+  var pKind = document.getElementById("pasteKind");
+  if(pKind) pKind.onchange = filePasteKindChanged;
+  filePasteKindChanged();
+  var pSave = document.getElementById("pasteSave");
+  if(pSave) pSave.onclick = filePasteSave;
+  var pClip = document.getElementById("pasteClip");
+  if(pClip) pClip.onclick = fileClipboardPaste;
+  var pText = document.getElementById("pasteText");
+  if(pText){
+    pText.addEventListener("paste", function(e){
+      var items = e.clipboardData && e.clipboardData.items;
+      if(!items) return;
+      for(var i = 0; i < items.length; i++){
+        if(items[i].kind === "file"){
+          var file = items[i].getAsFile();
+          if(file){ e.preventDefault(); fileSilentUpload(file); return; }
+        }
+      }
+    });
+  }
 }
 
 /* ================= EVENTS ================= */

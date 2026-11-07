@@ -315,6 +315,9 @@
     }).catch(function(e){ msg(e.message,true); });
   }
   function openFile(f){
+    var kind=f.kind||"file";
+    if(kind==="link"){ try{ window.open(f.url,"_blank","noopener"); }catch(e){} return; }
+    if(kind==="note"){ var d=document.getElementById("staffFileText-"+f.id); if(d) d.style.display=d.style.display==="none"?"block":"none"; return; }
     var w=null; try{ w=window.open("","_blank"); }catch(e){}
     fetchFile(f).then(function(b){
       var u=URL.createObjectURL(b);
@@ -324,6 +327,30 @@
     }).catch(function(e){ if(w&&!w.closed){try{w.close();}catch(x){}} msg(e.message,true); });
   }
   function shareFile(f,wa){
+    var kind=f.kind||"file";
+    if(kind==="link" || kind==="note"){
+      var body=kind==="link"?(f.url||""):(f.text||"");
+      var line=[f.title||f.client||"",(f.title&&f.client)?f.client:"",f.pnr?("PNR "+f.pnr):""].filter(Boolean).join(" · ");
+      var text=(line?line+"\n\n":"")+body;
+      if(navigator.share){
+        navigator.share({title:f.title||"AB Travels",text:text}).catch(function(e){ if(e&&e.name!=="AbortError") msg("Share failed",true); });
+        return;
+      }
+      try{ navigator.clipboard.writeText(text); }catch(e){}
+      if(wa){
+        var ph=clientPhone(f.client);
+        if(!ph){
+          var typed=window.prompt("Client ka WhatsApp number (e.g. 03001234567):","");
+          if(typed===null){ msg(""); return; }
+          ph=String(typed||"").trim();
+        }
+        try{ window.open("https://wa.me/"+waDigits(ph)+"?text="+encodeURIComponent(text),"_blank","noopener"); }catch(e){}
+        msg("Link/note copy ho gaya — WhatsApp mein paste kar dein.");
+      } else {
+        msg("Copy ho gaya.");
+      }
+      return;
+    }
     fetchFile(f).then(function(b){
       var file=null;
       try{ file=new File([b],f.name||"ticket.pdf",{type:f.type||"application/pdf"}); }catch(e){}
@@ -356,22 +383,29 @@
     var q=(window.__fileQ||"").toLowerCase();
     var all=(DATA.files||[]).slice().sort(function(a,b){ return (Number(b.uploadedAt)||0)-(Number(a.uploadedAt)||0); });
     var list=all.filter(function(f){
-      return !q || (String(f.client||"")+" "+String(f.pnr||"")+" "+String(f.name||"")+" "+String(f.note||"")).toLowerCase().indexOf(q)>=0;
+      return !q || (String(f.client||"")+" "+String(f.pnr||"")+" "+String(f.name||"")+" "+String(f.note||"")+" "+String(f.url||"")+" "+String(f.text||"")).toLowerCase().indexOf(q)>=0;
     });
-    var h='<div class="card"><h2>Ticket Files</h2><div class="hint">Owner ki upload ki hui tickets yahan sab staff ko milti hain. WhatsApp dabayein — phone par PDF khud attach ho jati hai.</div>'
-      +'<input id="fileSearch" placeholder="Client / PNR / file name" value="'+esc(window.__fileQ||"")+'" style="margin-top:8px">'
+    var h='<div class="card"><h2>Ticket Files</h2><div class="hint">Owner ki upload ki hui tickets, links aur notes yahan sab staff ko milti hain. WhatsApp dabayein — PDF phone par khud attach hoti hai, link/note copy ho kar WhatsApp mein paste hota hai.</div>'
+      +'<input id="fileSearch" placeholder="Client / PNR / file name / link" value="'+esc(window.__fileQ||"")+'" style="margin-top:8px">'
       +'</div>';
     h+='<div class="card"><h2>All files ('+list.length+' of '+all.length+')</h2>';
     if(!list.length) h+='<div class="hint">Koi file nahi mili. Owner se upload karwayein — list app kholne par khud aa jati hai.</div>';
     list.forEach(function(f){
+      var kind=f.kind||"file";
       var when=f.uploadedAt?new Date(f.uploadedAt).toLocaleString():"";
-      h+='<div class="item"><div class="top"><div><b>'+esc(f.client||f.title||f.name||"File")+'</b>'
-        +'<div class="hint">'+esc(f.name||"")+' · '+sizeTxt(f.size)+(f.pnr?' · PNR '+esc(f.pnr):'')+(when?' · '+esc(when):'')+(f.uploadedBy?' · '+esc(f.uploadedBy):'')+'</div>'
+      var tag=kind==="link"?' <span class="pill">LINK</span>':kind==="note"?' <span class="pill">NOTE</span>':'';
+      var meta=kind==="link"?esc(f.url||""):kind==="note"?esc(String(f.text||"").replace(/\s+/g," ").slice(0,140)):esc(f.name||"")+" · "+sizeTxt(f.size);
+      var btns='<button class="btn small green file-wa" data-id="'+esc(f.id)+'">WhatsApp</button>';
+      if(kind==="link") btns+='<button class="btn small primary file-open" data-id="'+esc(f.id)+'">Open link</button><button class="btn small gray file-copy" data-id="'+esc(f.id)+'">Copy</button>';
+      else if(kind==="note") btns+='<button class="btn small primary file-open" data-id="'+esc(f.id)+'">View</button><button class="btn small gray file-copy" data-id="'+esc(f.id)+'">Copy</button>';
+      else btns+='<button class="btn small primary file-open" data-id="'+esc(f.id)+'">Open</button><button class="btn small gray file-save" data-id="'+esc(f.id)+'">Download</button>';
+      h+='<div class="item"><div class="top"><div><b>'+esc(f.client||f.title||f.name||"File")+'</b>'+tag
+        +'<div class="hint">'+meta+(f.pnr?' · PNR '+esc(f.pnr):'')+(when?' · '+esc(when):'')+(f.uploadedBy?' · '+esc(f.uploadedBy):'')+'</div>'
         +(f.note?'<div class="hint">'+esc(f.note)+'</div>':'')
         +'</div></div>'
-        +'<div class="row" style="margin-top:8px"><button class="btn small green file-wa" data-id="'+esc(f.id)+'">WhatsApp</button>'
-        +'<button class="btn small primary file-open" data-id="'+esc(f.id)+'">Open</button>'
-        +'<button class="btn small gray file-save" data-id="'+esc(f.id)+'">Download</button></div></div>';
+        +'<div class="row" style="margin-top:8px">'+btns+'</div>'
+        +(kind==="note"?'<div id="staffFileText-'+esc(f.id)+'" style="display:none;white-space:pre-wrap;word-break:break-word;margin-top:8px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px;font-size:12.5px;">'+esc(f.text||"")+'</div>':'')
+        +'</div>';
     });
     h+='</div>';
     return h;
@@ -444,6 +478,13 @@
     v.querySelectorAll(".file-wa").forEach(function(b){ b.onclick=function(){ var f=fileById(b.getAttribute("data-id")); if(f) shareFile(f,true); }; });
     v.querySelectorAll(".file-open").forEach(function(b){ b.onclick=function(){ var f=fileById(b.getAttribute("data-id")); if(f) openFile(f); }; });
     v.querySelectorAll(".file-save").forEach(function(b){ b.onclick=function(){ var f=fileById(b.getAttribute("data-id")); if(f) downloadFile(f); }; });
+    v.querySelectorAll(".file-copy").forEach(function(b){
+      b.onclick=function(){
+        var f=fileById(b.getAttribute("data-id")); if(!f) return;
+        var t=(f.kind==="link")?(f.url||""):(f.text||"");
+        try{ navigator.clipboard.writeText(t); msg("Copy ho gaya."); }catch(e){ msg("Copy nahi ho saka.",true); }
+      };
+    });
     var go=$("pnrGo"), st=$("pnrStatus");
     function doPnr(status){
       var code=$("pnrAir").value, pnr=String($("pnrCode").value||"").toUpperCase().replace(/[^A-Z0-9]/g,""), nm=String($("pnrName").value||"").toUpperCase().replace(/[^A-Z ]/g,"");
