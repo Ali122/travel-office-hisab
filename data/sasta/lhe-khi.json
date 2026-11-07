@@ -4,11 +4,11 @@
   "origin": "LHE",
   "destination": "KHI",
   "currency": "PKR",
-  "amount": 22050,
+  "amount": 23000,
   "price_basis": "per_person",
   "taxes_included": null,
   "fare_breakdown": null,
   "source_url": "https://www.sastaticket.pk/flights/cheap-flights-from-lahore-to-karachi",
-  "observed_at": "2026-11-06T21:48:06.283Z",
-  "headline": "Cheap Flights from Lahore (LHE) to Karachi (KHI) (PKR 22,050)"
+  "observed_at": "2026-11-07T01:19:28.716Z",
+  "headline": "Cheap Flights from Lahore (LHE) to Karachi (KHI) (PKR 23,000)"
 }
