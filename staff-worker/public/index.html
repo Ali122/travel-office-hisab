@@ -72,7 +72,7 @@
 
 <div id="login" class="login">
   <h2>Staff access</h2>
-  <p>Enter the staff password. This portal only shows pending payments, clients, your bookings and invoices.</p>
+  <p>Enter the staff password. This portal only shows pending payments, clients, your bookings, invoices and the shared ticket files.</p>
   <input id="pw" type="password" placeholder="Password" autocomplete="current-password" autofocus>
   <button id="loginBtn">Open staff portal</button>
   <div id="loginErr" class="err"></div>
@@ -85,6 +85,7 @@
     <button data-tab="clients">Clients</button>
     <button data-tab="booking">New Booking</button>
     <button data-tab="invoices">My Invoices</button>
+    <button data-tab="files">Ticket Files</button>
     <button data-tab="pnr">PNR Lookup</button>
   </nav>
   <div id="view"></div>
@@ -185,6 +186,7 @@
     else if(TAB==="clients") h+=renderClients();
     else if(TAB==="booking") h+=renderBooking();
     else if(TAB==="invoices") h+=renderInvoices();
+    else if(TAB==="files") h+=renderFiles();
     else h+=renderPnr();
     v.innerHTML=h;
     bindView();
@@ -270,6 +272,111 @@
     return h;
   }
 
+  function sizeTxt(n){
+    n=Number(n)||0;
+    if(n>=1048576) return (n/1048576).toFixed(n>=10485760?0:1)+" MB";
+    if(n>=1024) return Math.round(n/1024)+" KB";
+    return Math.max(0,Math.round(n))+" B";
+  }
+  function clientPhone(name){
+    var key=String(name||"").trim().toLowerCase();
+    if(!key) return "";
+    var c=(DATA.clients||[]).filter(function(x){ return String(x.name||"").trim().toLowerCase()===key; })[0];
+    return c?String(c.phone||"").trim():"";
+  }
+  function waDigits(p){
+    var d=String(p||"").replace(/[^0-9]/g,"");
+    if(d.indexOf("00")===0) d=d.slice(2);
+    if(d.length===11 && d.charAt(0)==="0") d="92"+d.slice(1);
+    else if(d.length===10 && d.charAt(0)==="3") d="92"+d;
+    return d;
+  }
+  function fileCaption(f){
+    var company=(DATA.business && DATA.business.company)||"AB Travels";
+    var bits=[];
+    if(f.client) bits.push(f.client);
+    if(f.pnr) bits.push("PNR "+f.pnr);
+    return company+(bits.length?" — "+bits.join(" — "):"")+" — ticket attached.";
+  }
+  function fetchFile(f){
+    return fetch("/api/file?id="+encodeURIComponent(f.id),{credentials:"same-origin",cache:"no-store"}).then(function(r){
+      if(!r.ok) throw new Error("File download failed ("+r.status+")");
+      return r.blob();
+    }).then(function(b){
+      return new Blob([b],{type:f.type||"application/pdf"});
+    });
+  }
+  function downloadFile(f){
+    return fetchFile(f).then(function(b){
+      var u=URL.createObjectURL(b);
+      var a=document.createElement("a"); a.href=u; a.download=f.name||"ticket.pdf";
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(u); if(a.parentNode) a.parentNode.removeChild(a); },2000);
+    }).catch(function(e){ msg(e.message,true); });
+  }
+  function openFile(f){
+    var w=null; try{ w=window.open("","_blank"); }catch(e){}
+    fetchFile(f).then(function(b){
+      var u=URL.createObjectURL(b);
+      if(w && !w.closed){ try{ w.opener=null; }catch(e){} w.location.href=u; }
+      else downloadFile(f);
+      setTimeout(function(){ URL.revokeObjectURL(u); },60000);
+    }).catch(function(e){ if(w&&!w.closed){try{w.close();}catch(x){}} msg(e.message,true); });
+  }
+  function shareFile(f,wa){
+    fetchFile(f).then(function(b){
+      var file=null;
+      try{ file=new File([b],f.name||"ticket.pdf",{type:f.type||"application/pdf"}); }catch(e){}
+      var caption=fileCaption(f);
+      if(file && navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        return navigator.share({files:[file],title:file.name,text:caption});
+      }
+      var a=document.createElement("a");
+      var u=URL.createObjectURL(b); a.href=u; a.download=f.name||"ticket.pdf";
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(u); if(a.parentNode) a.parentNode.removeChild(a); },2000);
+      if(wa){
+        var phone=clientPhone(f.client);
+        if(!phone){
+          var typed=window.prompt("Client ka WhatsApp number (e.g. 03001234567):","");
+          if(typed===null){ msg(""); return; }
+          phone=String(typed||"").trim();
+        }
+        try{ window.open("https://wa.me/"+waDigits(phone)+"?text="+encodeURIComponent(caption),"_blank","noopener"); }catch(e){}
+        msg("PDF download ho gayi — WhatsApp Web mein attach kar dein.");
+      } else {
+        msg("PDF download ho gayi — app mein file select karein.");
+      }
+    }).catch(function(e){
+      if(e && e.name==="AbortError") return;
+      msg(e.message||String(e),true);
+    });
+  }
+  function renderFiles(){
+    var q=(window.__fileQ||"").toLowerCase();
+    var all=(DATA.files||[]).slice().sort(function(a,b){ return (Number(b.uploadedAt)||0)-(Number(a.uploadedAt)||0); });
+    var list=all.filter(function(f){
+      return !q || (String(f.client||"")+" "+String(f.pnr||"")+" "+String(f.name||"")+" "+String(f.note||"")).toLowerCase().indexOf(q)>=0;
+    });
+    var h='<div class="card"><h2>Ticket Files</h2><div class="hint">Owner ki upload ki hui tickets yahan sab staff ko milti hain. WhatsApp dabayein — phone par PDF khud attach ho jati hai.</div>'
+      +'<input id="fileSearch" placeholder="Client / PNR / file name" value="'+esc(window.__fileQ||"")+'" style="margin-top:8px">'
+      +'</div>';
+    h+='<div class="card"><h2>All files ('+list.length+' of '+all.length+')</h2>';
+    if(!list.length) h+='<div class="hint">Koi file nahi mili. Owner se upload karwayein — list app kholne par khud aa jati hai.</div>';
+    list.forEach(function(f){
+      var when=f.uploadedAt?new Date(f.uploadedAt).toLocaleString():"";
+      h+='<div class="item"><div class="top"><div><b>'+esc(f.client||f.title||f.name||"File")+'</b>'
+        +'<div class="hint">'+esc(f.name||"")+' · '+sizeTxt(f.size)+(f.pnr?' · PNR '+esc(f.pnr):'')+(when?' · '+esc(when):'')+(f.uploadedBy?' · '+esc(f.uploadedBy):'')+'</div>'
+        +(f.note?'<div class="hint">'+esc(f.note)+'</div>':'')
+        +'</div></div>'
+        +'<div class="row" style="margin-top:8px"><button class="btn small green file-wa" data-id="'+esc(f.id)+'">WhatsApp</button>'
+        +'<button class="btn small primary file-open" data-id="'+esc(f.id)+'">Open</button>'
+        +'<button class="btn small gray file-save" data-id="'+esc(f.id)+'">Download</button></div></div>';
+    });
+    h+='</div>';
+    return h;
+  }
+
   var AIRLINES=[
     {c:"PK",n:"PIA",m:"https://www.piac.com.pk/",s:"https://www.piac.com.pk/"},
     {c:"PA",n:"Airblue",m:"https://www.airblue.com/",s:"https://www.airblue.com/"},
@@ -325,6 +432,18 @@
       api("/api/booking",body).then(function(j){ DATA=j; render(); msg("Booking saved. Open it from My Invoices to print."); }).catch(function(e){ msg(e.message,true); bs.disabled=false; });
     };
     v.querySelectorAll(".inv-btn").forEach(function(b){ b.onclick=function(){ var t=(DATA.bookings||[]).filter(function(x){return x.id===b.getAttribute("data-id");})[0]; if(t) openInvoice(t); }; });
+    var fs=$("fileSearch");
+    if(fs) fs.oninput=function(){
+      var val=this.value, pos=this.selectionStart;
+      window.__fileQ=val;
+      render();
+      var n=$("fileSearch");
+      if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} }
+    };
+    function fileById(id){ return (DATA.files||[]).filter(function(x){ return x.id===id; })[0]; }
+    v.querySelectorAll(".file-wa").forEach(function(b){ b.onclick=function(){ var f=fileById(b.getAttribute("data-id")); if(f) shareFile(f,true); }; });
+    v.querySelectorAll(".file-open").forEach(function(b){ b.onclick=function(){ var f=fileById(b.getAttribute("data-id")); if(f) openFile(f); }; });
+    v.querySelectorAll(".file-save").forEach(function(b){ b.onclick=function(){ var f=fileById(b.getAttribute("data-id")); if(f) downloadFile(f); }; });
     var go=$("pnrGo"), st=$("pnrStatus");
     function doPnr(status){
       var code=$("pnrAir").value, pnr=String($("pnrCode").value||"").toUpperCase().replace(/[^A-Z0-9]/g,""), nm=String($("pnrName").value||"").toUpperCase().replace(/[^A-Z ]/g,"");

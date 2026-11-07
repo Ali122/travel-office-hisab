@@ -125,7 +125,7 @@ function paidOf(x) {
   return (Array.isArray(x && x.payments) ? x.payments : []).reduce((n, p) => n + (Number(p && p.amount) || 0), 0);
 }
 function ensure(s) {
-  ["clients", "receivables", "tickets", "invoices", "draws", "bills", "waseem", "charityPaid", "qarzaPayments", "qarzaPaid", "airlineIds"].forEach((k) => { if (!Array.isArray(s[k])) s[k] = []; });
+  ["clients", "receivables", "tickets", "invoices", "draws", "bills", "waseem", "charityPaid", "qarzaPayments", "qarzaPaid", "airlineIds", "fileTickets"].forEach((k) => { if (!Array.isArray(s[k])) s[k] = []; });
   if (!s.settings || typeof s.settings !== "object") s.settings = {};
   return s;
 }
@@ -242,10 +242,25 @@ function staffView(s) {
     payments: (t.payments || []).map((p) => ({ date: p.date || "", amount: Number(p.amount) || 0, method: p.method || "", by: p.by || "", note: p.note || "" })),
     createdBy: t.createdBy || "", kind: t.kind || "Ticket"
   }));
+  // Shared ticket files: metadata only. The repo path stays server-side; staff
+  // download through /api/file?id=... so the GitHub token never reaches the browser.
+  const files = (s.fileTickets || []).map((f) => ({
+    id: f.id,
+    title: f.title || f.name || "File",
+    client: f.client || "",
+    pnr: f.pnr || "",
+    note: f.note || "",
+    name: f.name || "",
+    size: Number(f.size) || 0,
+    type: f.type || "application/pdf",
+    uploadedAt: Number(f.uploadedAt) || 0,
+    uploadedBy: f.uploadedBy || ""
+  }));
   return {
     clients,
     receivables,
     tickets,
+    files,
     bookings: tickets.filter((t) => t.createdBy === "staff"),
     business: {
       company: cleanText(s.settings && s.settings.invCompany, 80) || "AB Travels",
@@ -401,6 +416,37 @@ async function api(req, env, url) {
     });
     if (res.error) return fail(res.error.code, res.error.message, 400);
     return json({ ok: true, ...staffView(res.data) });
+  }
+
+  if (url.pathname === "/api/file" && req.method === "GET") {
+    const id = cleanText(url.searchParams.get("id"), 120);
+    if (!id) return fail("BAD_REQUEST", "id required", 400, "id");
+    try {
+      const { data } = await ghRead(env);
+      const f = (data.fileTickets || []).find((x) => x && x.id === id);
+      if (!f || !f.file) return fail("NOT_FOUND", "file not found", 404);
+      const path = String(f.file).split("/").map(encodeURIComponent).join("/");
+      const r = await fetch(
+        "https://api.github.com/repos/" + ghRepo(env) + "/contents/" + path + "?ref=" + encodeURIComponent(ghBranch(env)),
+        { headers: { ...ghHeaders(env), Accept: "application/vnd.github.raw" } }
+      );
+      if (!r.ok) return fail("FILE_READ_FAILED", "GitHub " + r.status, 502);
+      const buf = await r.arrayBuffer();
+      const rawName = String(f.name || "ticket.pdf").replace(/[\\"\r\n]/g, "").slice(0, 120) || "ticket.pdf";
+      const asciiName = rawName.replace(/[^\x20-\x7E]/g, "_");
+      const safeType = /^application\/pdf$/i.test(String(f.type || "")) ? "application/pdf"
+        : /^image\//i.test(String(f.type || "")) ? String(f.type) : "application/octet-stream";
+      return new Response(buf, {
+        status: 200,
+        headers: {
+          "content-type": safeType,
+          "content-disposition": "inline; filename=\"" + asciiName + "\"; filename*=UTF-8''" + encodeURIComponent(rawName),
+          "cache-control": "private, max-age=600"
+        }
+      });
+    } catch (e) {
+      return fail("FILE_READ_FAILED", String((e && e.message) || e), 502);
+    }
   }
 
   return fail("NOT_FOUND", "not found", 404);

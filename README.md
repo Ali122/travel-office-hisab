@@ -100,7 +100,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 
 ## Staff portal (v2.16) — separate Cloudflare Worker
 - `staff-worker/` is a password-only staff portal at `staff-abtravels.<subdomain>.workers.dev`. No email or OTP; the password is a Worker secret and the browser gets a 12-hour signed `HttpOnly` cookie.
-- Staff can add partial payments on receivables and unpaid tickets, view/add/edit clients (no delete), create their own bookings, print/share invoices for their own bookings, and use PNR Lookup.
+- Staff can add partial payments on receivables and unpaid tickets, view/add/edit clients (no delete), create their own bookings, print/share invoices for their own bookings, open/share the shared Ticket Files, and use PNR Lookup.
 - Cost, profit, expenses, partners, Father, loans, settings, airline IDs, backups and the GitHub token never reach staff. Staff bookings are saved with `createdBy: "staff"`, `cost: 0` so the owner can add the real cost.
 - Setup, secrets and testing: see `staff-worker/README.md`. The Worker writes to the same `HisabData.json`; press **Pull now** in the owner app to see staff changes.
 
@@ -143,5 +143,14 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Price alerts, budget/end-time messages aur naya-watch notice **tamam allowed chats** ko jate hain.
 - Worker status page par owner aur team chats dikhte hain; bot version `v2.27`.
 
+## Ticket Files — shared PDF library (v2.32)
+- New nav tab **Ticket Files**. Upload a saved ticket PDF/image from the PC; it is stored once in the private GitHub backup repo under `tickets/` (20 MB per file, PDF/JPG/PNG).
+- Only small metadata (client, PNR, file name, size, uploader, time) goes into `HisabData.json`, so every device that has the app (mobile, Sarmad, staff) sees the list after the normal GitHub sync. Files download on first open and are cached on the device.
+- Client and PNR auto-fill from the file name when they match an existing client/ticket/invoice.
+- **WhatsApp** button: on a phone the share sheet opens with the PDF already attached (no LocalSend step). On a PC the PDF downloads and WhatsApp Web opens at the client's saved number with a ready caption.
+- Staff portal: new **Ticket Files** tab; the Worker proxies downloads through `/api/file?id=...`, so staff never receive the GitHub token.
+- Deleting a file in the app removes it from GitHub; other devices drop it on their next sync (or **Refresh** on the tab).
+- Staff Worker must be redeployed once after this version for the staff tab to appear.
+
 ## Version
-Current version: **2.27**.
+Current version: **2.32**.

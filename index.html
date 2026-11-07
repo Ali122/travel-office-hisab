@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.31</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.32</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -313,6 +313,7 @@
       <button data-tab="tickets" class="active"><span class="ic">🎫</span><span class="lbl">Sales</span></button>
       <button data-tab="exp"><span class="ic">💸</span><span class="lbl">Expenses</span></button>
       <button data-tab="invoice"><span class="ic">🧾</span><span class="lbl">Invoice</span></button>
+      <button data-tab="files"><span class="ic">📁</span><span class="lbl">Ticket Files</span></button>
       <button data-tab="clients"><span class="ic">👥</span><span class="lbl">Clients</span></button>
       <button data-tab="bakaya"><span class="ic">💳</span><span class="lbl">Pending Payments</span></button>
       <button data-tab="lookup"><span class="ic">🔎</span><span class="lbl">PNR Lookup</span></button>
@@ -348,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.31";
+var APP_VER = "2.32";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -452,7 +453,8 @@ function blankState(){
     bills: [],         // {id, label, amount, due:"2025-09-15", paid:false}
     invoices: [],      // {id, date, savedAt, d} — sale se link na ho to yahan save hoti hai
     airlineIds: [],    // {id, name, login, pass, note} — password protected section
-    clients: []        // {id, name, phone, nic, passExp, note} — Customers tab
+    clients: [],       // {id, name, phone, nic, passExp, note} — Customers tab
+    fileTickets: []    // {id, name, file, size, type, client, pnr, note, uploadedAt, uploadedBy, sha} — shared ticket files
   };
 }
 function load(){
@@ -473,6 +475,7 @@ function load(){
     if(!s.qarzaPayments) s.qarzaPayments = [];
     if(!s.qarzaPaid) s.qarzaPaid = [];
     if(!s.clients) s.clients = [];
+    if(!s.fileTickets) s.fileTickets = [];
     ensureSettings(s);
     // One-time: default the invoice print style to black & white (ink saving)
     if(!s.settings.invBWv2){ s.settings.invBW = true; s.settings.invBWv2 = true; }
@@ -596,7 +599,7 @@ function mergeMissingAppData(data, local){
   if(!data || typeof data !== "object") return data;
   var L = local || S || {};
   var arrKeys = ["draws","receivables","tickets","waseem","charityPaid","qarzaPaid","qarzaPayments",
-                 "bills","invoices","airlineIds","clients"];
+                 "bills","invoices","airlineIds","clients","fileTickets"];
   arrKeys.forEach(function(k){
     if(!Array.isArray(data[k])){
       data[k] = Array.isArray(L[k]) ? JSON.parse(JSON.stringify(L[k])) : [];
@@ -616,6 +619,19 @@ function mergeMissingAppData(data, local){
     });
   }
   return data;
+}
+/* Just-uploaded file list remote push se pehle pull ho jaye to naya file na kho jaye.
+   Sirf 2 minute ke andar upload hui entries merge hoti hain (delete wapas zinda na ho). */
+function mergeRecentFileTickets(data, local){
+  if(!Array.isArray(data.fileTickets) || !Array.isArray(local.fileTickets)) return;
+  var ids = {};
+  data.fileTickets.forEach(function(f){ if(f && f.id) ids[f.id] = 1; });
+  var now = Date.now();
+  local.fileTickets.forEach(function(f){
+    if(f && f.id && !ids[f.id] && now - (Number(f.uploadedAt) || 0) < 120000){
+      data.fileTickets.push(f); ids[f.id] = 1;
+    }
+  });
 }
 function doPush(after){
   var pat = String(S.settings.githubPat || "").trim();
@@ -714,6 +730,7 @@ function syncPull(cb){
       data.settings.syncUrl = S.settings.syncUrl || "";
       data.settings.importId = S.settings.importId || "";
       mergeMissingAppData(data, S);   // purani sync file se naye sections mat mitayein
+      mergeRecentFileTickets(data, S);
       S = data;
       ensureSettings(S);
       _monthAgg = null;
@@ -3077,6 +3094,7 @@ document.getElementById("tabs").addEventListener("click", function(e){
   currentTab = b.getAttribute("data-tab");
   if(currentTab !== "airids") airUnlocked = false;
   if(currentTab === "invoice") invLinkId = null;
+  if(currentTab === "files") filesSyncedAt = 0;
   document.querySelectorAll("#tabs button[data-tab]").forEach(function(x){ x.classList.toggle("active", x===b); });
   closeNav();
   render();
@@ -3209,6 +3227,7 @@ function render(){
   else if(currentTab==="qarza") app.innerHTML = viewQarza();
   else if(currentTab==="exp") app.innerHTML = viewExpenses();
   else if(currentTab==="invoice") app.innerHTML = viewInvoice();
+  else if(currentTab==="files") app.innerHTML = viewFiles();
   else if(currentTab==="bakaya") app.innerHTML = viewBakaya();
   else if(currentTab==="clients") app.innerHTML = viewClients();
   else if(currentTab==="fares") app.innerHTML = viewFares();
@@ -3237,6 +3256,14 @@ function render(){
     if(invAutoGen){ invAutoGen = false; var gb2 = document.getElementById("genInv"); if(gb2) gb2.click(); }
   }
   if(currentTab === "fares") faRestore();
+  // Ticket Files tab khulte hi latest shared list GitHub se le aayein (max 20 sec mein ek dafa)
+  if(currentTab === "files" && githubSyncConfigured() && Date.now() - filesSyncedAt > 20000){
+    filesSyncedAt = Date.now();
+    setTimeout(function(){
+      if(currentTab !== "files") return;
+      syncPull(function(){ if(currentTab === "files") render(); });
+    }, 80);
+  }
   applyStatPrivacy();
   var t1 = document.querySelector("#tabPA .lbl"), t2 = document.querySelector("#tabPB .lbl");
   if(t1) t1.textContent = S.settings.partnerA;
@@ -6214,6 +6241,517 @@ function ghBakRestore(){
   }).catch(function(e){ setGhStatus("✗ Restore fail — "+e.message, true); });
 }
 
+/* ================= TICKET FILES (shared PDF library) =================
+   Upload ek dafa -> file private GitHub repo ("tickets/") mein save hoti hai.
+   Sirf chhoti metadata (naam, client, PNR, size) HisabData.json ke sath sync hoti hai,
+   is liye har device par list foran dikhti hai aur file tab par hi download hoti hai. */
+var FILE_MAX = 20 * 1024 * 1024;   /* 20 MB per file */
+var fileFlash = null;
+var fileBlobMem = {};
+var filesSyncedAt = 0;
+
+function fileSetFlash(msg, bad){
+  fileFlash = msg ? { msg: String(msg), bad: !!bad } : null;
+}
+function fileSizeTxt(n){
+  n = Number(n) || 0;
+  if(n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(n >= 10 * 1024 * 1024 ? 0 : 1) + " MB";
+  if(n >= 1024) return Math.round(n / 1024) + " KB";
+  return Math.max(0, Math.round(n)) + " B";
+}
+function fileDeviceName(){
+  try{ return localStorage.getItem("ab_device_name") || (S.settings.partnerA || "Owner"); }
+  catch(e){ return S.settings.partnerA || "Owner"; }
+}
+function fileEntry(id){
+  return (S.fileTickets || []).filter(function(x){ return x && x.id === id; })[0] || null;
+}
+function fileSafeName(name){
+  var s = String(name || "ticket");
+  var m = s.match(/\.([A-Za-z0-9]{1,8})$/);
+  var ext = m ? "." + m[1].toLowerCase() : "";
+  var base = ext ? s.slice(0, -ext.length) : s;
+  base = base.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^[-.]+|[-.]+$/g, "").slice(0, 60);
+  if(!base) base = "ticket";
+  return base + ext;
+}
+function fileUid(){
+  return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function filePathEncode(path){
+  return String(path || "").split("/").map(encodeURIComponent).join("/");
+}
+function fileDateStamp(){
+  var d = new Date();
+  return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+}
+function fileToB64(file){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){
+      var s = String(r.result || "");
+      var i = s.indexOf(",");
+      res(i >= 0 ? s.slice(i + 1) : s);
+    };
+    r.onerror = function(){ rej(new Error("File read failed")); };
+    r.readAsDataURL(file);
+  });
+}
+function fileB64ToBlob(b64, type){
+  var bin = atob(String(b64 || "").replace(/\n/g, ""));
+  var bytes = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: type || "application/octet-stream" });
+}
+function fileDownloadBlob(blob, name){
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name || "ticket.pdf";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){
+    URL.revokeObjectURL(url);
+    if(a.parentNode) a.parentNode.removeChild(a);
+  }, 2000);
+}
+/* ---------- file cache (IndexedDB) — dobara download na karna pare ---------- */
+var FILE_DB = "ab_ticket_files_v1", FILE_STORE = "blobs";
+function fileDb(){
+  return new Promise(function(res){
+    if(!window.indexedDB) return res(null);
+    try{
+      var r = indexedDB.open(FILE_DB, 1);
+      r.onupgradeneeded = function(){ try{ r.result.createObjectStore(FILE_STORE); }catch(e){} };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ res(null); };
+    }catch(e){ res(null); }
+  });
+}
+function fileCacheGet(id){
+  return fileDb().then(function(db){
+    if(!db) return null;
+    return new Promise(function(res){
+      try{
+        var t = db.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).get(id);
+        t.onsuccess = function(){ res(t.result || null); };
+        t.onerror = function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+  });
+}
+function fileCachePut(id, blob){
+  return fileDb().then(function(db){
+    if(!db || !blob) return;
+    try{ db.transaction(FILE_STORE, "readwrite").objectStore(FILE_STORE).put(blob, id); }catch(e){}
+  });
+}
+function fileCacheDel(id){
+  return fileDb().then(function(db){
+    if(!db) return;
+    try{ db.transaction(FILE_STORE, "readwrite").objectStore(FILE_STORE).delete(id); }catch(e){}
+  });
+}
+/* ---------- GitHub file read (raw bytes) ---------- */
+function ghFileGetBlob(path, type){
+  var pat = String(S.settings.githubPat || "").trim();
+  if(!pat) return Promise.reject(new Error("GitHub token missing — Settings → GitHub Sync."));
+  return fetch("https://api.github.com/repos/" + ghRepo() + "/contents/" + filePathEncode(path), {
+    headers: { "Authorization": "token " + pat, "Accept": "application/vnd.github.raw", "User-Agent": "AB-Travels" }
+  }).then(function(r){
+    if(!r.ok){
+      return r.text().then(function(t){
+        var j = null; try{ j = JSON.parse(t); }catch(e){}
+        throw new Error((j && j.message) || ("GitHub error " + r.status));
+      });
+    }
+    return r.arrayBuffer();
+  }).then(function(buf){
+    return new Blob([buf], { type: type || "application/octet-stream" });
+  });
+}
+function fileBlobFor(entry, force){
+  if(!entry) return Promise.reject(new Error("File not found"));
+  if(!force && fileBlobMem[entry.id]) return Promise.resolve(fileBlobMem[entry.id]);
+  return fileCacheGet(entry.id).then(function(b){
+    if(b && !force){ fileBlobMem[entry.id] = b; return b; }
+    return ghFileGetBlob(entry.file, entry.type).then(function(blob){
+      fileBlobMem[entry.id] = blob;
+      fileCachePut(entry.id, blob);
+      return blob;
+    });
+  });
+}
+/* ---------- client / phone helpers ---------- */
+function fileClientPhone(name){
+  var key = String(name || "").trim().toLowerCase();
+  if(!key) return "";
+  var c = (S.clients || []).filter(function(x){ return String(x.name || "").trim().toLowerCase() === key; })[0];
+  return c ? String(c.phone || "").trim() : "";
+}
+function fileWaDigits(p){
+  var d = String(p || "").replace(/[^0-9]/g, "");
+  if(d.indexOf("00") === 0) d = d.slice(2);
+  if(d.length === 11 && d.charAt(0) === "0") d = "92" + d.slice(1);
+  else if(d.length === 10 && d.charAt(0) === "3") d = "92" + d;
+  return d;
+}
+function fileCaption(f){
+  var company = (S.settings.invCompany || "AB Travels").trim();
+  var bits = [];
+  if(f.client) bits.push(f.client);
+  if(f.pnr) bits.push("PNR " + f.pnr);
+  return company + (bits.length ? " — " + bits.join(" — ") : "") + " — ticket attached.";
+}
+/* ---------- filename se client / PNR guess ---------- */
+function fileGuess(name){
+  var base = String(name || "").replace(/\.[^.]+$/, "");
+  var norm = base.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  var out = { client:"", pnr:"" };
+  var cs = (S.clients || []).slice().sort(function(a, b){ return String(b.name || "").length - String(a.name || "").length; });
+  for(var i = 0; i < cs.length; i++){
+    var n = String(cs[i].name || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+    if(n.length >= 4 && norm.indexOf(n) >= 0){ out.client = cs[i].name; break; }
+  }
+  var pools = [];
+  (S.tickets || []).forEach(function(t){ if(t && t.pnr) pools.push({ pnr:t.pnr, client:t.client }); });
+  (S.invoices || []).forEach(function(v){ var d = v && v.d || {}; if(d.pnr) pools.push({ pnr:d.pnr, client:d.name || (d.paxNames||[])[0] || "" }); });
+  for(var k = 0; k < pools.length; k++){
+    var p = String(pools[k].pnr || "").trim();
+    if(p && norm.indexOf(p.toLowerCase()) >= 0){
+      out.pnr = p;
+      if(!out.client && pools[k].client) out.client = pools[k].client;
+      break;
+    }
+  }
+  if(!out.pnr){
+    var parts = base.split(/[-_ ]+/).filter(Boolean);
+    var last = parts.length ? parts[parts.length - 1].toUpperCase() : "";
+    if(/^[A-Z0-9]{5,8}$/.test(last) && /[0-9]/.test(last)) out.pnr = last;
+  }
+  return out;
+}
+/* ---------- upload ---------- */
+function fileUploadOne(file, meta){
+  if(file.size > FILE_MAX) return Promise.reject(new Error(file.name + " is larger than 20 MB"));
+  var type = file.type || (/\.pdf$/i.test(file.name) ? "application/pdf" : "application/octet-stream");
+  var okType = /^application\/pdf$/i.test(type) || /^image\//i.test(type) || /\.pdf$/i.test(file.name);
+  if(!okType) return Promise.reject(new Error(file.name + " is not a PDF or image"));
+  var path = "tickets/" + fileDateStamp() + "-" + Math.random().toString(36).slice(2, 8) + "-" + fileSafeName(file.name);
+  return fileToB64(file).then(function(b64){
+    return ghApi("/contents/" + filePathEncode(path), "PUT", {
+      message: "Ticket file: " + file.name,
+      content: b64
+    });
+  }).then(function(j){
+    var entry = {
+      id: fileUid(),
+      title: file.name,
+      name: file.name,
+      file: path,
+      size: file.size,
+      type: type,
+      client: meta.client || "",
+      pnr: String(meta.pnr || "").toUpperCase(),
+      note: meta.note || "",
+      uploadedAt: Date.now(),
+      uploadedBy: meta.by || "",
+      sha: (j && j.content && j.content.sha) || ""
+    };
+    if(!Array.isArray(S.fileTickets)) S.fileTickets = [];
+    S.fileTickets.push(entry);
+    return entry;
+  });
+}
+function fileOnPick(input){
+  var fs = input && input.files;
+  if(!fs || !fs.length) return;
+  var g = fileGuess(fs[0].name);
+  var cEl = document.getElementById("fileClient");
+  var pEl = document.getElementById("filePnr");
+  if(cEl && !cEl.value && g.client) cEl.value = g.client;
+  if(pEl && !pEl.value && g.pnr) pEl.value = g.pnr;
+  var names = [];
+  for(var i = 0; i < fs.length; i++) names.push(fs[i].name);
+  var st = document.getElementById("fileStatus");
+  if(st){
+    st.textContent = "✓ " + fs.length + " file(s) selected: " + names.join(", ") + " — ab “Upload” dabayein."
+      + (g.client || g.pnr ? " (auto-detected " + [g.client, g.pnr ? "PNR " + g.pnr : ""].filter(Boolean).join(" · ") + ")" : "");
+    st.style.color = "var(--green)";
+  }
+}
+function fileUploadAll(){
+  var input = document.getElementById("fileInput");
+  var fs = input && input.files ? input.files : null;
+  if(!fs || !fs.length){ fileSetFlash("Pehle files choose karein.", true); render(); return; }
+  if(!githubSyncConfigured()){
+    fileSetFlash("GitHub sync off hai — Settings → GitHub Sync mein token save karein, phir upload karein.", true);
+    render(); return;
+  }
+  var nameEl = document.getElementById("fileName");
+  var by = nameEl ? String(nameEl.value || "").trim() : fileDeviceName();
+  if(by){ try{ localStorage.setItem("ab_device_name", by); }catch(e){} }
+  var meta = {
+    client: ((document.getElementById("fileClient") || {}).value || "").trim(),
+    pnr: ((document.getElementById("filePnr") || {}).value || "").trim().toUpperCase(),
+    note: ((document.getElementById("fileNote") || {}).value || "").trim(),
+    by: by || fileDeviceName()
+  };
+  var arr = [];
+  for(var i = 0; i < fs.length; i++) arr.push(fs[i]);
+  var idx = 0, failed = 0, lastErr = "";
+  var btn = document.getElementById("fileUpload");
+  if(btn){ btn.disabled = true; btn.textContent = "Uploading…"; }
+  function setMsg(m){
+    fileSetFlash(m);
+    var st = document.getElementById("fileStatus");
+    if(st){ st.textContent = m; st.style.color = "var(--muted)"; }
+  }
+  function next(){
+    if(idx >= arr.length){
+      saveNow(function(){});
+      fileSetFlash("✓ " + (arr.length - failed) + " file(s) uploaded" + (failed ? (" — " + failed + " failed" + (lastErr ? " (" + lastErr + ")" : "")) : "") + ". Baqi devices par sync hoti hai.");
+      render();
+      return;
+    }
+    var f = arr[idx++];
+    setMsg("Uploading " + idx + " of " + arr.length + " — " + f.name + " (" + fileSizeTxt(f.size) + ")");
+    fileUploadOne(f, meta).then(function(){ next(); }, function(e){
+      failed++; lastErr = String((e && e.message) || e);
+      console.error(e); next();
+    });
+  }
+  next();
+}
+/* ---------- row / view ---------- */
+function fileRow(f){
+  var when = f.uploadedAt ? new Date(f.uploadedAt).toLocaleString() : "";
+  var label = f.client || f.title || f.name || "File";
+  var search = (label + " " + (f.pnr || "") + " " + (f.name || "") + " " + (f.note || "")).toLowerCase();
+  return '<div data-search="' + esc(search) + '" style="border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;">'
+    + '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">'
+    + '<div style="min-width:0;">'
+    + '<b>' + esc(label) + '</b> '
+    + (f.pnr ? '<span class="pill">PNR ' + esc(f.pnr) + '</span>' : '')
+    + '<div style="font-size:12.5px; color:var(--muted); word-break:break-word;">'
+    + esc(f.name || "") + ' · ' + fileSizeTxt(f.size)
+    + (when ? ' · ' + esc(when) : '')
+    + (f.uploadedBy ? ' · ' + esc(f.uploadedBy) : '')
+    + '</div>'
+    + (f.note ? '<div style="font-size:12px; color:var(--muted);">' + esc(f.note) + '</div>' : '')
+    + '</div></div>'
+    + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">'
+    + '<button class="btn small file-wa" data-id="' + esc(f.id) + '" style="background:#25D366; color:#fff;">WhatsApp</button>'
+    + '<button class="btn small file-share" data-id="' + esc(f.id) + '">Share</button>'
+    + '<button class="btn small file-open" data-id="' + esc(f.id) + '">Open</button>'
+    + '<button class="btn small file-save" data-id="' + esc(f.id) + '" title="Download">⬇</button>'
+    + '<button class="del file-del" data-id="' + esc(f.id) + '">✕</button>'
+    + '</div></div>';
+}
+function viewFiles(){
+  var files = (S.fileTickets || []).slice().sort(function(a, b){ return (Number(b.uploadedAt) || 0) - (Number(a.uploadedAt) || 0); });
+  var cs = (S.clients || []).slice().sort(function(a, b){ return String(a.name || "").localeCompare(String(b.name || "")); });
+  var html = "";
+  if(!githubSyncConfigured()){
+    html += '<div class="card" style="border-color:var(--red);"><b style="color:var(--red);">GitHub sync off hai</b>'
+          + '<div class="hint">Files sab devices par share karne ke liye Settings → GitHub Sync mein token save karein.</div></div>';
+  }
+  html += '<div class="card" id="fileDrop"><h2>📁 Ticket files — all devices</h2>'
+        + '<div class="hint">Ticket ki PDF/tasveer yahan upload karein (ya PC se drag kar ke chhorein). File private GitHub repo mein save hoti hai aur aapke mobile, Sarmad aur staff — sab ko list mein khud nazar aati hai. Jis ka client ho wo WhatsApp se bhej de.</div>'
+        + '<div class="row" style="margin-top:10px;">'
+        + '<div><label>Client / passenger</label><input id="fileClient" list="fileClientNames" placeholder="Client name" autocomplete="off"><datalist id="fileClientNames">'
+        + cs.map(function(c){ return '<option value="' + esc(c.name) + '">'; }).join("")
+        + '</datalist></div>'
+        + '<div><label>PNR (optional)</label><input id="filePnr" placeholder="ABC123" style="text-transform:uppercase;" autocomplete="off"></div>'
+        + '</div>'
+        + '<div class="row" style="margin-top:8px;">'
+        + '<div><label>Note (optional)</label><input id="fileNote" placeholder="e.g. Umrah package invoice"></div>'
+        + '<div><label>Aap ka naam (uploads par)</label><input id="fileName" placeholder="Umair"></div>'
+        + '</div>'
+        + '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">'
+        + '<button class="btn primary" id="filePick">＋ Choose file(s)</button>'
+        + '<button class="btn" id="fileUpload">⬆ Upload</button>'
+        + '<button class="btn" id="fileRefresh">↻ Refresh</button>'
+        + '<input type="file" id="fileInput" accept="application/pdf,image/*" multiple style="display:none;">'
+        + '</div>'
+        + '<div class="hint" id="fileStatus" style="margin-top:8px; font-weight:600;'
+        + (fileFlash ? ' color:' + (fileFlash.bad ? 'var(--red)' : 'var(--green)') + ';' : '') + '">'
+        + (fileFlash ? esc(fileFlash.msg) : '') + '</div>'
+        + '<div class="hint">PDF / JPG / PNG, max 20 MB per file. Phone par PDF share karne se WhatsApp mein file khud attach ho jati hai; PC par file download hoti hai aur WhatsApp Web khulta hai.</div>'
+        + '</div>';
+  html += '<div class="card"><h2>All ticket files (' + files.length + ')</h2>';
+  if(files.length){
+    html += '<input id="fileSearch" placeholder="Client / PNR / file name se dhoondein…" style="margin-bottom:8px;">'
+          + '<div id="fileList">';
+    files.forEach(function(f){ html += fileRow(f); });
+    html += '</div>';
+  } else {
+    html += '<div class="empty">Abhi koi file upload nahi hui. Upar se PDF choose kar ke Upload dabayein.</div>';
+  }
+  html += '<div class="hint">List GitHub sync se aati hai — app kholne ya tab par wapas aane par khud update hoti hai. File pehli dafa kholne par download hoti hai, phir device par cache rehti hai.</div>';
+  html += '</div>';
+  return html;
+}
+/* ---------- actions ---------- */
+function fileStatusLive(msg, bad){
+  fileSetFlash(msg, bad);
+  var st = document.getElementById("fileStatus");
+  if(st){ st.textContent = msg || ""; st.style.color = bad ? "var(--red)" : "var(--green)"; }
+}
+function fileOpenEntry(f){
+  var w = null;
+  try{ w = window.open("", "_blank"); }catch(e){}
+  fileStatusLive("File load ho rahi hai…");
+  fileBlobFor(f).then(function(blob){
+    var url = URL.createObjectURL(blob);
+    if(w && !w.closed){ try{ w.opener = null; }catch(e){} w.location.href = url; }
+    else fileDownloadBlob(blob, f.name);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+    fileStatusLive("");
+  }).catch(function(e){
+    if(w && !w.closed){ try{ w.close(); }catch(x){} }
+    fileStatusLive("File nahi khuli — " + ((e && e.message) || e), true);
+  });
+}
+function fileShareEntry(f, target){
+  var caption = fileCaption(f);
+  fileStatusLive("File tayyar ho rahi hai…");
+  fileBlobFor(f).then(function(blob){
+    var file = null;
+    try{ file = new File([blob], f.name || "ticket.pdf", { type: f.type || blob.type || "application/pdf" }); }catch(e){ file = null; }
+    var canFileShare = !!(navigator.share && file && navigator.canShare && navigator.canShare({ files:[file] }));
+    // Phone: share sheet (WhatsApp / Email / LocalSend / Blip) — PDF khud attach hoti hai
+    if(canFileShare){
+      return navigator.share({ files:[file], title:f.name || "ticket.pdf", text:caption }).then(function(){
+        fileStatusLive("");
+      });
+    }
+    // Desktop / old browser: PDF download + WhatsApp Web (phone number agar client record mein hai)
+    var phone = fileClientPhone(f.client);
+    if(target === "wa" && !phone){
+      var typed = window.prompt("Client ka WhatsApp number (e.g. 03001234567):", "");
+      if(typed === null){ fileStatusLive(""); return; }
+      phone = String(typed || "").trim();
+      if(phone && f.client){
+        var c = (S.clients || []).filter(function(x){ return String(x.name || "").trim().toLowerCase() === String(f.client).trim().toLowerCase(); })[0];
+        if(c && !c.phone){ c.phone = phone; save(); }
+        else if(!c && confirm("Is number ko client \"" + f.client + "\" ke sath save karein?")){
+          if(!Array.isArray(S.clients)) S.clients = [];
+          S.clients.push({ id: uid(), name:f.client, phone:phone, nic:"", passExp:"", note:"" });
+          save();
+        }
+      }
+    }
+    fileDownloadBlob(blob, f.name);
+    if(target === "wa"){
+      var url = "https://wa.me/" + fileWaDigits(phone) + "?text=" + encodeURIComponent(caption);
+      try{ window.open(url, "_blank", "noopener"); }catch(e){}
+      fileStatusLive("PDF download ho gayi — WhatsApp Web mein attach kar dein.");
+    } else {
+      fileStatusLive("PDF download ho gayi. LocalSend / Blip / Email mein file select karein.");
+    }
+  }).catch(function(e){
+    if(e && e.name === "AbortError"){ fileStatusLive(""); return; }
+    if(e && e.name === "NotAllowedError"){
+      // User activation khatam ho gaya (bara PDF) — download + WhatsApp Web fallback
+      fileBlobFor(f).then(function(b){
+        fileDownloadBlob(b, f.name);
+        if(target === "wa"){
+          try{ window.open("https://wa.me/" + fileWaDigits(fileClientPhone(f.client)) + "?text=" + encodeURIComponent(caption), "_blank", "noopener"); }catch(x){}
+          fileStatusLive("PDF download ho gayi — WhatsApp Web mein attach kar dein.");
+        } else {
+          fileStatusLive("PDF download ho gayi.");
+        }
+      });
+      return;
+    }
+    fileStatusLive("Share nahi ho saka — " + ((e && e.message) || e), true);
+  });
+}
+function fileDeleteEntry(f){
+  if(!confirm("Delete \"" + (f.name || "file") + "\" from all devices?\n\nFile GitHub se bhi hat jayegi.")) return;
+  fileSetFlash("Deleting…"); render();
+  var path = "/contents/" + filePathEncode(f.file);
+  function delWith(sha){
+    return ghApi(path, "DELETE", { message:"Delete ticket file: " + (f.name || ""), sha: sha });
+  }
+  var p = f.sha ? delWith(f.sha).catch(function(){ return ghApi(path).then(function(j){ return delWith(j.sha); }); })
+                : ghApi(path).then(function(j){ return delWith(j.sha); });
+  p.then(function(){
+    S.fileTickets = (S.fileTickets || []).filter(function(x){ return x.id !== f.id; });
+    delete fileBlobMem[f.id];
+    fileCacheDel(f.id);
+    saveNow(function(){
+      fileSetFlash("✓ File delete ho gayi. Doosre devices par next sync par hat jayegi.");
+      render();
+    });
+  }).catch(function(e){
+    fileSetFlash("Delete nahi hua — " + ((e && e.message) || e), true);
+    render();
+  });
+}
+function bindFilesTab(app){
+  var pick = document.getElementById("filePick");
+  var input = document.getElementById("fileInput");
+  if(pick && input) pick.onclick = function(){ input.value = ""; input.click(); };
+  if(input) input.onchange = function(){ fileOnPick(input); };
+  // PC se seedha drag & drop
+  var drop = document.getElementById("fileDrop");
+  if(drop && input){
+    drop.ondragover = function(e){ e.preventDefault(); drop.style.borderColor = "var(--blue)"; };
+    drop.ondragleave = function(){ drop.style.borderColor = ""; };
+    drop.ondrop = function(e){
+      e.preventDefault(); drop.style.borderColor = "";
+      try{
+        var list = e.dataTransfer && e.dataTransfer.files;
+        if(list && list.length){ input.files = list; fileOnPick(input); }
+      }catch(x){}
+    };
+  }
+  var nameEl = document.getElementById("fileName");
+  if(nameEl){
+    nameEl.value = fileDeviceName();
+    nameEl.onchange = function(){ try{ localStorage.setItem("ab_device_name", String(this.value || "").trim()); }catch(e){} };
+  }
+  var up = document.getElementById("fileUpload");
+  if(up) up.onclick = fileUploadAll;
+  var rf = document.getElementById("fileRefresh");
+  if(rf) rf.onclick = function(){
+    if(!githubSyncConfigured()){ fileSetFlash("GitHub sync off hai.", true); render(); return; }
+    rf.disabled = true;
+    fileSetFlash("GitHub se latest list aa rahi hai…"); render();
+    filesSyncedAt = Date.now();
+    syncPull(function(ok){
+      fileSetFlash(ok ? "✓ List update ho gayi." : "GitHub se list nahi aayi — jo local list hai wo dikh rahi hai.", !ok);
+      if(currentTab === "files") render();
+    });
+  };
+  var search = document.getElementById("fileSearch");
+  if(search) search.oninput = function(){
+    var q = String(this.value || "").trim().toLowerCase();
+    app.querySelectorAll("#fileList [data-search]").forEach(function(r){
+      r.style.display = (!q || String(r.getAttribute("data-search") || "").indexOf(q) >= 0) ? "" : "none";
+    });
+  };
+  app.querySelectorAll(".file-wa").forEach(function(b){
+    b.onclick = function(){ var f = fileEntry(b.getAttribute("data-id")); if(f) fileShareEntry(f, "wa"); };
+  });
+  app.querySelectorAll(".file-share").forEach(function(b){
+    b.onclick = function(){ var f = fileEntry(b.getAttribute("data-id")); if(f) fileShareEntry(f, "share"); };
+  });
+  app.querySelectorAll(".file-open").forEach(function(b){
+    b.onclick = function(){ var f = fileEntry(b.getAttribute("data-id")); if(f) fileOpenEntry(f); };
+  });
+  app.querySelectorAll(".file-save").forEach(function(b){
+    b.onclick = function(){
+      var f = fileEntry(b.getAttribute("data-id"));
+      if(!f) return;
+      fileBlobFor(f).then(function(blob){ fileDownloadBlob(blob, f.name); }, function(e){ alert("Download nahi hua — " + e.message); });
+    };
+  });
+  app.querySelectorAll(".file-del").forEach(function(b){
+    b.onclick = function(){ var f = fileEntry(b.getAttribute("data-id")); if(f) fileDeleteEntry(f); };
+  });
+}
+
 /* ================= EVENTS ================= */
 function runUpdateCheck(statusEl){
   if(statusEl) statusEl.textContent = "Checking…";
@@ -7632,6 +8170,8 @@ function bind(){
     if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(pwText).then(done, fallback);
     else fallback();
   };
+  // ===== Ticket Files tab =====
+  bindFilesTab(app);
 }
 
 migrateAutoQarza();
