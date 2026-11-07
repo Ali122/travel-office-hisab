@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.27</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.28</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -348,7 +348,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.27";
+var APP_VER = "2.28";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -2289,7 +2289,7 @@ function invArrDateInfo(leg){
   }
   return { iso: invIsoAddDays(iso, days), days: days };
 }
-var INV_NR_ALWAYS = ["9P","G9"];
+var INV_NR_ALWAYS = [];   // airline auto non-refundable defaults removed (was ["9P","G9"])
 function invAlwaysNR(code){ return INV_NR_ALWAYS.indexOf(String(code||"").toUpperCase()) >= 0; }
 function invFlightBlock(leg, title, seats){
   if(!leg || !leg.from || !leg.to) return "";
@@ -2660,11 +2660,16 @@ function viewInvoice(){
   html += '<div class="hint umrah-hide" id="nrHint" style="margin-top:2px;"></div>';
   html += '<button class="btn primary" id="genInv">Generate Invoice</button>';
   html += '<button class="btn" id="invPrintBtn" style="display:none; background:var(--gold); color:#fff;">🖨 Print / Save as PDF (A4)</button>';
-  html += '<button class="btn" id="invShareBtn" style="display:none; background:#25D366; color:#fff;">📲 Share on WhatsApp / PDF</button>';
+  html += '<div id="invShareRow" style="display:none; gap:6px; margin-top:8px; flex-wrap:nowrap;">'
+        + '<button class="btn small" id="invShareWa" data-label="WhatsApp" style="flex:1 1 0; min-width:0; margin-top:0; background:#25D366; color:#fff; padding:8px 3px; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">WhatsApp</button>'
+        + '<button class="btn small" id="invShareEmail" data-label="Email" style="flex:1 1 0; min-width:0; margin-top:0; background:#2563eb; color:#fff; padding:8px 3px; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Email</button>'
+        + '<button class="btn small" id="invShareLocal" data-label="LocalSend" style="flex:1 1 0; min-width:0; margin-top:0; background:#0f766e; color:#fff; padding:8px 3px; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">LocalSend</button>'
+        + '<button class="btn small" id="invShareBlip" data-label="Blip" style="flex:1 1 0; min-width:0; margin-top:0; background:#7c3aed; color:#fff; padding:8px 3px; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Blip</button>'
+        + '</div>';
   html += '<button class="btn" id="invCloseBtn" style="display:none; background:var(--red); color:#fff;">✕ Close invoice — naya banayein</button>';
   html += '<div class="hint" id="invShareStatus" style="color:var(--green);"></div>';
-  html += '<div class="hint" id="invShareHint" style="display:none;">Phone par ye button PDF bana kar seedha WhatsApp (ya kisi bhi app) mein bhej deta hai. Computer par PDF download ho jati hai — usko WhatsApp mein attach kar dein.</div>';
-  html += '<div class="hint">To send it to the client: press Generate, then Print / Save as PDF — it prints on A4. On a phone, <b>Share on WhatsApp / PDF</b> bhi use kar sakte hain. The non-refundable stamp can also be set as default in Settings &gt; Invoice.</div>';
+  html += '<div class="hint" id="invShareHint" style="display:none;">Phone par PDF share sheet khulti hai — WhatsApp / Email / LocalSend / Blip choose karein. Computer par PDF download hoti hai: WhatsApp/Email mein attach karein, LocalSend/Blip mein file select karein.</div>';
+  html += '<div class="hint">To send it to the client: press Generate, then use the share buttons or Print / Save as PDF. The non-refundable stamp is manual — tick it only when needed.</div>';
   html += '</div>';
   html += '<div id="invOut"></div>';
   var invs = (S.invoices||[]).slice().sort(function(a,b){ return (b.savedAt||0)-(a.savedAt||0); });
@@ -2973,50 +2978,69 @@ function prepareInvPdf(){
   if(invPdfCache && invPdfCache.key === key) return Promise.resolve(invPdfCache.blob);
   return invPdfBlob().then(function(b){ invPdfCache = { key:key, blob:b }; return b; });
 }
-function invDoShare(blob, d){
+var INV_SHARE_BTN = { wa:"invShareWa", email:"invShareEmail", local:"invShareLocal", blip:"invShareBlip" };
+function invShareLabel(target){
+  return target === "email" ? "Email" : target === "local" ? "LocalSend" : target === "blip" ? "Blip" : "WhatsApp";
+}
+function invDoShare(blob, d, target){
   var name = invPdfName(d), text = invCaption(d), file = null;
   try{ file = new File([blob], name, { type:"application/pdf" }); }catch(e){ file = null; }
   var canFiles = !!(file && navigator.canShare && navigator.canShare({ files:[file] }));
   if(navigator.share && canFiles){
-    // iPhone Safari: ye call seedha tap ke waqt honi chahiye
+    // Phone share sheet: WhatsApp / Email / LocalSend / Blip choose karein
     return navigator.share({ files:[file], title:name, text:text });
   }
-  // Desktop ya purana browser: PDF download + WhatsApp Web
+  // Desktop / old browser: PDF download + target-specific action
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
   a.href = url; a.download = name;
   document.body.appendChild(a); a.click();
   setTimeout(function(){ URL.revokeObjectURL(url); if(a.parentNode) a.parentNode.removeChild(a); }, 2000);
-  try{ window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener"); }catch(e){}
-  return Promise.resolve();
+  if(target === "wa"){
+    try{ window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener"); }catch(e){}
+  } else if(target === "email"){
+    var who = d && (d.name || (d.paxNames||[])[0]) ? " — " + (d.name || (d.paxNames||[])[0]) : "";
+    var subject = (S.settings.invCompany || "AB Travels") + " — invoice" + who;
+    var body = text + "\n\nPDF download ho gayi hai — is email ke saath attach kar dein.";
+    try{ window.location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body); }catch(e){}
+  }
+  return Promise.resolve({ downloaded:true, target:target });
 }
-function shareInvoice(){
+function shareInvoice(target){
+  target = target || "wa";
   if(!lastInv && !document.getElementById("invPrint")){ alert("Press Generate Invoice first."); return; }
   var d = lastInv || {};
-  var btn = document.getElementById("invShareBtn");
-  var label = btn ? btn.getAttribute("data-label") || btn.textContent : "";
-  if(btn){ btn.setAttribute("data-label", label); }
-  var finish = function(){ if(btn){ btn.disabled = false; btn.textContent = label || "📲 Share on WhatsApp / PDF"; } };
+  var btn = document.getElementById(INV_SHARE_BTN[target] || INV_SHARE_BTN.wa);
+  var label = btn ? (btn.getAttribute("data-label") || btn.textContent) : "";
+  var finish = function(){ if(btn){ btn.disabled = false; btn.textContent = label || invShareLabel(target); } };
   var notify = function(msg){ var h = document.getElementById("invShareStatus"); if(h) h.textContent = msg; };
-
+  var done = function(res){
+    finish();
+    if(res && res.downloaded){
+      if(target === "email") notify("PDF download ho gayi — email mein attach kar dein.");
+      else if(target === "local" || target === "blip") notify("PDF download ho gayi — " + invShareLabel(target) + " mein file select karein.");
+      else notify("PDF download ho gayi — WhatsApp Web mein attach kar dein.");
+    } else {
+      notify("");
+    }
+  };
   // PDF pehle se tayyar ho to foran share (iPhone Safari ke liye zaroori)
   if(invPdfCache && invPdfCache.key === invPdfKey(d)){
-    return Promise.resolve(invDoShare(invPdfCache.blob, d)).then(finish, function(err){
+    return Promise.resolve(invDoShare(invPdfCache.blob, d, target)).then(done, function(err){
       finish();
       if(err && err.name === "AbortError") return;
-      if(err && err.name === "NotAllowedError"){ notify("PDF tayyar hai — dobara Share button dabayen."); return; }
+      if(err && err.name === "NotAllowedError"){ notify("PDF tayyar hai — dobara button dabayen."); return; }
       notify("Share nahi ho saka — PDF download kar ke bhej dein.");
     });
   }
-
-  if(btn){ btn.disabled = true; btn.textContent = "PDF ban rahi hai…"; }
+  if(btn){ btn.disabled = true; btn.textContent = "PDF…"; }
   notify("PDF ban rahi hai…");
   prepareInvPdf().then(function(blob){
-    return invDoShare(blob, d);
-  }).then(function(){ finish(); notify(""); }, function(err){
+    return invDoShare(blob, d, target);
+  }).then(done, function(err){
     finish();
-    if(err && err.name === "AbortError"){ return; }
-    if(err && err.name === "NotAllowedError"){ notify("PDF tayyar hai — dobara Share button dabayen."); return; }
+    if(err && err.name === "AbortError") return;
+    if(err && err.name === "NotAllowedError"){ notify("PDF tayyar hai — dobara button dabayen."); return; }
     console.error(err);
     notify("");
     alert("PDF nahi ban saki (internet check karein).\nAap Print / Save as PDF se bhi invoice bhej sakte hain.");
@@ -6609,8 +6633,8 @@ function bind(){
     if(out){ out.innerHTML = invHtml(d); out.scrollIntoView({behavior:"smooth", block:"start"}); }
     var pb = document.getElementById("invPrintBtn");
     if(pb) pb.style.display = "block";
-    var sb = document.getElementById("invShareBtn");
-    if(sb) sb.style.display = "block";
+    var srow = document.getElementById("invShareRow");
+    if(srow) srow.style.display = "flex";
     var sh = document.getElementById("invShareHint");
     if(sh) sh.style.display = "block";
     var cb = document.getElementById("invCloseBtn");
@@ -6734,12 +6758,14 @@ function bind(){
   };
   var ipb = document.getElementById("invPrintBtn");
   if(ipb) ipb.onclick = printInvoice;
-  var isb = document.getElementById("invShareBtn");
-  if(isb) isb.onclick = shareInvoice;
+  ["wa","email","local","blip"].forEach(function(t){
+    var b = document.getElementById(INV_SHARE_BTN[t]);
+    if(b) b.onclick = function(){ shareInvoice(t); };
+  });
   var icb = document.getElementById("invCloseBtn");
   if(icb) icb.onclick = function(){
     var out = document.getElementById("invOut"); if(out) out.innerHTML = "";
-    ["invPrintBtn","invShareBtn","invCloseBtn","invShareHint"].forEach(function(id){
+    ["invPrintBtn","invShareRow","invCloseBtn","invShareHint"].forEach(function(id){
       var b = document.getElementById(id); if(b) b.style.display = "none";
     });
     var ss2 = document.getElementById("invShareStatus"); if(ss2) ss2.textContent = "";
