@@ -210,8 +210,11 @@ async function ntfyNotify(data, title, message, tags) {
   const st = (data && data.settings) || {};
   const topic = String(st.ntfyTopic || "").trim().toLowerCase();
   if (!topic || st.ntfyOn === false) return;
+  let base = String(st.ntfyServer || "").trim().replace(/\/+$/, "");
+  if (!base) base = "https://ntfy.sh";
+  if (!/^https?:\/\//i.test(base)) base = "https://" + base;
   try {
-    await fetch("https://ntfy.sh/" + encodeURIComponent(topic), {
+    await fetch(base + "/" + encodeURIComponent(topic), {
       method: "POST",
       headers: {
         Title: String(title || "AB Travels").replace(/[^\x20-\x7E]/g, "").slice(0, 80) || "AB Travels",

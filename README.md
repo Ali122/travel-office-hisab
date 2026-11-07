@@ -176,5 +176,12 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - A typical 200 KB ticket PDF ≈ 5,000 files per 1 GB. That is years of normal use, but use Drive links for big documents and delete old ticket files occasionally.
 - GitHub Pages (the app itself) is limited to 1 GB site size and 100 GB/month soft bandwidth; the app is under 1 MB.
 
+## Notification server setting (v2.36)
+- Team notifications ab **configurable ntfy server** use karti hain. Naya field: **Settings → Team notifications → Notification server** (default `https://ntfy.sh`).
+- Kyun: kuch networks/ISPs (jaise ghar ka broadband) `ntfy.sh` ko block kar dete hain — phone par "TLS error" ya "check internet" aata hai, halanki office Wi-Fi par pehle kaam kar raha tha.
+- Working public mirrors: `https://ntfy.envs.net`, `https://ntfy.adminforge.de`, `https://ntfy.mzte.de`. Server field mein daal kar **Save & send test** karein, aur phone ke ntfy app mein bhi wahi server add karein.
+- **Copy subscribe link** ab usi server ka link deta hai; staff Worker bhi wahi server use karta hai (redeploy zaroori).
+- Default waisa hi hai, is liye purane users ka behaviour nahi badla.
+
 ## Version
-Current version: **2.35**.
+Current version: **2.36**.
