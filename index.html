@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.30</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.31</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -348,7 +348,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.30";
+var APP_VER = "2.31";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -2668,7 +2668,7 @@ function viewInvoice(){
         + '</div>';
   html += '<button class="btn" id="invCloseBtn" style="display:none; background:var(--red); color:#fff;">✕ Close invoice — naya banayein</button>';
   html += '<div class="hint" id="invShareStatus" style="color:var(--green);"></div>';
-  html += '<div class="hint" id="invShareHint" style="display:none;">Phone par PDF share sheet khulti hai — WhatsApp / Email / LocalSend / Blip choose karein. Computer par PDF download hoti hai: WhatsApp/Email mein attach karein, LocalSend/Blip mein file select karein.</div>';
+  html += '<div class="hint" id="invShareHint" style="display:none;">Phone par PDF share sheet khulti hai — WhatsApp / Email / LocalSend / Blip choose karein. Computer par PDF download hoti hai. <b>Email</b> button Gmail compose kholta hai (PDF manually attach karni hoti hai — browser auto-attach allow nahi karta). LocalSend/Blip ko browser direct nahi khol sakta; PDF download karke app mein file select karein.</div>';
   html += '<div class="hint">To send it to the client: press Generate, then use the share buttons or Print / Save as PDF. The non-refundable stamp is manual — tick it only when needed.</div>';
   html += '</div>';
   html += '<div id="invOut"></div>';
@@ -3001,8 +3001,20 @@ function invDoShare(blob, d, target){
   } else if(target === "email"){
     var who = d && (d.name || (d.paxNames||[])[0]) ? " — " + (d.name || (d.paxNames||[])[0]) : "";
     var subject = (S.settings.invCompany || "AB Travels") + " — invoice" + who;
-    var body = text + "\n\nPDF download ho gayi hai — is email ke saath attach kar dein.";
-    try{ window.location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body); }catch(e){}
+    var body = text + "\n\nPDF download ho gayi hai — is Gmail ke saath attach kar dein.";
+    var to = "";
+    try{ to = window.prompt("Receiver email address (Gmail will open with this address):", "") || ""; }catch(e){}
+    to = String(to).trim();
+    if(!to){ return Promise.resolve({ downloaded:true, target:target }); }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){
+      alert("Enter a valid email address.");
+      return Promise.resolve({ downloaded:true, target:target });
+    }
+    var gmail = "https://mail.google.com/mail/?view=cm&fs=1&to=" + encodeURIComponent(to) +
+      "&su=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    var w = null;
+    try{ w = window.open(gmail, "_blank", "noopener"); }catch(e){}
+    if(!w){ try{ window.location.href = gmail; }catch(e){} }
   }
   return Promise.resolve({ downloaded:true, target:target });
 }
@@ -3017,8 +3029,8 @@ function shareInvoice(target){
   var done = function(res){
     finish();
     if(res && res.downloaded){
-      if(target === "email") notify("PDF download ho gayi — email mein attach kar dein.");
-      else if(target === "local" || target === "blip") notify("PDF download ho gayi — " + invShareLabel(target) + " mein file select karein.");
+      if(target === "email") notify("PDF download ho gayi — Gmail mein attach kar dein.");
+      else if(target === "local" || target === "blip") notify("PDF download ho gayi — " + invShareLabel(target) + " mein file select karein (browser app direct nahi khol sakta).");
       else notify("PDF download ho gayi — WhatsApp Web mein attach kar dein.");
     } else {
       notify("");

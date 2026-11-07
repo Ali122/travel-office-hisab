@@ -84,7 +84,7 @@ Current version: **2.02**.
 Current version: **2.03**.
 
 ## Version
-Current version: **2.30** (larger ayah + Urdu/English translation fonts, mobile header wraps instead of truncating; price bot v2.29 quiet hours + price updates; invoice share row).
+Current version: **2.31** (Email share opens Gmail compose with recipient prompt; larger ayah/Urdu fonts; staff portal daily ayah; price bot v2.29 quiet hours + updates; invoice share row).
 
 ## Price Lookup - Ignav (v2.12) - Cloudflare Worker proxy
 - Amadeus Self-Service was decommissioned 17 July 2026 (all free keys disabled) - that integration is removed.
