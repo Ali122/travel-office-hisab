@@ -32,7 +32,8 @@
 const IGNAV_API = "https://ignav.com/api";
 const TG_API = "https://api.telegram.org/bot";
 const DEFAULT_EVERY = 15; // minutes
-const MAX_DAILY = 60;     // fare searches per day, protects the free allowance
+const MAX_DAILY = 60;     // fare searches per day for the bot, protects the free allowance
+const MAX_DAILY_PROXY = 200; // fare searches per day for the browser app (best effort)
 const DROP_PCT = 0.05;    // alert when the price falls at least 5%
 const MAX_WATCHES = 5;
 const WATCH_TTL = 60 * 60 * 24 * 120;
@@ -139,6 +140,25 @@ async function takeBudget(env) {
   return { ok: true, used: used + 1, cap: cap };
 }
 
+function proxyBudgetCap(env) {
+  const n = Number(env && env.MAX_DAILY_PROXY);
+  return isFinite(n) && n > 0 ? Math.floor(n) : MAX_DAILY_PROXY;
+}
+
+// Best-effort separate counter for the browser app, so a public /fares endpoint
+// cannot drain the whole Ignav allowance. KV has no atomic increment, so under
+// heavy parallel traffic a few calls can slip past the cap. Keep the Ignav
+// dashboard spending limit as the hard stop.
+async function takeProxyBudget(env) {
+  if (!env.KV) return { ok: true, used: 0, cap: proxyBudgetCap(env) };
+  const key = "px:" + new Date().toISOString().slice(0, 10);
+  const cap = proxyBudgetCap(env);
+  const used = Number((await env.KV.get(key)) || 0);
+  if (used >= cap) return { ok: false, used: used, cap: cap };
+  await env.KV.put(key, String(used + 1), { expirationTtl: 172800 });
+  return { ok: true, used: used + 1, cap: cap };
+}
+
 function routePayload(w) {
   const p = {
     origin: w.origin,
@@ -154,10 +174,12 @@ function routePayload(w) {
   return p;
 }
 
-function bestFare(j) {
+function bestFare(j, flight) {
   const list = (j && j.itineraries) || [];
+  const want = String(flight || "").toUpperCase().replace(/\s/g, "");
   let best = null;
   for (const it of list) {
+    if (want && !legHasFlight(it.outbound, want)) continue;
     const p = it && it.price;
     if (!p) continue;
     if (p.status && p.status !== "verified") continue;
@@ -292,6 +314,192 @@ function parseDate(s) {
 
 const CABINS = { eco: "economy", economy: "economy", pe: "premium_economy", premium: "premium_economy", premium_economy: "premium_economy", biz: "business", business: "business", first: "first" };
 
+/* ------------------------------------------------------------------ */
+/* natural language (Roman Urdu / English)                             */
+/* ------------------------------------------------------------------ */
+
+const CITY = {
+  karachi: "KHI", khi: "KHI",
+  lahore: "LHE", lhe: "LHE",
+  islamabad: "ISB", isb: "ISB", rawalpindi: "ISB",
+  quetta: "UET", uet: "UET",
+  peshawar: "PEW", pew: "PEW",
+  multan: "MUX", mux: "MUX",
+  faisalabad: "LYP", lyp: "LYP",
+  skardu: "KDU", kdu: "KDU",
+  gilgit: "GIL", gil: "GIL",
+  dubai: "DXB", dxb: "DXB",
+  "abu dhabi": "AUH", abudhabi: "AUH", auh: "AUH",
+  sharjah: "SHJ", shj: "SHJ",
+  doha: "DOH", doh: "DOH",
+  jeddah: "JED", jed: "JED", jiddah: "JED",
+  madinah: "MED", medina: "MED", med: "MED",
+  riyadh: "RUH", ruh: "RUH",
+  dammam: "DMM", dmm: "DMM",
+  muscat: "MCT", mct: "MCT",
+  kuwait: "KWI", kwi: "KWI",
+  bahrain: "BAH", bah: "BAH",
+  istanbul: "IST", ist: "IST",
+  london: "LHR", lhr: "LHR",
+  toronto: "YYZ", yyz: "YYZ",
+  bangkok: "BKK", bkk: "BKK",
+  kualalumpur: "KUL", "kuala lumpur": "KUL", kul: "KUL"
+};
+
+const MONTHS = {
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+  may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8,
+  sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12
+};
+
+function pktIso(ms) {
+  return new Date((ms == null ? Date.now() : ms) + 5 * 3600 * 1000).toISOString();
+}
+
+function pktToday() {
+  return pktIso().slice(0, 10);
+}
+
+function pktNowText() {
+  return pktIso().slice(0, 16).replace("T", " ") + " PKT";
+}
+
+function addDaysIso(iso, n) {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function naturalDate(text) {
+  const t = String(text || "").toLowerCase();
+  if (/\btomorrow\b|\bkal\b/.test(t) && !/\bkal raat\b/.test(t)) return addDaysIso(pktToday(), 1);
+  if (/\btoday\b|\baaj\b/.test(t)) return pktToday();
+  let m = t.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)(?:\s+(\d{4}))?\b/);
+  if (m) {
+    const year = m[3] ? Number(m[3]) : Number(pktToday().slice(0, 4));
+    const iso = year + "-" + ("0" + MONTHS[m[2]]).slice(-2) + "-" + ("0" + m[1]).slice(-2);
+    if (isoOk(iso)) return iso >= pktToday() ? iso : addDaysIso(iso, 0).replace(String(year), String(year + 1));
+  }
+  m = t.match(/\b(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{2,4}))?\b/);
+  if (m) {
+    let year = m[3] ? Number(m[3]) : Number(pktToday().slice(0, 4));
+    if (year < 100) year += 2000;
+    const iso = year + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[1]).slice(-2);
+    if (isoOk(iso)) return iso;
+  }
+  m = t.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  if (m && isoOk(m[0])) return m[0];
+  return "";
+}
+
+function naturalInterval(text) {
+  const t = String(text || "").toLowerCase();
+  let m = t.match(/\b(?:har|every|each)\s+(\d{1,3})\s*(?:min|mins|minute|minutes)\b/);
+  if (m) return Math.min(1440, Math.max(1, Number(m[1])));
+  m = t.match(/\b(?:har|every|each)\s+(\d{1,2})\s*(?:hour|hours|ghant[ae]|ghantay)\b/);
+  if (m) return Math.min(1440, Math.max(1, Number(m[1]) * 60));
+  if (/\b(?:har|every)\s+(?:minute|min)\b/.test(t)) return 1;
+  if (/\b(?:har|every)\s+(?:hour|ghant[ae]|ghantay)\b/.test(t)) return 60;
+  if (/\bhar\s+do\s+ghant/.test(t)) return 120;
+  if (/\bhar\s+teen\s+ghant/.test(t)) return 180;
+  if (/\bhar\s+aadha\s+ghant/.test(t)) return 30;
+  return 0;
+}
+
+function naturalTime(text) {
+  const t = String(text || "").toLowerCase();
+  const m = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(?:baje|bje|o'?clock|am|pm)\b/);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2] || 0);
+  if (h > 23 || min > 59) return null;
+  const night = /\braat\b|\bshaam\b|\bsham\b|\bevening\b|\bnight\b|\bpm\b/.test(t);
+  const morning = /\bsubah\b|\bmorning\b|\bam\b/.test(t);
+  if (night && h < 12) h += 12;
+  if (night && h === 12) h = 0;
+  if (morning && h === 12) h = 0;
+  return { h: h, m: min };
+}
+
+function naturalUntil(text) {
+  const t = String(text || "").toLowerCase();
+  if (!/\btak\b|\buntil\b|\btill\b/.test(t)) return { ms: 0, label: "" };
+  const tm = naturalTime(t);
+  if (!tm) return { ms: 0, label: "" };
+  // "kal raat 10 baje tak" / "aaj shaam 6 baje tak" -> the day word belongs to the end time
+  let date = "";
+  const near = t.match(/\b(kal|aaj|tomorrow|today)\b[^,;]{0,25}?\b\d{1,2}(?::\d{2})?\s*(?:baje|bje|o'?clock|am|pm)\b/);
+  if (near) date = /kal|tomorrow/.test(near[1]) ? addDaysIso(pktToday(), 1) : pktToday();
+  if (!date) date = naturalDate(t);
+  if (!date) date = pktToday();
+  let ms = Date.parse(date + "T" + ("0" + tm.h).slice(-2) + ":" + ("0" + tm.m).slice(-2) + ":00+05:00");
+  if (!isFinite(ms)) return { ms: 0, label: "" };
+  if (ms <= Date.now() && !near) ms += 86400000;
+  if (ms <= Date.now()) return { ms: 0, label: "" };
+  return { ms: ms, label: pktIso(ms).slice(0, 16).replace("T", " ") };
+}
+
+function naturalFlight(text) {
+  const m = String(text || "").toUpperCase().match(/\b([A-Z]{2})\s?(\d{1,4})\b/);
+  if (!m) return "";
+  return m[1] + m[2];
+}
+
+function naturalTarget(text) {
+  const t = String(text || "").replace(/,/g, "");
+  let m = t.match(/\btarget\s*[:=]?\s*(\d{3,7})\b/i);
+  if (!m) m = t.match(/\b(\d{3,7})\s*(?:se|say|ya)\s*kam\b/i);
+  if (!m) m = t.match(/\bbelow\s+(\d{3,7})\b/i);
+  const n = m ? Number(m[1]) : 0;
+  return isFinite(n) && n > 0 ? n : 0;
+}
+
+function naturalRoute(text) {
+  const s = " " + String(text || "").toLowerCase().replace(/[→➡>]/g, " to ") + " ";
+  const hits = [];
+  let m;
+  const names = Object.keys(CITY).sort(function (a, b) { return b.length - a.length; });
+  for (const name of names) {
+    const re2 = new RegExp("(^|[^a-z])" + name.replace(/ /g, "\\s+") + "(?=$|[^a-z])", "g");
+    while ((m = re2.exec(s))) hits.push({ at: m.index, code: CITY[name] });
+  }
+  // explicit codes first
+  const codeHits = [];
+  const re3 = /(^|[^a-z])([a-z]{3})(?=$|[^a-z])/g;
+  while ((m = re3.exec(s))) {
+    const code = m[2].toUpperCase();
+    if (Object.values(CITY).indexOf(code) >= 0) codeHits.push({ at: m.index, code: code });
+  }
+  const all = codeHits.length ? codeHits : hits;
+  all.sort(function (a, b) { return a.at - b.at; });
+  const seen = [];
+  for (const h of all) if (seen.indexOf(h.code) < 0) seen.push(h.code);
+  if (seen.length < 2) return null;
+  return { origin: seen[0], destination: seen[1] };
+}
+
+function parseNatural(text) {
+  const raw = String(text || "");
+  const route = naturalRoute(raw);
+  const date = naturalDate(raw);
+  const every = naturalInterval(raw);
+  const until = naturalUntil(raw);
+  const flight = naturalFlight(raw);
+  const target = naturalTarget(raw);
+  const wantsWatch = every > 0 || /\bwatch\b|\btrack\b|\bmonitor\b|\balert\b|\bdekh(?:ta|te|ti)\s+rah|\bcheck\s+karta/.test(raw.toLowerCase()) || until.ms > 0;
+  if (!route || !date) {
+    return {
+      ok: false,
+      missing: !route ? "route" : "date",
+      route: route, date: date, every: every, until: until, flight: flight, target: target, watch: wantsWatch
+    };
+  }
+  return {
+    ok: true, route: route, date: date, every: every, until: until, flight: flight,
+    target: target, watch: wantsWatch
+  };
+}
+
 function readRoute(args, opts) {
   const codes = [];
   const dates = [];
@@ -326,40 +534,203 @@ function readRoute(args, opts) {
 
 const HELP =
   "<b>✈️ AB Travels price bot</b>\n\n" +
-  "<b>Price poochhein</b>\n" +
+  "<b>Normal message bhi chalega</b>\n" +
+  "<code>DXB to KHI 15 December</code> — abhi ka price\n" +
+  "<code>KHI UET 15 December har ghantay</code> — track\n" +
+  "<code>DXB KHI 15 Dec har 30 minute kal raat 10 baje tak</code>\n" +
+  "Kisi flight ka filter: <code>EK601 DXB KHI 15 December</code> ya <code>/price DXB KHI 15-12-2026 flight=EK601</code>\n\n" +
+  "<b>Price</b>\n" +
   "<code>/price KHI DXB 01-12-2026</code>\n" +
   "<code>/price KHI DXB 01-12-2026 15-12-2026</code> round trip\n" +
   "Options: <code>adults=2 cabin=business market=AE nonstop</code>\n\n" +
   "<b>Tracking (khud check karta rahega)</b>\n" +
   "<code>/watch KHI DXB 01-12-2026</code>\n" +
   "<code>/watch KHI DXB 01-12-2026 target=85000 every=10</code>\n" +
+  "Specific flight + end time (Pakistan): <code>/watch KHI UET 15-12-2026 flight=PK310 every=60 until=2026-12-14T22:00</code>\n" +
+  "<code>/interval 123 60</code> · <code>/pause 123</code> · <code>/resume 123</code>\n" +
   "<code>/list</code> · <code>/stop 1</code> · <code>/stop all</code>\n\n" +
   "<b>Urgent (har minute)</b>\n" +
   "<code>/urgent 1 60</code> — watch #1 har minute, 60 minute tak\n\n" +
   "<b>Book link</b> <code>/book 1</code> · <b>Budget</b> <code>/budget</code>";
 
-async function cmdPrice(env, chat, args, opts) {
-  const r = readRoute(args, opts);
-  if (r.error) return send(env, chat, esc(r.error));
+async function doPrice(env, chat, r, extra, flight) {
+  const want = String(flight || "").toUpperCase().replace(/\s/g, "");
   const t = await takeBudget(env);
   if (!t.ok) {
     return send(env, chat, "📊 Aaj ka search budget (" + t.cap + ") khatam — " + t.used + " searches ho chuke.\nKal dobara try karein, ya Worker mein <code>MAX_DAILY_REQUESTS</code> barha dein.");
   }
-  await send(env, chat, "🔎 Search ho rahi hai: " + routeTitle(r) + " …");
+  await send(env, chat, "🔎 Search ho rahi hai: " + routeTitle(r) + (want ? " · " + esc(want) : "") + " …");
   const j = await ignavCall(env, r.ret ? "/fares/round-trip" : "/fares/one-way", routePayload(r));
   const list = (j.itineraries || []).filter(function (it) {
     const p = it && it.price;
-    return p && (!p.status || p.status === "verified") && Number(p.amount) > 0;
+    if (!p || (p.status && p.status !== "verified") || !(Number(p.amount) > 0)) return false;
+    if (want && !legHasFlight(it.outbound, want)) return false;
+    return true;
   }).sort(function (a, b) { return Number(a.price.amount) - Number(b.price.amount); });
-  if (!list.length) return send(env, chat, "Koi verified fare nahi mila. Date ya route badal kar dekhein.");
-  let msg = routeTitle(r) + "\n\n";
+  if (!list.length) {
+    return send(env, chat, want
+      ? "Flight <b>" + esc(want) + "</b> ka verified fare nahi mila. Flight number ya date check karein."
+      : "Koi verified fare nahi mila. Date ya route badal kar dekhein.");
+  }
+  let msg = routeTitle(r) + (want ? " · " + esc(want) : "") + "\n\n";
   msg += list.slice(0, 5).map(offerBlock).join("\n\n");
-  msg += "\n\n<i>Prices indicative — booking se pehle confirm karein.</i>\n" +
+  msg += "\n\n🕒 " + pktNowText() + " · source: Ignav\n" +
+    "<i>Prices indicative — booking se pehle confirm karein.</i>\n" +
     "Track karne ke liye: <code>/watch " + r.origin + " " + r.destination + " " + r.departure +
-    (r.ret ? " " + r.ret : "") + "</code>\n" +
+    (r.ret ? " " + r.ret : "") + (want ? " flight=" + want : "") + "</code>\n" +
     "Book links: <code>/watch</code> phir <code>/book ID</code>";
-  await send(env, chat, msg);
+  await send(env, chat, msg, extra);
 }
+
+function legHasFlight(leg, want) {
+  if (!want) return true;
+  const segs = (leg && leg.segments) || [];
+  for (const s of segs) {
+    const code = String(s.marketing_carrier_code || "").toUpperCase();
+    const number = String(s.flight_number || "").toUpperCase().replace(/\s/g, "");
+    if ((number.indexOf(code) === 0 ? number : code + number) === want) return true;
+  }
+  return false;
+}
+
+async function cmdPrice(env, chat, args, opts) {
+  const r = readRoute(args, opts);
+  if (r.error) return send(env, chat, esc(r.error));
+  return doPrice(env, chat, r, null, opts.flight);
+}
+
+function kb(rows) {
+  return { inline_keyboard: rows };
+}
+
+function intervalButtons(id) {
+  return kb([
+    [
+      { text: "1 min", callback_data: "iv:" + id + ":1" },
+      { text: "5 min", callback_data: "iv:" + id + ":5" },
+      { text: "10 min", callback_data: "iv:" + id + ":10" }
+    ],
+    [
+      { text: "15 min", callback_data: "iv:" + id + ":15" },
+      { text: "30 min", callback_data: "iv:" + id + ":30" },
+      { text: "60 min", callback_data: "iv:" + id + ":60" }
+    ],
+    [
+      { text: "⏸ Pause", callback_data: "ps:" + id },
+      { text: "🔗 Book", callback_data: "bk:" + id },
+      { text: "⏹ Stop", callback_data: "st:" + id }
+    ]
+  ]);
+}
+
+function untilLabel(ms) {
+  return pktIso(ms).slice(0, 16).replace("T", " ");
+}
+
+async function createWatch(env, chat, r, o) {
+  const flight = String((o && o.flight) || "").toUpperCase().replace(/\s/g, "");
+  if (flight && !/^[A-Z0-9]{2}\d{1,4}[A-Z]?$/.test(flight)) {
+    return send(env, chat, "Flight misaal: <code>EK601</code>");
+  }
+  const until = Number((o && o.until) || 0);
+  if (until && until <= Date.now()) {
+    return send(env, chat, "Tracking ka end time future mein hona chahiye.");
+  }
+  const have = await watches(env, chat);
+  if (have.length >= MAX_WATCHES) {
+    return send(env, chat, "Max " + MAX_WATCHES + " watches. Pehle <code>/stop ID</code> karein.");
+  }
+  const everyRaw = Number((o && o.every) || DEFAULT_EVERY);
+  const every = Math.min(1440, Math.max(1, Math.floor(isFinite(everyRaw) ? everyRaw : DEFAULT_EVERY)));
+  const target = Number((o && o.target) || 0);
+  const id = String(Math.floor(100 + Math.random() * 900));
+  const w = {
+    id: id, chat: String(chat), origin: r.origin, destination: r.destination,
+    departure: r.departure, ret: r.ret, adults: r.adults, cabin: r.cabin,
+    market: r.market, nonstop: r.nonstop, every: every, baseEvery: every,
+    flight: flight, until: until, paused: false,
+    target: isFinite(target) && target > 0 ? target : 0,
+    createdAt: Date.now(), lastCheckAt: 0, lastAmount: null, lastAlertAt: 0, lastAlertAmount: null
+  };
+  await env.KV.put("w:" + chat + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+
+  let nowTxt = "";
+  try {
+    const t = await takeBudget(env);
+    if (!t.ok) throw new Error("Aaj ka budget (" + t.cap + ") khatam — abhi live price nahi de sakta.");
+    const best = bestFare(await ignavCall(env, w.ret ? "/fares/round-trip" : "/fares/one-way", routePayload(w)), w.flight);
+    if (best) {
+      w.lastAmount = Number(best.price.amount);
+      w.lastCurrency = best.price.currency || "PKR";
+      w.lastBestId = best.ignav_id || "";
+      w.lastCheckAt = Date.now();
+      await env.KV.put("w:" + chat + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+      nowTxt = "\n\nAbhi sab se sasta: <b>" + esc(money(w.lastAmount, w.lastCurrency)) + "</b>" +
+        (best.outbound && best.outbound.segments && best.outbound.segments[0]
+          ? " — " + esc(String(best.outbound.segments[0].marketing_carrier_code || "") + " " + String(best.outbound.segments[0].flight_number || ""))
+          : "") +
+        "\n🕒 " + pktNowText() + " · source: Ignav";
+    }
+  } catch (e) {
+    nowTxt = "\n\n<i>Abhi price check nahi hua: " + esc(e.message) + "</i>";
+  }
+
+  await send(env, chat,
+    "✅ <b>Watch #" + id + " on</b>\n" + routeTitle(w) +
+    "\nHar <b>" + every + " min</b> check" +
+    (w.flight ? "\nFlight: " + esc(w.flight) : "") +
+    (w.until ? "\nBand: " + esc(untilLabel(w.until)) + " PKT" : "") +
+    (w.target ? "\nTarget: <b>" + esc(money(w.target, w.lastCurrency || "PKR")) + "</b> ya kam" : "\nAlert jab price gir jaye (5%+)") +
+    nowTxt +
+    "\n\nNeeche se interval badlein ya band karein.\nUrgent (har minute): <code>/urgent " + id + " 60</code>",
+    { reply_markup: intervalButtons(id) });
+  return id;
+}
+
+async function cmdWatch(env, chat, args, opts) {
+  const r = readRoute(args, opts);
+  if (r.error) return send(env, chat, esc(r.error));
+  let until = 0;
+  if (opts.until) {
+    const m = String(opts.until).match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/i);
+    if (!m || !isoOk(m[1]) || Number(m[2]) > 23 || Number(m[3]) > 59) {
+      return send(env, chat, "End time misaal: <code>until=2026-12-14T22:00</code> (Pakistan time)");
+    }
+    until = Date.parse(m[1] + "T" + m[2] + ":" + m[3] + ":00+05:00");
+    if (until <= Date.now()) return send(env, chat, "Tracking ka end time future mein hona chahiye.");
+  }
+  return createWatch(env, chat, r, {
+    every: opts.every, target: opts.target, flight: opts.flight, until: until
+  });
+}
+
+async function handleNatural(env, chat, text) {
+  const p = parseNatural(text);
+  if (!p.route && !p.date) {
+    return send(env, chat, "Samajh nahi aaya — misaal: <code>DXB to KHI 15 December</code>\n\n" + HELP);
+  }
+  if (!p.route) return send(env, chat, "Route samajh nahi aaya. Misaal: <code>DXB to KHI 15 December</code>");
+  if (!p.date) {
+    return send(env, chat, "Date samajh nahi aayi. Misaal: <code>DXB to KHI 15 December</code> ya <code>kal</code>.");
+  }
+  if (p.date < todayIso()) return send(env, chat, "Ye date guzar gayi hai: " + esc(p.date) + ". Nayi date bhejein.");
+  const r = {
+    origin: p.route.origin, destination: p.route.destination, departure: p.date,
+    ret: "", adults: 1, cabin: "economy", market: "PK", nonstop: false
+  };
+  if (p.watch) {
+    return createWatch(env, chat, r, {
+      every: p.every || DEFAULT_EVERY, target: p.target, flight: p.flight, until: p.until.ms
+    });
+  }
+  return doPrice(env, chat, r, {
+    reply_markup: kb([[
+      { text: "👁 Track har 60 min", callback_data: "np:" + encodeURIComponent([r.origin, r.destination, r.departure, p.flight || "", "60"].join("|")) },
+      { text: "⚙️ Interval", callback_data: "np:" + encodeURIComponent([r.origin, r.destination, r.departure, p.flight || "", "choose"].join("|")) }
+    ]])
+  }, p.flight);
+}
+
 
 async function watches(env, chat) {
   const out = [];
@@ -373,54 +744,6 @@ async function watches(env, chat) {
   return out;
 }
 
-async function cmdWatch(env, chat, args, opts) {
-  const r = readRoute(args, opts);
-  if (r.error) return send(env, chat, esc(r.error));
-  const have = await watches(env, chat);
-  if (have.length >= MAX_WATCHES) {
-    return send(env, chat, "Max " + MAX_WATCHES + " watches. Pehle <code>/stop ID</code> karein.");
-  }
-  const id = String(Math.floor(100 + Math.random() * 900));
-  const everyRaw = Number(opts.every || DEFAULT_EVERY);
-  const every = Math.min(1440, Math.max(1, Math.floor(isFinite(everyRaw) ? everyRaw : DEFAULT_EVERY)));
-  const target = opts.target ? Number(String(opts.target).replace(/[^0-9.]/g, "")) : 0;
-  const w = {
-    id: id, chat: String(chat), origin: r.origin, destination: r.destination,
-    departure: r.departure, ret: r.ret, adults: r.adults, cabin: r.cabin,
-    market: r.market, nonstop: r.nonstop, every: every, baseEvery: every,
-    target: isFinite(target) && target > 0 ? target : 0,
-    createdAt: Date.now(), lastCheckAt: 0, lastAmount: null, lastAlertAt: 0, lastAlertAmount: null
-  };
-  await env.KV.put("w:" + chat + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
-
-  let nowTxt = "";
-  try {
-    const t = await takeBudget(env);
-    if (!t.ok) throw new Error("Aaj ka budget (" + t.cap + ") khatam — abhi live price nahi de sakta.");
-    const best = bestFare(await ignavCall(env, w.ret ? "/fares/round-trip" : "/fares/one-way", routePayload(w)));
-    if (best) {
-      w.lastAmount = Number(best.price.amount);
-      w.lastCurrency = best.price.currency || "PKR";
-      w.lastBestId = best.ignav_id || "";
-      w.lastCheckAt = Date.now();
-      await env.KV.put("w:" + chat + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
-      nowTxt = "\n\nAbhi sab se sasta: <b>" + esc(money(w.lastAmount, w.lastCurrency)) + "</b>" +
-        (best.outbound && best.outbound.segments && best.outbound.segments[0]
-          ? " — " + esc(String(best.outbound.segments[0].marketing_carrier_code || "") + " " + String(best.outbound.segments[0].flight_number || ""))
-          : "");
-    }
-  } catch (e) {
-    nowTxt = "\n\n<i>Abhi price check nahi hua: " + esc(e.message) + "</i>";
-  }
-
-  await send(env, chat,
-    "✅ <b>Watch #" + id + " on</b>\n" + routeTitle(w) +
-    "\nHar <b>" + every + " min</b> check" +
-    (w.target ? "\nTarget: <b>" + esc(money(w.target, w.lastCurrency || "PKR")) + "</b> ya kam" : "\nAlert jab price gir jaye (5%+)") +
-    nowTxt +
-    "\n\nUrgent (har minute): <code>/urgent " + id + " 60</code>\nBand karna: <code>/stop " + id + "</code>");
-}
-
 async function cmdList(env, chat) {
   const ws = await watches(env, chat);
   if (!ws.length) return send(env, chat, "Koi watch nahi. <code>/watch KHI DXB 01-12-2026</code> se shuru karein.");
@@ -430,7 +753,10 @@ async function cmdList(env, chat) {
       (w.ret ? " ↔ " + esc(prettyDate(w.ret)) : "") +
       "\n   every " + (w.every || DEFAULT_EVERY) + " min" +
       (w.urgentUntil ? " ⚡" : "") +
+      (w.paused ? " ⏸ paused" : "") +
+      (w.flight ? " · " + esc(w.flight) : "") +
       (w.target ? " · target " + esc(money(w.target, w.lastCurrency || "PKR")) : "") +
+      (w.until ? "\n   band: " + esc(untilLabel(w.until)) + " PKT" : "") +
       (w.lastAmount != null ? "\n   last: " + esc(money(w.lastAmount, w.lastCurrency || "PKR")) +
         (w.lastCheckAt ? " (" + Math.round((Date.now() - w.lastCheckAt) / 60000) + " min pehle)" : "") : "") +
       "\n   <code>/urgent " + w.id + " 60</code> · <code>/stop " + w.id + "</code>";
@@ -453,6 +779,117 @@ async function cmdStop(env, chat, arg) {
   await send(env, chat, "🗑 Watch #" + id + " band.");
 }
 
+async function cmdPause(env, chat, arg, on) {
+  const id = String(arg || "").replace(/[^0-9]/g, "");
+  if (!id) return send(env, chat, "Misaal: <code>/pause 123</code> ya <code>/resume 123</code>");
+  const key = "w:" + chat + ":" + id;
+  const raw = await env.KV.get(key);
+  if (!raw) return send(env, chat, "Watch #" + id + " nahi mila. <code>/list</code> dekhein.");
+  const w = JSON.parse(raw);
+  w.paused = !!on;
+  await env.KV.put(key, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+  return send(env, chat, (on ? "⏸ Watch #" + id + " paused." : "▶️ Watch #" + id + " dobara chalu.") +
+    "\n<code>/interval " + id + " 15</code> se interval badal sakte hain.");
+}
+
+async function handleCallback(env, cq) {
+  const chat = cq && cq.message && cq.message.chat && cq.message.chat.id;
+  const data = String((cq && cq.data) || "");
+  if (!chat) return;
+  if (!env.KV) return;
+  const owner = await env.KV.get("owner");
+  if (!owner || String(owner) !== String(chat)) {
+    try { await tg(env, "answerCallbackQuery", { callback_query_id: cq.id, text: "Private bot", show_alert: true }); } catch (e) { /* ignore */ }
+    return;
+  }
+  try { await tg(env, "answerCallbackQuery", { callback_query_id: cq.id, text: "OK" }); } catch (e) { /* ignore */ }
+  const parts = data.split(":");
+  const kind = parts[0];
+
+  if (kind === "iv") {
+    const id = String(parts[1] || "").replace(/[^0-9]/g, "");
+    const mins = Number(parts[2]);
+    const key = "w:" + chat + ":" + id;
+    const raw = await env.KV.get(key);
+    if (!raw) return send(env, chat, "Watch nahi mila. <code>/list</code> dekhein.");
+    const w = JSON.parse(raw);
+    w.every = Math.min(1440, Math.max(1, mins || DEFAULT_EVERY));
+    w.baseEvery = w.every;
+    w.urgentUntil = 0;
+    w.paused = false;
+    await env.KV.put(key, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+    return send(env, chat, "✅ Watch #" + id + " ab har <b>" + w.every + " min</b> check hoga.\n" +
+      "<i>Har check 1 Ignav search hai.</i>\n<code>/urgent " + id + " 60</code> se har minute.", { reply_markup: intervalButtons(id) });
+  }
+
+  if (kind === "st") {
+    const id = String(parts[1] || "").replace(/[^0-9]/g, "");
+    await env.KV.delete("w:" + chat + ":" + id);
+    return send(env, chat, "🗑 Watch #" + id + " band.");
+  }
+
+  if (kind === "ps") {
+    const id = String(parts[1] || "").replace(/[^0-9]/g, "");
+    const key = "w:" + chat + ":" + id;
+    const raw = await env.KV.get(key);
+    if (!raw) return send(env, chat, "Watch nahi mila.");
+    const w = JSON.parse(raw);
+    w.paused = !w.paused;
+    await env.KV.put(key, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+    return send(env, chat, w.paused ? "⏸ Watch #" + id + " paused." : "▶️ Watch #" + id + " chalu.");
+  }
+
+  if (kind === "bk") {
+    const id = String(parts[1] || "").replace(/[^0-9]/g, "");
+    return cmdBook(env, chat, id);
+  }
+
+  if (kind === "np") {
+    const v = String(parts.slice(1).join(":"));
+    let f = [];
+    try { f = decodeURIComponent(v).split("|"); } catch (e) { f = []; }
+    const r = {
+      origin: String(f[0] || "").toUpperCase(), destination: String(f[1] || "").toUpperCase(),
+      departure: String(f[2] || ""), ret: "", adults: 1, cabin: "economy", market: "PK", nonstop: false
+    };
+    if (!/^[A-Z]{3}$/.test(r.origin) || !/^[A-Z]{3}$/.test(r.destination) || !isoOk(r.departure)) {
+      return send(env, chat, "Ye button purana ho gaya. Route dobara bhejein.");
+    }
+    const flight = String(f[3] || "");
+    if (f[4] === "choose") {
+      const enc = encodeURIComponent([r.origin, r.destination, r.departure, flight].join("|"));
+      return send(env, chat, "Interval chunein — watch #? ban jayega:", {
+        reply_markup: kb([
+          [
+            { text: "1 min", callback_data: "np2:" + enc + ":1" },
+            { text: "5 min", callback_data: "np2:" + enc + ":5" },
+            { text: "10 min", callback_data: "np2:" + enc + ":10" }
+          ],
+          [
+            { text: "15 min", callback_data: "np2:" + enc + ":15" },
+            { text: "30 min", callback_data: "np2:" + enc + ":30" },
+            { text: "60 min", callback_data: "np2:" + enc + ":60" }
+          ]
+        ])
+      });
+    }
+    return createWatch(env, chat, r, { every: Number(f[4]) || 60, flight: flight });
+  }
+
+  if (kind === "np2") {
+    let f = [];
+    try { f = decodeURIComponent(parts[1] || "").split("|"); } catch (e) { f = []; }
+    const r = {
+      origin: String(f[0] || "").toUpperCase(), destination: String(f[1] || "").toUpperCase(),
+      departure: String(f[2] || ""), ret: "", adults: 1, cabin: "economy", market: "PK", nonstop: false
+    };
+    if (!/^[A-Z]{3}$/.test(r.origin) || !/^[A-Z]{3}$/.test(r.destination) || !isoOk(r.departure)) {
+      return send(env, chat, "Ye button purana ho gaya. Route dobara bhejein.");
+    }
+    return createWatch(env, chat, r, { every: Number(parts[2]) || 60, flight: String(f[3] || "") });
+  }
+}
+
 async function cmdUrgent(env, chat, args) {
   const id = String(args[0] || "").replace(/[^0-9]/g, "");
   const mins = Math.min(720, Math.max(1, Math.floor(Number(args[1] || 60)) || 60));
@@ -467,6 +904,23 @@ async function cmdUrgent(env, chat, args) {
   await send(env, chat,
     "⚡ <b>Urgent mode on</b> — watch #" + id + " har <b>1 minute</b> check hoga, <b>" + mins + " min</b> tak.\n" +
     "<i>Har check 1 Ignav search use karta hai. Budget: <code>/budget</code>.</i>");
+}
+
+async function cmdInterval(env, chat, args) {
+  const id = String(args[0] || '').replace(/[^0-9]/g, '');
+  const mins = Number(args[1]);
+  if (!id || !Number.isInteger(mins) || mins < 1 || mins > 1440) {
+    return send(env, chat, 'Misaal: <code>/interval 123 60</code> (har 60 minute).');
+  }
+  const key = 'w:' + chat + ':' + id;
+  const raw = await env.KV.get(key);
+  if (!raw) return send(env, chat, 'Watch nahi mila. <code>/list</code> dekhein.');
+  const w = JSON.parse(raw);
+  w.every = mins;
+  w.baseEvery = mins;
+  w.urgentUntil = 0;
+  await env.KV.put(key, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+  return send(env, chat, 'Watch #' + esc(id) + ' ab har <b>' + mins + ' min</b> check hoga. Har check Ignav request hai.');
 }
 
 async function cmdBook(env, chat, arg) {
@@ -545,12 +999,20 @@ async function handleUpdate(env, upd) {
   if (cmd === "/list" || cmd === "/watches") return cmdList(env, chat);
   if (cmd === "/stop" || cmd === "/delete") return cmdStop(env, chat, args[0]);
   if (cmd === "/urgent") return cmdUrgent(env, chat, args);
+  if (cmd === "/interval") return cmdInterval(env, chat, args);
+  if (cmd === "/pause") return cmdPause(env, chat, args[0], true);
+  if (cmd === "/resume") return cmdPause(env, chat, args[0], false);
   if (cmd === "/book" || cmd === "/booking") return cmdBook(env, chat, args[0]);
   if (cmd === "/budget" || cmd === "/usage") return cmdBudget(env, chat, args[0]);
 
-  // bare "KHI DXB 01-12-2026" also searches
-  if (!cmd.startsWith("/") && args.length + 1 >= 2) {
-    return cmdPrice(env, chat, [cmd.toUpperCase()].concat(args), parsed.opts);
+  // Anything that is not a command is treated as a normal message:
+  // "DXB to KHI 15 December", "KHI UET 15-12-2026 har ghantay", "kal raat 10 baje tak" ...
+  if (!cmd.startsWith("/")) {
+    // keep the old shorthand "KHI DXB 01-12-2026" working
+    if (args.length + 1 >= 2 && readRoute([cmd.toUpperCase()].concat(args), parsed.opts).origin) {
+      return cmdPrice(env, chat, [cmd.toUpperCase()].concat(args), parsed.opts);
+    }
+    return handleNatural(env, chat, text);
   }
   await send(env, chat, "Samajh nahi aaya.\n\n" + HELP);
 }
@@ -571,7 +1033,8 @@ function alertText(w, best, old) {
   if (w.target) s += "  <i>(target " + esc(money(w.target, p.currency)) + ")</i>";
   s += "\n" + legLine(best.outbound, "Out");
   if (best.inbound) s += "\n" + legLine(best.inbound, "Ret");
-  s += "\n\n<code>/book " + w.id + "</code> · <code>/stop " + w.id + "</code>";
+  s += "\n\n🕒 " + pktNowText() + " · source: Ignav · status: verified";
+  s += "\n<code>/book " + w.id + "</code> · <code>/stop " + w.id + "</code>";
   return s;
 }
 
@@ -588,6 +1051,12 @@ async function checkAll(env) {
 
     const ttl = { expirationTtl: WATCH_TTL };
 
+    if (w.until && now >= w.until) {
+      await env.KV.delete(k.name);
+      try { await send(env, w.chat, '⏱ Watch #' + esc(w.id) + ' ka waqt poora; tracking band.'); } catch (e) { /* ignore */ }
+      continue;
+    }
+
     // urgent mode expired?
     if (w.urgentUntil && now > w.urgentUntil) {
       w.every = w.baseEvery || DEFAULT_EVERY;
@@ -598,6 +1067,7 @@ async function checkAll(env) {
     }
 
     const every = Math.max(1, Number(w.every) || DEFAULT_EVERY);
+    if (w.paused) continue;
     if (w.lastCheckAt && now - w.lastCheckAt < every * 60000 - 20000) continue;
 
     let j = null;
@@ -615,7 +1085,7 @@ async function checkAll(env) {
       continue;
     }
 
-    const best = bestFare(j);
+    const best = bestFare(j, w.flight);
     w.lastCheckAt = now;
     if (!best) {
       await env.KV.put(k.name, JSON.stringify(w), ttl);
@@ -651,8 +1121,20 @@ async function checkAll(env) {
 
 async function proxyIgnav(request, env, path, hdrs) {
   if (request.method !== "POST") return jres({ error: { message: "POST only" } }, 405, hdrs);
+  const allow = String(env.ALLOWED_ORIGIN || "").trim().replace(/\/+$/, "");
+  if (allow && allow !== "*") {
+    const origin = String(request.headers.get("Origin") || "").replace(/\/+$/, "");
+    const referer = String(request.headers.get("Referer") || "");
+    if (origin !== allow && referer.indexOf(allow + "/") !== 0) {
+      return jres({ error: { code: "origin", message: "This worker only serves " + allow } }, 403, hdrs);
+    }
+  }
   if (!env.IGNAV_API_KEY) {
     return jres({ error: { code: "no_key", message: "IGNAV_API_KEY secret is not set in the Worker." } }, 500, hdrs);
+  }
+  const t = await takeProxyBudget(env);
+  if (!t.ok) {
+    return jres({ error: { code: "budget", message: "Aaj ki proxy limit (" + t.cap + ") khatam. Kal try karein ya MAX_DAILY_PROXY barhayein." } }, 429, hdrs);
   }
   const body = await request.text();
   const r = await fetch(IGNAV_API + path, {
@@ -682,7 +1164,7 @@ async function setupPage(env, url) {
     return page("Setup", "<h1>❌ Telegram token missing</h1><p>Worker → Settings → Variables and Secrets mein <code>TELEGRAM_BOT_TOKEN</code> add karein (secret), phir ye page dobara kholein.</p>");
   }
   const hook = url.origin + "/telegram";
-  const body = { url: hook, allowed_updates: ["message"], drop_pending_updates: false };
+  const body = { url: hook, allowed_updates: ["message", "callback_query"], drop_pending_updates: false };
   if (env.TELEGRAM_WEBHOOK_SECRET) body.secret_token = env.TELEGRAM_WEBHOOK_SECRET;
   try {
     await tg(env, "setWebhook", body);
@@ -755,6 +1237,13 @@ export default {
       try { upd = await request.json(); } catch (e) { return new Response("ok"); }
       if (!env.TELEGRAM_BOT_TOKEN || !env.KV) {
         return new Response("ok"); // misconfigured, but never make Telegram retry forever
+      }
+      if (upd && upd.callback_query) {
+        const cb = handleCallback(env, upd.callback_query).catch(function (e) {
+          try { console.error("callback failed:", e && (e.stack || e.message) || e); } catch (e2) { /* ignore */ }
+        });
+        if (ctx && ctx.waitUntil) ctx.waitUntil(cb);
+        return new Response("ok");
       }
       const job = handleUpdate(env, upd).catch(function (e) {
         try {

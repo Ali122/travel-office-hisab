@@ -126,5 +126,13 @@ Current version: **2.23** (staff portal link saves and syncs immediately; partia
 - Secrets (`IGNAV_API_KEY`, `TELEGRAM_BOT_TOKEN`, optional `TELEGRAM_WEBHOOK_SECRET`) live only in the Worker; nothing is stored in the app or its backups.
 - Setup guide: `PRICEBOT.md`.
 
+## Mobile-friendly price bot (v2.25)
+- Natural messages: `DXB to KHI 15 December`, `DXB KHI 15 Dec har 30 minute`, `EK601 DXB KHI 15 December` — Roman Urdu/English, city names or IATA codes, `kal`/`aaj`, `har ghantay`, `har 2 ghantay`.
+- Tracking end time (`... kal raat 10 baje tak` or `until=2026-12-14T22:00`, Pakistan time); the watch deletes itself and tells you when time is up.
+- Inline buttons on every reply: 1 / 5 / 10 / 15 / 30 / 60 min, Pause, Book, Stop; new `/interval`, `/pause`, `/resume` commands.
+- Specific flight filter for both one-off prices and watches (`flight=EK601` / `EK601` in a normal message).
+- Every fare and alert shows the check time (PKT) and the source (Ignav, verified only).
+- App proxy now has its own best-effort daily counter (`MAX_DAILY_PROXY`, default 200) and an optional `ALLOWED_ORIGIN` check, so the public `/fares` route cannot silently drain the whole Ignav allowance. The Ignav dashboard spending limit remains the hard stop.
+
 ## Version
-Current version: **2.24**.
+Current version: **2.25**.
