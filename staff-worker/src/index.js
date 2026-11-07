@@ -205,6 +205,25 @@ async function withData(env, mutate) {
   return { error: { code: "SYNC_WRITE_FAILED", message: String((lastErr && lastErr.message) || lastErr) } };
 }
 
+/* ---------- team push notifications (same ntfy topic as the owner app) ---------- */
+async function ntfyNotify(data, title, message, tags) {
+  const st = (data && data.settings) || {};
+  const topic = String(st.ntfyTopic || "").trim().toLowerCase();
+  if (!topic || st.ntfyOn === false) return;
+  try {
+    await fetch("https://ntfy.sh/" + encodeURIComponent(topic), {
+      method: "POST",
+      headers: {
+        Title: String(title || "AB Travels").replace(/[^\x20-\x7E]/g, "").slice(0, 80) || "AB Travels",
+        Priority: "high",
+        Tags: tags || "ticket",
+        Click: "https://ali122.github.io/travel-office-hisab/"
+      },
+      body: String(message || "").slice(0, 3500)
+    });
+  } catch {}
+}
+
 /* ---------- staff view ---------- */
 function staffView(s) {
   const clients = [];
@@ -272,7 +291,7 @@ function staffView(s) {
 }
 
 /* ---------- handlers ---------- */
-async function api(req, env, url) {
+async function api(req, env, url, ctx) {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": url.origin, "access-control-allow-headers": "content-type", "access-control-allow-methods": "GET,POST,OPTIONS" } });
 
   if (url.pathname === "/api/session" && req.method === "GET") {
@@ -338,6 +357,12 @@ async function api(req, env, url) {
       }
     });
     if (res.error) return fail(res.error.code, res.error.message, res.error.code === "NOT_FOUND" ? 404 : 400);
+    if (ctx) {
+      const list = b.type === "receivable" ? (res.data.receivables || []) : (res.data.tickets || []);
+      const who = list.find((x) => x.id === b.id) || {};
+      ctx.waitUntil(ntfyNotify(res.data, "Payment received",
+        [who.client, "PKR " + Math.round(amount), method, "by staff"].filter(Boolean).join(" · "), "moneybag"));
+    }
     return json({ ok: true, ...staffView(res.data) });
   }
 
@@ -415,6 +440,12 @@ async function api(req, env, url) {
       });
     });
     if (res.error) return fail(res.error.code, res.error.message, 400);
+    if (ctx) {
+      ctx.waitUntil(ntfyNotify(res.data, "New staff booking",
+        [client, b.pnr ? ("PNR " + String(b.pnr).toUpperCase()) : "",
+         (b.from || "") + (b.to ? "→" + b.to : ""), "Sale PKR " + Math.round(sale), "by staff"]
+          .filter(Boolean).join(" · "), "ticket"));
+    }
     return json({ ok: true, ...staffView(res.data) });
   }
 
@@ -453,10 +484,10 @@ async function api(req, env, url) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (url.pathname.startsWith("/api/")) {
-      try { return await api(req, env, url); }
+      try { return await api(req, env, url, ctx); }
       catch (e) { return fail("SERVER_ERROR", String((e && e.message) || e), 500); }
     }
     // With the static assets binding, "/" is served by public/index.html.

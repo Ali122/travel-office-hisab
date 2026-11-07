@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.33</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.34</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.33";
+var APP_VER = "2.34";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -434,7 +434,7 @@ function T(k){
 function blankState(){
   return {
     settings: { partnerA:"Umair", partnerB:"Sarmad", loanBalance:0, charityRate:2, loanRate:40, syncUrl:"", importId:"", hints:true, lastBackup:"",
-                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", staffPortalUrl:"", githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
+                invPhone1:"0310-3311199", invPhone2:"0314-3178560", invNR:false, invBW:true, ocrApiKey:"", staffPortalUrl:"https://staff-abtravels.umair5075.workers.dev", ntfyTopic:"", ntfyOn:true, githubPat:"", githubRepo:"travel-office-hisab-backup", ignavKey:"", ignavMarket:"PK", ignavProxy:"",
                 invCompany:"AB Travels", ayatIdx:-1, theme:"oled", btnStyle:"sleek", totalsPin:"",
                 keLink: "https://www.k-electric.com.pk", keMeters: ["0400027718947", "0400027718939"],
     fixes: [
@@ -477,6 +477,11 @@ function load(){
     if(!s.clients) s.clients = [];
     if(!s.fileTickets) s.fileTickets = [];
     ensureSettings(s);
+    // Staff portal URL — ek dafa seed karein (agar user ne khud clear kiya ho to dobara na bhare)
+    if(!s.settings.staffUrlSeeded){
+      if(!s.settings.staffPortalUrl) s.settings.staffPortalUrl = "https://staff-abtravels.umair5075.workers.dev";
+      s.settings.staffUrlSeeded = true;
+    }
     // One-time: default the invoice print style to black & white (ink saving)
     if(!s.settings.invBWv2){ s.settings.invBW = true; s.settings.invBWv2 = true; }
     return s;
@@ -3098,6 +3103,11 @@ function invSaveToFiles(){
     });
   }).then(function(){
     saveNow(function(){});
+    try{
+      ntfySend("Invoice saved to Ticket Files",
+        [d.name || (d.paxNames || [])[0] || "", d.pnr ? ("PNR " + d.pnr) : "", "by " + fileDeviceName()]
+          .filter(Boolean).join(" · "), { priority:"high", tags:"receipt" });
+    }catch(e){}
     if(btn){ btn.disabled = false; btn.textContent = "📁 Files"; }
     notify("✓ Ticket Files mein save ho gayi — ab mobile/staff se WhatsApp bhej dein.");
     fileSetFlash("✓ Invoice Ticket Files mein save ho gayi.");
@@ -5981,6 +5991,23 @@ function viewSettings(){
         + '<div class="hint">Agar portal abhi deploy nahi hua: computer par <code>staff-worker</code> folder me <code>npm.cmd install</code>, <code>npx.cmd wrangler login</code>, phir secrets (<code>STAFF_PASSWORD</code>, <code>GITHUB_TOKEN</code>) set kar ke <code>npm.cmd run deploy</code> — URL <code>https://staff-abtravels.xxx.workers.dev</code> ban jayega. Details: staff-worker/README.md</div>'
         + '</div>';
 
+  html += '<div class="card"><h2>🔔 Team notifications (free push)</h2>'
+        + '<div class="hint" style="margin-top:0;">When you add a ticket or upload a file, every subscribed phone gets a notification. Each device subscribes once with the free <b>ntfy</b> app — no account, email or OTP. Staff bookings and payments also notify.</div>'
+        + '<label>Notification topic (keep it secret)</label>'
+        + '<input id="setNtfyTopic" value="'+esc(st.ntfyTopic||"")+'" placeholder="abtravels-xxxxxxxx" autocomplete="off" style="font-family:monospace;">'
+        + '<div class="row" style="margin-top:8px; align-items:center;">'
+        +   '<button class="btn small primary" id="ntfySave" style="flex:1.2; margin-top:0;">💾 Save &amp; send test</button>'
+        +   '<button class="btn small" id="ntfyNew" style="flex:1; margin-top:0;">🎲 New topic</button>'
+        + '</div>'
+        + '<div class="row" style="margin-top:8px; align-items:center;">'
+        +   '<button class="btn small" id="ntfyCopyTopic" style="flex:1; margin-top:0;">📋 Copy topic</button>'
+        +   '<button class="btn small" id="ntfyCopyLink" style="flex:1; margin-top:0;">🔗 Copy subscribe link</button>'
+        + '</div>'
+        + '<label style="display:flex; gap:8px; align-items:center; margin-top:10px;"><input type="checkbox" id="setNtfyOn" style="width:auto"'+(st.ntfyOn!==false?' checked':'')+'> Send notifications for new tickets and files</label>'
+        + '<div class="hint" id="ntfyStatus" style="margin-top:8px; font-weight:600;"></div>'
+        + '<div class="hint"><b>Team setup (once per phone):</b> install <b>ntfy</b> from Play Store / App Store → tap <b>+</b> → paste the topic → <b>Subscribe</b>. On a PC, open the subscribe link and press <b>Subscribe</b>.<br>Anyone who knows the topic can read the notifications — share it only with your team. Notifications include client names and PNRs.</div>'
+        + '</div>';
+
   html += '<div class="card"><h2>🐙 GitHub Sync — replaces Google Sheet sync</h2>'
         + '<div class="hint" style="margin-top:0;">Aapka main app data ab aapke private repo ke <code>HisabData.json</code> mein sync hota hai. Token aur repo backup wale same hain; backup snapshots alag <code>backups/</code> folder mein safe rahtay hain. Google Sheet ab sirf monthly imports ke liye reh gayi hai.</div>'
         + '<label>GitHub Token (PAT)</label>'
@@ -6432,6 +6459,47 @@ function fileCaption(f){
   if(f.pnr) bits.push("PNR " + f.pnr);
   return company + (bits.length ? " — " + bits.join(" — ") : "") + " — ticket attached.";
 }
+/* ---------- team push notifications (ntfy.sh — free, no account) ---------- */
+function ntfyTopic(){
+  return String((S.settings && S.settings.ntfyTopic) || "").trim().toLowerCase();
+}
+function ntfyNewTopic(){
+  return ("abtravels-" + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6))
+    .replace(/[^a-z0-9_-]/g, "").slice(0, 60);
+}
+function ntfySend(title, message, opts){
+  opts = opts || {};
+  var topic = ntfyTopic();
+  if(!topic) return Promise.resolve(false);
+  if(!opts.force && S.settings.ntfyOn === false) return Promise.resolve(false);
+  var appUrl = /^https?:/i.test(location.origin) ? (location.origin + location.pathname)
+    : "https://ali122.github.io/travel-office-hisab/";
+  var headers = {
+    "Title": (String(title || "AB Travels").replace(/[^\x20-\x7E]/g, "").slice(0, 80) || "AB Travels"),
+    "Priority": opts.priority || "default",
+    "Tags": opts.tags || "ticket",
+    "Click": appUrl
+  };
+  return fetch("https://ntfy.sh/" + encodeURIComponent(topic), {
+    method: "POST",
+    body: String(message || "").slice(0, 3500),
+    headers: headers
+  }).then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+function ntfyCopy(text, statusId, okMsg){
+  var done = function(){
+    var s = document.getElementById(statusId);
+    if(s){ s.textContent = okMsg; s.style.color = "var(--green)"; }
+  };
+  var fb = function(){
+    var ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand("copy"); done(); }catch(e){ alert("Copy failed."); }
+    document.body.removeChild(ta);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fb);
+  else fb();
+}
 /* ---------- filename se client / PNR guess ---------- */
 function fileGuess(name){
   var base = String(name || "").replace(/\.[^.]+$/, "");
@@ -6539,6 +6607,14 @@ function fileUploadAll(){
   function next(){
     if(idx >= arr.length){
       saveNow(function(){});
+      var okCount = arr.length - failed;
+      if(okCount > 0){
+        try{
+          ntfySend("New ticket file" + (okCount > 1 ? "s (" + okCount + ")" : ""),
+            [meta.client, meta.pnr ? ("PNR " + meta.pnr) : "", okCount + " file(s)", "by " + meta.by]
+              .filter(Boolean).join(" · "), { priority:"high", tags:"inbox_tray" });
+        }catch(e){}
+      }
       fileSetFlash("✓ " + (arr.length - failed) + " file(s) uploaded" + (failed ? (" — " + failed + " failed" + (lastErr ? " (" + lastErr + ")" : "")) : "") + ". Baqi devices par sync hoti hai.");
       render();
       return;
@@ -7048,15 +7124,20 @@ function bind(){
     if(!client || !(sale>0 || cost>0)){ alert("Client name and at least one amount (cost or sale) are required."); return; }
     var kind = (document.getElementById("tkKind")||{}).value || "Ticket";
     var tkDate = readDate("tkDate", true); if(!tkDate) return;
+    var detailTxt = ((document.getElementById("tkDetail")||{}).value||"").trim();
     S.tickets.push({ id:uid(), date:tkDate, client:client, kind:kind,
                      payMethod:((document.getElementById("tkPayMethod")||{}).value||"Cash"),
                      nic:((document.getElementById("tkNic")||{}).value||"").trim(),
-                     detail:((document.getElementById("tkDetail")||{}).value||"").trim(), cost:cost, sale:sale,
+                     detail:detailTxt, cost:cost, sale:sale,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
     ensureClientRecord(client, ((document.getElementById("tkNic")||{}).value||"").trim());
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
+    try{
+      ntfySend("New ticket added", [client, kind, detailTxt, "Sale " + money(sale), "by " + fileDeviceName()]
+        .filter(Boolean).join(" · "), { priority:"high", tags:"ticket" });
+    }catch(e){}
     setCardOpen("tkhist", true);
   };
   // Sales search — client ke naam se tickets/umrah dhoondein
@@ -7865,6 +7946,43 @@ function bind(){
     };
     if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, fb);
     else fb();
+  };
+  // ===== Team notifications (ntfy) =====
+  var ntfyInput = document.getElementById("setNtfyTopic");
+  var ntfyStatus = function(msg, bad){
+    var s = document.getElementById("ntfyStatus");
+    if(s){ s.textContent = msg; s.style.color = bad ? "var(--red)" : "var(--green)"; }
+  };
+  var ntfySaveBtn = document.getElementById("ntfySave");
+  if(ntfySaveBtn) ntfySaveBtn.onclick = function(){
+    var t = String((ntfyInput && ntfyInput.value) || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    if(!t){ alert("Enter a topic name first (or press New topic)."); return; }
+    S.settings.ntfyTopic = t;
+    S.settings.ntfyOn = !!(document.getElementById("setNtfyOn") || {}).checked;
+    if(ntfyInput) ntfyInput.value = t;
+    save();
+    ntfyStatus("Sending test…");
+    ntfySend("AB Travels test", "Notifications connected. New tickets, files, staff bookings and payments will appear here.", { priority:"default", tags:"white_check_mark", force:true }).then(function(ok){
+      ntfyStatus(ok ? "✓ Saved and test sent — check the ntfy app on your phone." : "Saved, but the test could not be sent — check internet.", !ok);
+    });
+  };
+  var ntfyNewBtn = document.getElementById("ntfyNew");
+  if(ntfyNewBtn) ntfyNewBtn.onclick = function(){
+    var t = ntfyNewTopic();
+    if(ntfyInput) ntfyInput.value = t;
+    ntfyStatus("New topic generated — press Save & send test, then share the topic with your team.", false);
+  };
+  var ntfyCopyTopic = document.getElementById("ntfyCopyTopic");
+  if(ntfyCopyTopic) ntfyCopyTopic.onclick = function(){
+    var t = String((ntfyInput && ntfyInput.value) || S.settings.ntfyTopic || "").trim().toLowerCase();
+    if(!t){ alert("Create a topic first."); return; }
+    ntfyCopy(t, "ntfyStatus", "✓ Topic copied — send it to your team on WhatsApp.");
+  };
+  var ntfyCopyLink = document.getElementById("ntfyCopyLink");
+  if(ntfyCopyLink) ntfyCopyLink.onclick = function(){
+    var t = String((ntfyInput && ntfyInput.value) || S.settings.ntfyTopic || "").trim().toLowerCase();
+    if(!t){ alert("Create a topic first."); return; }
+    ntfyCopy("https://ntfy.sh/" + encodeURIComponent(t), "ntfyStatus", "✓ Subscribe link copied — open it on a PC or paste the topic in the ntfy app.");
   };
   var ish = document.getElementById("importSheet");
   if(ish) ish.onclick = function(){

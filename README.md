@@ -153,5 +153,13 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Deleting a file in the app removes it from GitHub; other devices drop it on their next sync (or **Refresh** on the tab).
 - Staff Worker must be redeployed once after this version for the staff tab to appear.
 
+## Team push notifications (v2.34)
+- New Settings card **Team notifications (free push)**. Notifications use [ntfy.sh](https://ntfy.sh) — no account, email or OTP.
+- Setup once: press **New topic** → **Save & send test** → install the free **ntfy** app on every phone (Play Store / App Store) → `+` → paste the topic → Subscribe. On a PC, open `https://ntfy.sh/<topic>` and press Subscribe.
+- Notifications are sent automatically for: a new sale/ticket in the app, a new Ticket File upload, an invoice saved to Ticket Files, a new staff booking, and a staff payment.
+- The topic is a shared secret: anyone who knows it can read the notifications (client names/PNRs are included). Share it only with the team; press **New topic** to rotate it.
+- If ntfy.sh is unreachable, the app keeps working; only the notification fails (silently in the background).
+- The Worker reads the topic from `HisabData.json`, so staff-originated notifications work without any extra Worker secret.
+
 ## Version
-Current version: **2.33**.
+Current version: **2.34**.
