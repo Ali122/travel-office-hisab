@@ -304,7 +304,7 @@ function invoiceData(input) {
   const d = input && typeof input === "object" ? input : {};
   const docType = d.docType === "umrah" ? "umrah" : "ticket";
   const names = Array.isArray(d.paxNames) ? d.paxNames.map((x) => cleanText(x, 120)).filter(Boolean).slice(0, 20) : [];
-  const nics = Array.isArray(d.paxNics) ? d.paxNics.map((x) => cleanText(x, 40)).filter(Boolean).slice(0, 20) : [];
+  const nics = Array.isArray(d.paxNames) ? d.paxNames.map((x, i) => ({ name: cleanText(x, 120), nic: cleanText((d.paxNics || [])[i], 40) })).filter((x) => x.name).slice(0, 20).map((x) => x.nic) : [];
   const pax = Math.max(1, Math.min(20, Number(d.pax) || 1));
   const name = cleanText(d.name || names[0], 120);
   if (!name) return { error: { code: "BAD_REQUEST", message: "passenger name is required" } };

@@ -34,7 +34,7 @@
  *   - KV free plan: 1,000 writes/day. The bot writes at most once per check,
  *     so the daily budget also keeps KV writes safe.
  *   - KV list free plan: only 1,000/day. The cron must NOT call KV.list every
- *     minute (that was 1,440/day). Watches are tracked in the w:index KV key.
+ *     minute (that was 1,440/day). WATCH_INDEX_DO stores the concurrent-safe index.
  */
 
 const IGNAV_API = "https://ignav.com/api";
@@ -897,47 +897,50 @@ async function handleNatural(env, chat, text) {
 }
 
 
-/* Watch index: keeps watch keys in one KV value so the every-minute cron does
-   not use KV.list (free plan: 1,000 list requests/day). Falls back to one
-   KV.list when the index is missing, then never lists again. */
-async function readWatchKeys(env) {
-  if (!env.KV) return [];
-  try {
-    const raw = await env.KV.get(WATCH_INDEX);
-    if (raw === null) return null;
-    const a = JSON.parse(raw);
-    return Array.isArray(a) ? a.map(String).filter(Boolean) : [];
-  } catch (e) {
-    return null;
+/* Strongly consistent index. Each watch has its own Durable Object storage key.
+   Bootstrap once from KV (including watches missed by the old shared index). */
+export class WatchIndex {
+  constructor(state, env) {
+    this.state = state;
+    state.blockConcurrencyWhile(async () => {
+      if (await state.storage.get("initialized")) return;
+      let cursor;
+      do {
+        const page = await env.KV.list({ prefix: "w:", limit: 1000, cursor });
+        for (const k of page.keys) {
+          if (k.name !== WATCH_INDEX && /^w:[^:]+:[^:]+$/.test(k.name)) {
+            await state.storage.put("watch:" + k.name, true);
+          }
+        }
+        cursor = page.list_complete === false ? page.cursor : undefined;
+      } while (cursor);
+      await state.storage.put("initialized", true);
+    });
+  }
+  async fetch(request) {
+    const b = await request.json();
+    if (b.action === "add" || b.action === "remove") {
+      if (!/^w:[^:]+:[^:]+$/.test(String(b.key || ""))) return jres({ error: "key" }, 400);
+      if (b.action === "add") await this.state.storage.put("watch:" + b.key, true);
+      else await this.state.storage.delete("watch:" + b.key);
+      return jres({ ok: true });
+    }
+    const keys = await this.state.storage.list({ prefix: "watch:" });
+    return jres([...keys.keys()].map(k => k.slice(6)));
   }
 }
-async function writeWatchKeys(env, keys) {
-  if (!env.KV) return;
-  const uniq = Array.from(new Set((keys || []).filter(Boolean)));
-  try { await env.KV.put(WATCH_INDEX, JSON.stringify(uniq)); } catch (e) { /* ignore */ }
+async function watchIndexCall(env, action, key) {
+  if (!env.WATCH_INDEX_DO) throw new Error("WATCH_INDEX_DO binding missing");
+  const stub = env.WATCH_INDEX_DO.get(env.WATCH_INDEX_DO.idFromName("team-watches"));
+  const r = await stub.fetch("https://watch-index/", {
+    method: "POST", body: JSON.stringify({ action, key })
+  });
+  if (!r.ok) throw new Error("Watch index unavailable");
+  return r.json();
 }
-async function watchKeys(env) {
-  const keys = await readWatchKeys(env);
-  if (keys !== null) return keys;
-  const out = [];
-  let ok = false;
-  try {
-    const list = await env.KV.list({ prefix: "w:", limit: 1000 });
-    for (const k of list.keys) if (k.name !== WATCH_INDEX) out.push(k.name);
-    ok = true;
-  } catch (e) { /* ignore */ }
-  if (ok) await writeWatchKeys(env, out);
-  return out;
-}
-async function addWatchKey(env, key) {
-  const keys = await watchKeys(env);
-  if (keys.indexOf(key) < 0) { keys.push(key); await writeWatchKeys(env, keys); }
-}
-async function removeWatchKey(env, key) {
-  const keys = await watchKeys(env);
-  const next = keys.filter(function (k) { return k !== key; });
-  if (next.length !== keys.length) await writeWatchKeys(env, next);
-}
+async function watchKeys(env) { return watchIndexCall(env, "list"); }
+async function addWatchKey(env, key) { await watchIndexCall(env, "add", key); }
+async function removeWatchKey(env, key) { await watchIndexCall(env, "remove", key); }
 
 async function watches(env, chat) {
   const out = [];
@@ -946,7 +949,7 @@ async function watches(env, chat) {
   const keys = (await watchKeys(env)).filter(function (k) { return k.indexOf(prefix) === 0; });
   for (const key of keys) {
     const raw = await env.KV.get(key);
-    if (!raw) { await removeWatchKey(env, key); continue; }
+    if (!raw) continue; // KV may not yet reflect a just-created watch.
     try { out.push(JSON.parse(raw)); } catch (e) { /* skip */ }
   }
   out.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
@@ -978,10 +981,11 @@ async function cmdStop(env, chat, arg) {
   const team = (await teamChat(env)) || String(chat);
   if (!arg) return send(env, chat, "ID dein: <code>/stop 1</code> ya <code>/stop all</code>.");
   if (/^all$/i.test(arg)) {
-    for (const w of ws) await env.KV.delete("w:" + team + ":" + w.id);
-    const keys = await watchKeys(env);
-    const prefix = "w:" + team + ":";
-    await writeWatchKeys(env, keys.filter(function (k) { return k.indexOf(prefix) !== 0; }));
+    for (const w of ws) {
+      const key = "w:" + team + ":" + w.id;
+      await env.KV.delete(key);
+      await removeWatchKey(env, key);
+    }
     return send(env, chat, "🗑 " + ws.length + " watch band kar diye.");
   }
   const id = String(arg).replace(/[^0-9]/g, "");
@@ -1399,7 +1403,7 @@ async function checkAll(env) {
   const now = Date.now();
   for (const key of keys) {
     const raw = await env.KV.get(key);
-    if (!raw) { await removeWatchKey(env, key); continue; }
+    if (!raw) continue; // KV propagation can lag behind the strongly consistent index.
     let w = null;
     try { w = JSON.parse(raw); } catch (e) { continue; }
     if (!w || !w.chat) continue;
@@ -1537,6 +1541,7 @@ async function notifyRelay(request, env, hdrs) {
 
   let body = {};
   try { body = (await request.json()) || {}; } catch (e) { body = {}; }
+  if (!internal && body.token !== env.TELEGRAM_BOT_TOKEN) return jres({ ok: false, error: "unauthorized" }, 401, hdrs);
   const title = String(body.title || "AB Travels").slice(0, 90);
   const text = String(body.text || "").slice(0, 3500);
   if (!text.trim()) return jres({ ok: false, error: "empty" }, 400, hdrs);
@@ -1625,7 +1630,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.41</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.42</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +

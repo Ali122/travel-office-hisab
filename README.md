@@ -1,5 +1,11 @@
 # Travel Office Hisab — AB Travels
 
+## Audit fixes (v2.42)
+- Browser notification requests require the price bot token plus the origin check. Staff continues to use the shared `NOTIFY_KEY` secret.
+- Concurrent watch-index changes use a SQLite Durable Object instead of overwriting one KV array. First use imports existing watch keys from KV, including keys missed by the old index. Cron does not list KV every minute.
+- Staff invoices preserve blank passenger ID slots so IDs stay paired with names.
+- Price bot deploy: `npx wrangler deploy -c wrangler.pricebot.toml`. Requires `WATCH_INDEX_DO` binding and `watch-index-v1` migration (`WatchIndex`, SQLite); pasting code alone into an unconfigured Worker is insufficient.
+
 Single-file web app for a travel agency's monthly accounts. No build step, no server:
 open `index.html` in any browser. The whole UI is in English.
 

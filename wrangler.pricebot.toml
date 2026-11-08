@@ -1,0 +1,20 @@
+name = "ab-travels-ignav"
+main = "pricebot-worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+keep_vars = true
+
+[[kv_namespaces]]
+binding = "KV"
+id = "ae2af23ba21948d6a12ac2e82e223d26"
+
+[[durable_objects.bindings]]
+name = "WATCH_INDEX_DO"
+class_name = "WatchIndex"
+
+[[migrations]]
+tag = "watch-index-v1"
+new_sqlite_classes = ["WatchIndex"]
+
+[triggers]
+crons = ["*/1 * * * *"]
