@@ -8,6 +8,7 @@ Staff can:
 - see and add **partial payments** on receivables and unpaid tickets
 - view all clients, add clients and edit client details (no delete)
 - create their own bookings (cost and profit are hidden)
+- create **ticket or Umrah invoices for any client**, save them and print/save as PDF (cost and profit are hidden)
 - print/share invoices for **their own** bookings only
 - use PNR Lookup
 
@@ -73,8 +74,9 @@ Open the URL, enter the staff password, and test:
 1. Pending Payments â†’ add a small partial payment
 2. Clients â†’ search, edit, add a client
 3. New Booking â†’ save an unpaid booking
-4. My Invoices â†’ open and print it
-5. PNR Lookup â†’ open an airline page
+4. My Invoices â†’ print a saved invoice
+5. New Invoice â†’ create a ticket or Umrah invoice, save it, then open/print it
+6. PNR Lookup â†’ open an airline page
 
 Then open the owner app and press **Pull now** (or reload) to confirm the payment and
 booking appear in `HisabData.json`.
@@ -105,6 +107,11 @@ SESSION_SECRET=local-random-string
   owner app.
 - Staff bookings are stored with `createdBy: "staff"`, `staffBooking: true`,
   `cost: 0` and `payments: []`. The owner should add the real cost later.
+- Staff invoices are appended to `invoices[]` with `createdBy: "staff"` and the same
+  `d` layout the owner app uses, so they open and print in the owner app too. The staff
+  portal only returns staff-created invoices; owner invoices stay hidden.
+- Saving an invoice also sends a Telegram notification through the bot relay when
+  notifications are enabled.
 - Login is rate-limited to 8 attempts per minute per IP. Sessions last 12 hours and
   use an `HttpOnly`, `Secure`, `SameSite=Lax` cookie.
 

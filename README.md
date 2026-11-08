@@ -100,7 +100,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 
 ## Staff portal (v2.16) — separate Cloudflare Worker
 - `staff-worker/` is a password-only staff portal at `staff-abtravels.<subdomain>.workers.dev`. No email or OTP; the password is a Worker secret and the browser gets a 12-hour signed `HttpOnly` cookie.
-- Staff can add partial payments on receivables and unpaid tickets, view/add/edit clients (no delete), create their own bookings, print/share invoices for their own bookings, open/share the shared Ticket Files, and use PNR Lookup.
+- Staff can add partial payments on receivables and unpaid tickets, view/add/edit clients (no delete), create their own bookings, create ticket/Umrah invoices for any client (save + print), print/share invoices for their own bookings, open/share the shared Ticket Files, and use PNR Lookup. Saved staff invoices appear in the owner app's Invoice tab too.
 - Cost, profit, expenses, partners, Father, loans, settings, airline IDs, backups and the GitHub token never reach staff. Staff bookings are saved with `createdBy: "staff"`, `cost: 0` so the owner can add the real cost.
 - Setup, secrets and testing: see `staff-worker/README.md`. The Worker writes to the same `HisabData.json`; press **Pull now** in the owner app to see staff changes.
 

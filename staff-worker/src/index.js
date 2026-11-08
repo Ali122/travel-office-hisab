@@ -279,11 +279,16 @@ function staffView(s) {
     uploadedAt: Number(f.uploadedAt) || 0,
     uploadedBy: f.uploadedBy || ""
   }));
+  // Staff-created invoices only. Owner invoices stay hidden from staff.
+  const invoices = (s.invoices || [])
+    .filter((x) => x && x.createdBy === "staff")
+    .map((x) => ({ id: x.id, date: x.date || "", savedAt: Number(x.savedAt) || 0, d: x.d || {} }));
   return {
     clients,
     receivables,
     tickets,
     files,
+    invoices,
     bookings: tickets.filter((t) => t.createdBy === "staff"),
     business: {
       company: cleanText(s.settings && s.settings.invCompany, 80) || "AB Travels",
@@ -292,6 +297,79 @@ function staffView(s) {
     },
     staffName: "Staff"
   };
+}
+
+/* ---------- staff invoice data ---------- */
+function invoiceData(input) {
+  const d = input && typeof input === "object" ? input : {};
+  const docType = d.docType === "umrah" ? "umrah" : "ticket";
+  const names = Array.isArray(d.paxNames) ? d.paxNames.map((x) => cleanText(x, 120)).filter(Boolean).slice(0, 20) : [];
+  const nics = Array.isArray(d.paxNics) ? d.paxNics.map((x) => cleanText(x, 40)).filter(Boolean).slice(0, 20) : [];
+  const pax = Math.max(1, Math.min(20, Number(d.pax) || 1));
+  const name = cleanText(d.name || names[0], 120);
+  if (!name) return { error: { code: "BAD_REQUEST", message: "passenger name is required" } };
+  const date = validDate(d.date) ? d.date : new Date().toISOString().slice(0, 10);
+  const trip = d.trip === "round" ? "round" : "one";
+  const from = cleanText(d.from, 20).toUpperCase();
+  const to = cleanText(d.to, 20).toUpperCase();
+  const pnr = cleanText(d.pnr, 12).toUpperCase();
+  if (docType === "ticket") {
+    if (!pnr) return { error: { code: "BAD_REQUEST", message: "PNR is required for a ticket invoice" } };
+    if (!from || !to) return { error: { code: "BAD_REQUEST", message: "From and To are required" } };
+  }
+  const air = cleanText(d.air, 30);
+  const time = cleanText(d.time, 10);
+  const arr = cleanText(d.arr, 10);
+  const meal = !!d.meal;
+  const inv = {
+    docType,
+    name,
+    pnr: docType === "ticket" ? pnr : "",
+    nic: cleanText(d.nic, 40),
+    air: docType === "ticket" ? air : "",
+    pax,
+    tkNo: cleanText(d.tkNo, 40),
+    paxNames: names,
+    paxNics: nics,
+    from: from || "—",
+    to: to || "—",
+    date,
+    time,
+    arr,
+    hand: Math.max(0, Number(d.hand) || 0),
+    bag: Math.max(0, Number(d.bag) || 0),
+    nr: docType === "ticket" ? !!d.nr : false,
+    tmp: docType === "ticket" ? !!d.tmp : false,
+    meal,
+    trip: docType === "ticket" ? trip : "one",
+    sale: Math.max(0, Number(d.sale) || 0),
+    received: Math.max(0, Number(d.received) || 0),
+    bed: cleanText(d.bed, 20),
+    beds: Math.max(0, Number(d.beds) || 0),
+    flightType: cleanText(d.flightType, 20) || "Direct",
+    hotel: cleanText(d.hotel, 120),
+    nights: Math.max(0, Number(d.nights) || 0),
+    child: !!d.child,
+    childPrice: Math.max(0, Number(d.childPrice) || 0),
+    pkg: Math.max(0, Number(d.pkg) || 0),
+    paid: Math.max(0, Number(d.paid) || 0),
+    makkahDist: Math.max(0, Number(d.makkahDist) || 0),
+    madinahDist: Math.max(0, Number(d.madinahDist) || 0),
+    shuttle: !!d.shuttle,
+    ziyarat: !!d.ziyarat,
+    out: { from: from || "", to: to || "", date, time, arr, meal, air },
+    ret: null
+  };
+  if (docType === "ticket" && trip === "round") {
+    const r = d.ret && typeof d.ret === "object" ? d.ret : {};
+    const rf = cleanText(r.from || to, 20).toUpperCase();
+    const rt = cleanText(r.to || from, 20).toUpperCase();
+    inv.ret = {
+      from: rf, to: rt, date: validDate(r.date) ? r.date : date,
+      time: cleanText(r.time, 10), arr: cleanText(r.arr, 10), meal, air
+    };
+  }
+  return { invoice: inv };
 }
 
 /* ---------- handlers ---------- */
@@ -482,6 +560,26 @@ async function api(req, env, url, ctx) {
     } catch (e) {
       return fail("FILE_READ_FAILED", String((e && e.message) || e), 502);
     }
+  }
+
+  if (url.pathname === "/api/invoice" && req.method === "POST") {
+    let b;
+    try { b = await req.json(); } catch { return fail("BAD_REQUEST", "invalid JSON", 400); }
+    const parsed = invoiceData(b.invoice || b);
+    if (parsed.error) return fail(parsed.error.code, parsed.error.message, 400);
+    const res = await withData(env, (s) => {
+      if (!Array.isArray(s.invoices)) s.invoices = [];
+      s.invoices.push({ id: uid(), date: parsed.invoice.date, savedAt: Date.now(), createdBy: "staff", d: parsed.invoice });
+    });
+    if (res.error) return fail(res.error.code, res.error.message, 400);
+    if (ctx) {
+      const inv = parsed.invoice;
+      ctx.waitUntil(ntfyNotify(env, res.data, "New staff invoice",
+        [inv.name, inv.pnr ? ("PNR " + inv.pnr) : "",
+         inv.docType === "umrah" ? "Umrah" : (inv.from + " → " + inv.to),
+         "by staff"].filter(Boolean).join(" · "), "receipt"));
+    }
+    return json({ ok: true, ...staffView(res.data) });
   }
 
   return fail("NOT_FOUND", "not found", 404);

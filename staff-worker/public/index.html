@@ -84,6 +84,7 @@
     <button data-tab="pending" class="on">Pending Payments</button>
     <button data-tab="clients">Clients</button>
     <button data-tab="booking">New Booking</button>
+    <button data-tab="newinvoice">New Invoice</button>
     <button data-tab="invoices">My Invoices</button>
     <button data-tab="files">Ticket Files</button>
     <button data-tab="pnr">PNR Lookup</button>
@@ -94,7 +95,7 @@
 <script>
 (function(){
   "use strict";
-  var DATA = null, TAB = "pending", editingClient = null;
+  var DATA = null, TAB = "pending", editingClient = null, staffInvDraft = null;
   var STAFF_AYAT = [
     { ar:"وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا ۞ وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ",
       ur:"اور جو اللہ سے ڈرے، اللہ اس کے لیے نکلنے کا راستہ بنا دیتا ہے اور اسے ایسی جگہ سے رزق دیتا ہے جہاں سے اسے گمان بھی نہ ہو۔",
@@ -185,6 +186,7 @@
     if(TAB==="pending") h+=renderPending();
     else if(TAB==="clients") h+=renderClients();
     else if(TAB==="booking") h+=renderBooking();
+    else if(TAB==="newinvoice") h+=renderNewInvoice();
     else if(TAB==="invoices") h+=renderInvoices();
     else if(TAB==="files") h+=renderFiles();
     else h+=renderPnr();
@@ -263,14 +265,209 @@
     return h;
   }
 
+  function renderNewInvoice(){
+    var names=(DATA.clients||[]).slice().sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
+    var airOpts='<option value="">— Airline —</option>'+(typeof AIRLINES!=="undefined"?AIRLINES.map(function(a){ return '<option value="'+esc(a.c)+'">'+esc(a.n)+' ('+esc(a.c)+')</option>'; }).join(""):"");
+    var h='<div class="card"><h2>New invoice</h2><div class="hint">Create a ticket or Umrah invoice for any client. Cost and profit are never shown.</div>'
+      +'<div class="grid"><div><label>Invoice type</label><select id="siDoc"><option value="ticket">Ticket (flight)</option><option value="umrah">Umrah package</option></select></div>'
+      +'<div><label>Client / passenger name</label><input id="siName" list="siNames" placeholder="Passenger name"><datalist id="siNames">'+names.map(function(c){return '<option value="'+esc(c.name)+'">';}).join("")+'</datalist></div>'
+      +'<div><label>NIC / Passport</label><input id="siNic" placeholder="NIC or passport"></div>'
+      +'<div><label>Date</label><input type="date" id="siDate" value="'+today()+'"></div></div>'
+      +'<div class="grid" style="margin-top:8px;"><div><label>Departure time</label><input type="time" id="siTime"></div><div><label>Arrival time</label><input type="time" id="siArr"></div><div><label>Passengers</label><input type="number" id="siPax" min="1" max="20" value="1"></div></div>'
+      +'<div id="siPaxMulti" class="grid" style="display:none; margin-top:8px;"><div><label>Passenger names (one per line)</label><textarea id="siPaxNames" rows="3" style="text-transform:uppercase;"></textarea></div><div><label>NIC / Passport (same order)</label><textarea id="siPaxNics" rows="3" style="text-transform:uppercase;"></textarea></div></div>';
+    h+='<div id="siTicketOnly">';
+    h+='<div class="grid" style="margin-top:8px;"><div><label>PNR / Booking ref</label><input id="siPnr" maxlength="12" style="text-transform:uppercase;"></div><div><label>Ticket number</label><input id="siTkNo" style="text-transform:uppercase;"></div>'
+      +'<div><label>Airline</label><select id="siAir">'+airOpts+'</select></div><div><label>Trip type</label><select id="siTrip"><option value="one">One-way</option><option value="round">Round trip</option></select></div></div>'
+      +'<div class="grid" style="margin-top:8px;"><div><label>From (IATA)</label><input id="siFrom" maxlength="3" placeholder="KHI" style="text-transform:uppercase;"></div><div><label>To (IATA)</label><input id="siTo" maxlength="3" placeholder="DXB" style="text-transform:uppercase;"></div></div>'
+      +'<div id="siRetWrap" class="grid" style="display:none; margin-top:8px;"><div><label>Return from</label><input id="siRetFrom" maxlength="3" style="text-transform:uppercase;"></div><div><label>Return to</label><input id="siRetTo" maxlength="3" style="text-transform:uppercase;"></div><div><label>Return date</label><input type="date" id="siRetDate"></div><div><label>Return departure</label><input type="time" id="siRetTime"></div><div><label>Return arrival</label><input type="time" id="siRetArr"></div></div>'
+      +'<div class="grid" style="margin-top:8px;"><div><label>Hand carry (kg)</label><input type="number" id="siHand" min="0" value="7"></div><div><label>Checked bag (kg)</label><input type="number" id="siBag" min="0" value="0"></div></div>'
+      +'<div class="row" style="margin-top:8px; align-items:center;"><label style="display:flex;gap:7px;align-items:center;margin:0;"><input type="checkbox" id="siMeal" style="width:auto"> Meal included</label><label style="display:flex;gap:7px;align-items:center;margin:0;"><input type="checkbox" id="siNR" style="width:auto"> Non-refundable</label><label style="display:flex;gap:7px;align-items:center;margin:0;"><input type="checkbox" id="siTmp" style="width:auto"> Temporary booking</label></div>'
+      +'<div class="grid" style="margin-top:8px;"><div><label>Sale amount (Rs, optional)</label><input type="number" id="siSale" min="0"></div><div><label>Received (Rs, optional)</label><input type="number" id="siReceived" min="0"></div></div></div>';
+    h+='<div id="siUmrahOnly" style="display:none;">';
+    h+='<div class="grid" style="margin-top:8px;"><div><label>Package price (Rs)</label><input type="number" id="siPkg" min="0"></div><div><label>Advance paid (Rs)</label><input type="number" id="siPaid" min="0"></div>'
+      +'<div><label>Bed type</label><select id="siBed"><option>Single</option><option>Double</option><option>Triple</option><option>Quad</option><option>Sharing</option></select></div><div><label>Beds</label><input type="number" id="siBeds" min="0" value="1"></div>'
+      +'<div><label>Flight</label><select id="siFlightType"><option>Direct</option><option>Connecting</option></select></div><div><label>Hotel</label><input id="siHotel"></div>'
+      +'<div><label>Nights</label><input type="number" id="siNights" min="0"></div><div><label>Makkah distance (m)</label><input type="number" id="siMakkahDist" min="0"></div>'
+      +'<div><label>Madinah distance (m)</label><input type="number" id="siMadinahDist" min="0"></div></div>'
+      +'<div class="row" style="margin-top:8px; align-items:center;"><label style="display:flex;gap:7px;align-items:center;margin:0;"><input type="checkbox" id="siShuttle" style="width:auto"> Shuttle service</label><label style="display:flex;gap:7px;align-items:center;margin:0;"><input type="checkbox" id="siZiyarat" style="width:auto"> Ziyarat included</label><label style="display:flex;gap:7px;align-items:center;margin:0;"><input type="checkbox" id="siChild" style="width:auto"> Child without bed</label></div>'
+      +'<div id="siChildWrap" class="grid" style="display:none; margin-top:8px;"><div><label>Child price (Rs)</label><input type="number" id="siChildPrice" min="0"></div></div></div>';
+    h+='<div class="row" style="margin-top:12px; align-items:center;"><button class="btn primary" id="siGenerate" style="margin-top:0;">Generate invoice</button><button class="btn green" id="siSave" style="display:none; margin-top:0;">Save invoice</button><button class="btn" id="siPrint" style="display:none; margin-top:0; background:#64748b; color:#fff;">Print / Save PDF</button></div>'
+      +'<div class="hint" id="siStatus" style="margin-top:8px;"></div><div id="siOut" style="margin-top:12px;"></div></div>';
+    return h;
+  }
+
+  function siToggle(){
+    var doc=$("siDoc")?$("siDoc").value:"ticket", trip=$("siTrip")?$("siTrip").value:"one", pax=Number($("siPax")?$("siPax").value:1)||1;
+    if($("siTicketOnly")) $("siTicketOnly").style.display=doc==="ticket"?"":"none";
+    if($("siUmrahOnly")) $("siUmrahOnly").style.display=doc==="umrah"?"":"none";
+    if($("siRetWrap")) $("siRetWrap").style.display=(doc==="ticket"&&trip==="round")?"":"none";
+    if($("siPaxMulti")) $("siPaxMulti").style.display=pax>1?"":"none";
+    if($("siChildWrap")) $("siChildWrap").style.display=($("siChild")&&$("siChild").checked)?"":"none";
+  }
+
+  function readInvoiceForm(){
+    var doc=$("siDoc")?$("siDoc").value:"ticket";
+    var pax=Math.max(1,Math.min(20,Number($("siPax")?$("siPax").value:1)||1));
+    var names=pax>1?String($("siPaxNames")?$("siPaxNames").value:"").split(/\n+/).map(function(x){return x.trim();}).filter(Boolean):[];
+    var nics=pax>1?String($("siPaxNics")?$("siPaxNics").value:"").split(/\n+/).map(function(x){return x.trim();}).filter(Boolean):[];
+    var name=$("siName")?$("siName").value.trim():"";
+    var nic=$("siNic")?$("siNic").value.trim():"";
+    if(pax>1){
+      if(names.length<pax){ msg("Enter names for all "+pax+" passengers.",true); return null; }
+      name=names[0]; nic=nics[0]||nic;
+    }
+    if(!name){ msg("Passenger name is required.",true); return null; }
+    var date=$("siDate")?$("siDate").value:"";
+    if(!date){ msg("Date is required.",true); return null; }
+    var d={docType:doc,name:name,nic:nic,pax:pax,paxNames:pax>1?names:[],paxNics:pax>1?nics:[],date:date,time:$("siTime")?$("siTime").value:"",arr:$("siArr")?$("siArr").value:"",hand:Number($("siHand")?$("siHand").value:0)||0,bag:Number($("siBag")?$("siBag").value:0)||0,meal:!!($("siMeal")&&$("siMeal").checked),nr:!!($("siNR")&&$("siNR").checked),tmp:!!($("siTmp")&&$("siTmp").checked),sale:Number($("siSale")?$("siSale").value:0)||0,received:Number($("siReceived")?$("siReceived").value:0)||0};
+    if(doc==="ticket"){
+      d.pnr=($("siPnr")?$("siPnr").value:"").trim().toUpperCase();
+      d.air=$("siAir")?$("siAir").value:"";
+      d.tkNo=($("siTkNo")?$("siTkNo").value:"").trim().toUpperCase();
+      d.from=($("siFrom")?$("siFrom").value:"").trim().toUpperCase();
+      d.to=($("siTo")?$("siTo").value:"").trim().toUpperCase();
+      d.trip=$("siTrip")?$("siTrip").value:"one";
+      if(!d.pnr||!d.from||!d.to){ msg("PNR, From and To are required for a ticket invoice.",true); return null; }
+      d.out={from:d.from,to:d.to,date:d.date,time:d.time,arr:d.arr,meal:d.meal,air:d.air};
+      if(d.trip==="round"){
+        d.ret={from:($("siRetFrom")?$("siRetFrom").value:"").trim().toUpperCase()||d.to,to:($("siRetTo")?$("siRetTo").value:"").trim().toUpperCase()||d.from,date:$("siRetDate")?$("siRetDate").value:d.date,time:$("siRetTime")?$("siRetTime").value:"",arr:$("siRetArr")?$("siRetArr").value:"",meal:d.meal,air:d.air};
+      }
+    } else {
+      d.pnr=""; d.air=""; d.from="—"; d.to="—"; d.trip="one";
+      d.pkg=Number($("siPkg")?$("siPkg").value:0)||0;
+      d.paid=Number($("siPaid")?$("siPaid").value:0)||0;
+      d.bed=$("siBed")?$("siBed").value:"";
+      d.beds=Number($("siBeds")?$("siBeds").value:0)||0;
+      d.flightType=$("siFlightType")?$("siFlightType").value:"Direct";
+      d.hotel=$("siHotel")?$("siHotel").value.trim():"";
+      d.nights=Number($("siNights")?$("siNights").value:0)||0;
+      d.makkahDist=Number($("siMakkahDist")?$("siMakkahDist").value:0)||0;
+      d.madinahDist=Number($("siMadinahDist")?$("siMadinahDist").value:0)||0;
+      d.shuttle=!!($("siShuttle")&&$("siShuttle").checked);
+      d.ziyarat=!!($("siZiyarat")&&$("siZiyarat").checked);
+      d.child=!!($("siChild")&&$("siChild").checked);
+      d.childPrice=Number($("siChildPrice")?$("siChildPrice").value:0)||0;
+    }
+    return d;
+  }
+
+  function airName(code){
+    var c=String(code||"").toUpperCase();
+    var hit=(typeof AIRLINES!=="undefined"?AIRLINES:[]).filter(function(x){return x.c===c;})[0];
+    return hit?hit.n:(c||"Airline");
+  }
+  function time12(t){
+    var m=String(t||"").match(/^(\d{1,2}):(\d{2})/);
+    if(!m) return String(t||"");
+    var h=Number(m[1]), mi=m[2], ap=h>=12?"PM":"AM", h12=h%12; if(!h12) h12=12;
+    return h12+":"+mi+" "+ap;
+  }
+  function invRow(label,value){
+    return '<tr><td style="padding:6px 7px;border-bottom:1px solid #f1f5f9;color:#64748b;font-weight:700;">'+label+'</td><td style="padding:6px 7px;border-bottom:1px solid #f1f5f9;text-align:right;">'+value+'</td></tr>';
+  }
+  function flightRow(label,leg,air){
+    leg=leg||{};
+    return '<tr><td style="padding:7px;border-bottom:1px solid #f1f5f9;"><b>'+label+'</b>'+(air?'<br><span style="color:#64748b;">'+esc(air)+'</span>':'')+'</td>'
+      +'<td style="padding:7px;border-bottom:1px solid #f1f5f9;">'+esc(leg.from||"")+' → '+esc(leg.to||"")+'</td>'
+      +'<td style="padding:7px;border-bottom:1px solid #f1f5f9;">'+esc(dmy(leg.date))+'</td>'
+      +'<td style="padding:7px;border-bottom:1px solid #f1f5f9;">'+esc(time12(leg.time))+'</td>'
+      +'<td style="padding:7px;border-bottom:1px solid #f1f5f9;">'+esc(time12(leg.arr))+'</td></tr>';
+  }
+  function staffInvoiceBody(d){
+    d=d||{};
+    var biz=DATA.business||{}, company=biz.company||"AB Travels", p1=biz.phone1||"0310-3311199", p2=biz.phone2||"0314-3178560";
+    var isU=d.docType==="umrah";
+    var names=(d.paxNames&&d.paxNames.length?d.paxNames:[d.name]).filter(Boolean);
+    var nics=d.paxNics||[];
+    var air=airName(d.air);
+    var h='<div style="max-width:720px;margin:0 auto;background:#fff;color:#111;border:1px solid #e5e7eb;border-radius:14px;padding:18px;font-family:Arial,sans-serif;font-size:12.5px;line-height:1.5;">';
+    h+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid #e5e7eb;padding-bottom:12px;">'
+      +'<div style="display:flex;gap:10px;align-items:center;"><img src="https://ali122.github.io/travel-office-hisab/logo.png" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #e5e7eb;" onerror="this.style.display=\'none\'">'
+      +'<div><div style="font-size:20px;font-weight:900;letter-spacing:1px;">'+esc(company)+'</div>'
+      +'<div style="font-size:10.5px;color:#666;">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd<br>'+esc(p1)+' · '+esc(p2)+'</div></div></div>'
+      +'<div style="text-align:right;"><div style="font-size:11px;letter-spacing:2px;color:#64748b;font-weight:800;">'+(isU?'UMRAH PACKAGE':'INVOICE')+'</div>'
+      +'<div style="font-size:12px;color:#334155;">'+esc(dmy(d.date))+'</div></div></div>';
+    h+='<div style="margin-top:12px;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;">'
+      +'<div style="font-size:10.5px;color:#64748b;font-weight:800;letter-spacing:1px;">PASSENGER</div>'
+      +'<div style="font-size:16px;font-weight:800;">'+esc(d.name||names[0]||"")+'</div>';
+    if(d.nic) h+='<div style="font-size:11.5px;color:#555;">NIC / Passport: '+esc(d.nic)+'</div>';
+    if(!isU) h+='<div style="font-size:11.5px;color:#555;margin-top:3px;">PNR: <b>'+esc(d.pnr||"—")+'</b>'+(d.tkNo?' · Ticket: '+esc(d.tkNo):'')+'</div>';
+    h+='</div>';
+    if(!isU){
+      h+='<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:11.5px;">'
+        +'<tr style="background:#f8fafc;color:#475569;"><th style="text-align:left;padding:7px;border-bottom:1px solid #e5e7eb;">Flight</th><th style="text-align:left;padding:7px;border-bottom:1px solid #e5e7eb;">Route</th><th style="text-align:left;padding:7px;border-bottom:1px solid #e5e7eb;">Date</th><th style="text-align:left;padding:7px;border-bottom:1px solid #e5e7eb;">Departure</th><th style="text-align:left;padding:7px;border-bottom:1px solid #e5e7eb;">Arrival</th></tr>';
+      h+=flightRow('Outbound',d.out||d,air);
+      if(d.trip==="round"&&d.ret) h+=flightRow('Return',d.ret,air);
+      h+='</table>';
+      if(names.length>1){
+        h+='<div style="margin-top:10px;font-weight:800;font-size:11.5px;">Passengers</div><table style="width:100%;border-collapse:collapse;font-size:11.5px;">';
+        names.forEach(function(n,i){ h+='<tr><td style="padding:4px 7px;border-bottom:1px solid #f1f5f9;">'+(i+1)+'. '+esc(n)+'</td><td style="padding:4px 7px;border-bottom:1px solid #f1f5f9;color:#555;">'+esc(nics[i]||"")+'</td></tr>'; });
+        h+='</table>';
+      }
+      h+='<div style="margin-top:10px;font-size:11.5px;color:#475569;">Baggage: hand '+esc(String(d.hand||0))+' kg · checked '+esc(String(d.bag||0))+' kg'+(d.meal?' · Meal included':'')+'</div>';
+      if(d.nr) h+='<div style="margin-top:6px;font-size:11.5px;color:#92400e;">Non-refundable — refund/change charges depend on the airline policy.</div>';
+      if(d.tmp) h+='<div style="margin-top:3px;font-size:11.5px;color:#92400e;">Temporary booking only — can be cancelled at any time.</div>';
+      if(Number(d.sale)>0){
+        var rem=Math.max(0,Number(d.sale)-Number(d.received||0));
+        h+='<div style="margin-top:12px;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">'
+          +'<div><div style="font-size:10.5px;color:#64748b;font-weight:800;">SALE</div><div style="font-size:16px;font-weight:900;">'+money(d.sale)+'</div></div>'
+          +'<div><div style="font-size:10.5px;color:#64748b;font-weight:800;">RECEIVED</div><div style="font-size:16px;font-weight:900;">'+money(d.received||0)+'</div></div>'
+          +'<div><div style="font-size:10.5px;color:#64748b;font-weight:800;">REMAINING</div><div style="font-size:16px;font-weight:900;color:'+(rem>0?'#b45309':'#047857')+';">'+money(rem)+'</div></div></div>';
+      }
+    } else {
+      var remU=Math.max(0,Number(d.pkg||0)-Number(d.paid||0));
+      h+='<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;">';
+      h+=invRow('Package price',d.pkg?money(d.pkg):"—");
+      h+=invRow('Advance paid',money(d.paid||0));
+      h+=invRow('Remaining',money(remU));
+      h+=invRow('Bed / beds',esc((d.bed||"—")+(d.beds?' × '+d.beds:'')));
+      h+=invRow('Hotel',esc(d.hotel||"—")+(d.nights?' · '+esc(String(d.nights))+' nights':''));
+      h+=invRow('Flight',esc(d.flightType||"Direct"));
+      if(d.makkahDist) h+=invRow('Makkah hotel distance',esc(String(d.makkahDist))+' m');
+      if(d.madinahDist) h+=invRow('Madinah hotel distance',esc(String(d.madinahDist))+' m');
+      h+=invRow('Services',[d.shuttle?'Shuttle':'',d.ziyarat?'Ziyarat':'',d.child?'Child without bed':'',d.meal?'Meal':''].filter(Boolean).join(' · ')||"—");
+      h+='</table>';
+      if(d.child&&Number(d.childPrice)>0) h+='<div style="margin-top:6px;font-size:11.5px;color:#475569;">Child without bed: '+money(d.childPrice)+'</div>';
+    }
+    h+='<div style="margin-top:14px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#64748b;line-height:1.55;">Please confirm all details with the airline/agent before travel. Prices are indicative and subject to availability. '+esc(company)+'</div></div>';
+    return h;
+  }
+  function staffInvoiceHtml(d){
+    var title=String(d&&d.name||"invoice").replace(/[\\/:*?"<>|]+/g,"").trim()||"invoice";
+    return '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>body{margin:0;padding:16px;background:#f3f4f6}@media print{body{background:#fff;padding:0} .noprint{display:none!important}}</style></head><body>'+staffInvoiceBody(d)+'<div class="noprint" style="text-align:center;margin-top:12px;"><button onclick="window.print()" style="padding:9px 14px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer;">Print / Save PDF</button></div></body></html>';
+  }
+  function printStaffInvoice(d){
+    var w=window.open("","_blank");
+    if(!w){ alert("Popup blocked — please allow popups for this site, then try again."); return; }
+    try{ w.opener=null; }catch(e){}
+    w.document.write(staffInvoiceHtml(d)); w.document.close();
+  }
+  function saveStaffInvoice(d){
+    var b=$("siSave"); if(b) b.disabled=true;
+    api("/api/invoice",{invoice:d}).then(function(j){ DATA=j; setTab("invoices"); msg("Invoice saved — owner app mein bhi nazar aayegi."); }).catch(function(e){ msg(e.message,true); if(b) b.disabled=false; });
+  }
+
   function renderInvoices(){
+    var saved=(DATA.invoices||[]).slice().sort(function(a,b){ return (Number(b.savedAt)||0)-(Number(a.savedAt)||0); });
     var own=(DATA.bookings||[]).slice().sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
-    var h='<div class="card"><h2>My Invoices</h2><div class="hint">Only your bookings. Open an invoice to print or share it.</div>';
+    var h='<div class="card"><h2>My Invoices</h2><div class="hint">Saved staff invoices and your bookings. Cost and profit are never shown.</div><button class="btn primary" id="siNewFromList" style="margin-top:8px;">＋ New invoice</button></div>';
+    h+='<div class="card"><h2>Saved invoices ('+saved.length+')</h2>';
+    if(!saved.length) h+='<div class="hint">No saved invoices yet — create one from New Invoice.</div>';
+    saved.forEach(function(x){
+      var d=x.d||{};
+      var label=d.docType==="umrah"?"Umrah":(d.pnr?("PNR "+d.pnr):"—");
+      var amount=d.docType==="umrah"?(Number(d.pkg)||0):(Number(d.sale)||0);
+      h+='<div class="item"><div class="top"><div><b>'+esc(d.name||"")+'</b><div class="hint">'+esc(dmy(d.date))+' · '+esc(label)+(d.from&&d.from!=="—"&&d.to&&d.to!=="—"?' · '+esc(d.from)+' → '+esc(d.to):'')+'</div></div><div class="money">'+(amount?money(amount):"")+'</div></div>'
+        +'<button class="btn small primary si-print-saved" data-id="'+esc(x.id)+'">Print / Save PDF</button></div>';
+    });
+    h+='</div>';
+    h+='<div class="card"><h2>My bookings</h2>';
     if(!own.length) h+='<div class="hint">No bookings yet — create one from New Booking.</div>';
     own.forEach(function(t){ h+='<div class="item"><div class="top"><div><b>'+esc(t.client)+'</b><div class="hint">'+esc(dmy(t.date))+' · '+esc(t.from||"")+' → '+esc(t.to||"")+' · PNR '+esc(t.pnr||"—")+'</div></div><div class="money">'+money(t.sale)+'</div></div><button class="btn small primary inv-btn" data-id="'+esc(t.id)+'">Open invoice</button></div>'; });
     h+='</div>';
     return h;
   }
+
 
   function sizeTxt(n){
     n=Number(n)||0;
@@ -466,6 +663,22 @@
       api("/api/booking",body).then(function(j){ DATA=j; render(); msg("Booking saved. Open it from My Invoices to print."); }).catch(function(e){ msg(e.message,true); bs.disabled=false; });
     };
     v.querySelectorAll(".inv-btn").forEach(function(b){ b.onclick=function(){ var t=(DATA.bookings||[]).filter(function(x){return x.id===b.getAttribute("data-id");})[0]; if(t) openInvoice(t); }; });
+    var siDoc=$("siDoc"); if(siDoc) siDoc.onchange=siToggle;
+    var siTrip=$("siTrip"); if(siTrip) siTrip.onchange=siToggle;
+    var siPax=$("siPax"); if(siPax) siPax.oninput=siToggle;
+    var siChild=$("siChild"); if(siChild) siChild.onchange=siToggle;
+    var siGen=$("siGenerate"); if(siGen) siGen.onclick=function(){
+      var d=readInvoiceForm(); if(!d) return;
+      staffInvDraft=d;
+      $("siOut").innerHTML=staffInvoiceBody(d);
+      if($("siSave")) $("siSave").style.display="inline-block";
+      if($("siPrint")) $("siPrint").style.display="inline-block";
+      msg("Invoice ready. Save or print.");
+    };
+    var siSaveBtn=$("siSave"); if(siSaveBtn) siSaveBtn.onclick=function(){ if(staffInvDraft) saveStaffInvoice(staffInvDraft); };
+    var siPrintBtn=$("siPrint"); if(siPrintBtn) siPrintBtn.onclick=function(){ if(staffInvDraft) printStaffInvoice(staffInvDraft); };
+    var siNewBtn=$("siNewFromList"); if(siNewBtn) siNewBtn.onclick=function(){ setTab("newinvoice"); };
+    v.querySelectorAll(".si-print-saved").forEach(function(b){ b.onclick=function(){ var x=(DATA.invoices||[]).filter(function(y){return y.id===b.getAttribute("data-id");})[0]; if(x&&x.d) printStaffInvoice(x.d); }; });
     var fs=$("fileSearch");
     if(fs) fs.oninput=function(){
       var val=this.value, pos=this.selectionStart;
