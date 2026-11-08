@@ -8223,7 +8223,7 @@ function bind(){
     var chats = String((tgChatsInput && tgChatsInput.value) || "").trim().replace(/[^0-9,\s-]/g, "").replace(/\s*,\s*/g, ",");
     var relay = String((tgRelayInput && tgRelayInput.value) || "").trim().replace(/\/+$/, "");
     if(relay && !/^https?:\/\//i.test(relay)) relay = "https://" + relay;
-    if(!token){ alert("Price bot ka token dalein."); return; }
+    if(!relay && !chats){ alert("Relay URL ya kam az kam aik chat ID dalhein."); return; }
     S.settings.tgBotToken = token;
     S.settings.tgChatIds = chats;
     S.settings.tgRelay = relay;
