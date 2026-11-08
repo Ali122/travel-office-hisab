@@ -186,6 +186,11 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 ## Version
 Current version: **2.40** (Telegram token, chat IDs, relay URL, Ignav proxy URL and OCR key now sync through the private GitHub data; GitHub PAT and Ignav API key stay device-local for security).
 
+## Price bot: KV list limit fix (v2.41)
+- Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.
+- Ab watches ek hi `w:index` KV key mein track hoti hain; cron sirf `get` karta hai. Pehli baar index missing ho to ek dafa `KV.list` se migrate hota hai, phir nahi. Cron `*/1 * * * *` hi rehta hai, urgent mode bhi kaam karta hai.
+- `pricebot-worker.js` v2.41 redeploy karein; KV binding aur secrets wahi rahenge.
+
 ## Notifications: Telegram via Worker relay (v2.39)
 - Telegram notifications ab **Worker relay** se jati hain: app → `ab-travels-ignav.umair5075.workers.dev/notify` → `api.telegram.org`.
 - Kyun: kuch ISPs ghar ke broadband par `api.telegram.org` bhi block karte hain. Pehle app seedha Telegram par `no-cors` se bhejti thi — fail hone par bhi "Test bhej diya" dikhta tha aur message kahin nahi jata tha.

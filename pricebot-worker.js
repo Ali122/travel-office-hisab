@@ -33,6 +33,8 @@
  *     (default 60/day, override with MAX_DAILY_REQUESTS). /budget shows it.
  *   - KV free plan: 1,000 writes/day. The bot writes at most once per check,
  *     so the daily budget also keeps KV writes safe.
+ *   - KV list free plan: only 1,000/day. The cron must NOT call KV.list every
+ *     minute (that was 1,440/day). Watches are tracked in the w:index KV key.
  */
 
 const IGNAV_API = "https://ignav.com/api";
@@ -43,6 +45,7 @@ const MAX_DAILY_PROXY = 200; // fare searches per day for the browser app (best 
 const DROP_PCT = 0.05;    // alert when the price falls at least 5%
 const MAX_WATCHES = 5;
 const WATCH_TTL = 60 * 60 * 24 * 120;
+const WATCH_INDEX = "w:index"; // one KV key lists watch keys, avoiding daily KV.list on the cron
 const QUIET_KEY = "settings:quiet";
 const QUIET_DEFAULT = { enabled: true, start: "02:00", end: "09:00" };
 const PERIODIC_MIN_EVERY = 30; // 30+ min watches: send a price update after every check
@@ -805,6 +808,7 @@ async function createWatch(env, chat, r, o) {
     createdAt: Date.now(), lastCheckAt: 0, lastAmount: null, lastAlertAt: 0, lastAlertAmount: null
   };
   await env.KV.put("w:" + team + ":" + id, JSON.stringify(w), { expirationTtl: WATCH_TTL });
+  await addWatchKey(env, "w:" + team + ":" + id);
 
   let nowTxt = "";
   try {
@@ -893,13 +897,56 @@ async function handleNatural(env, chat, text) {
 }
 
 
+/* Watch index: keeps watch keys in one KV value so the every-minute cron does
+   not use KV.list (free plan: 1,000 list requests/day). Falls back to one
+   KV.list when the index is missing, then never lists again. */
+async function readWatchKeys(env) {
+  if (!env.KV) return [];
+  try {
+    const raw = await env.KV.get(WATCH_INDEX);
+    if (raw === null) return null;
+    const a = JSON.parse(raw);
+    return Array.isArray(a) ? a.map(String).filter(Boolean) : [];
+  } catch (e) {
+    return null;
+  }
+}
+async function writeWatchKeys(env, keys) {
+  if (!env.KV) return;
+  const uniq = Array.from(new Set((keys || []).filter(Boolean)));
+  try { await env.KV.put(WATCH_INDEX, JSON.stringify(uniq)); } catch (e) { /* ignore */ }
+}
+async function watchKeys(env) {
+  const keys = await readWatchKeys(env);
+  if (keys !== null) return keys;
+  const out = [];
+  let ok = false;
+  try {
+    const list = await env.KV.list({ prefix: "w:", limit: 1000 });
+    for (const k of list.keys) if (k.name !== WATCH_INDEX) out.push(k.name);
+    ok = true;
+  } catch (e) { /* ignore */ }
+  if (ok) await writeWatchKeys(env, out);
+  return out;
+}
+async function addWatchKey(env, key) {
+  const keys = await watchKeys(env);
+  if (keys.indexOf(key) < 0) { keys.push(key); await writeWatchKeys(env, keys); }
+}
+async function removeWatchKey(env, key) {
+  const keys = await watchKeys(env);
+  const next = keys.filter(function (k) { return k !== key; });
+  if (next.length !== keys.length) await writeWatchKeys(env, next);
+}
+
 async function watches(env, chat) {
   const out = [];
   const team = (await teamChat(env)) || String(chat);
-  const list = await env.KV.list({ prefix: "w:" + team + ":" });
-  for (const k of list.keys) {
-    const raw = await env.KV.get(k.name);
-    if (!raw) continue;
+  const prefix = "w:" + team + ":";
+  const keys = (await watchKeys(env)).filter(function (k) { return k.indexOf(prefix) === 0; });
+  for (const key of keys) {
+    const raw = await env.KV.get(key);
+    if (!raw) { await removeWatchKey(env, key); continue; }
     try { out.push(JSON.parse(raw)); } catch (e) { /* skip */ }
   }
   out.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
@@ -932,6 +979,9 @@ async function cmdStop(env, chat, arg) {
   if (!arg) return send(env, chat, "ID dein: <code>/stop 1</code> ya <code>/stop all</code>.");
   if (/^all$/i.test(arg)) {
     for (const w of ws) await env.KV.delete("w:" + team + ":" + w.id);
+    const keys = await watchKeys(env);
+    const prefix = "w:" + team + ":";
+    await writeWatchKeys(env, keys.filter(function (k) { return k.indexOf(prefix) !== 0; }));
     return send(env, chat, "🗑 " + ws.length + " watch band kar diye.");
   }
   const id = String(arg).replace(/[^0-9]/g, "");
@@ -939,6 +989,7 @@ async function cmdStop(env, chat, arg) {
     return send(env, chat, "Watch #" + esc(arg) + " nahi mila. <code>/list</code> dekhein.");
   }
   await env.KV.delete("w:" + team + ":" + id);
+  await removeWatchKey(env, "w:" + team + ":" + id);
   await send(env, chat, "🗑 Watch #" + id + " band.");
 }
 
@@ -989,6 +1040,7 @@ async function handleCallback(env, cq) {
   if (kind === "st") {
     const id = String(parts[1] || "").replace(/[^0-9]/g, "");
     await env.KV.delete("w:" + team + ":" + id);
+    await removeWatchKey(env, "w:" + team + ":" + id);
     return send(env, chat, "🗑 Watch #" + id + " band.");
   }
 
@@ -1343,11 +1395,11 @@ async function checkAll(env) {
   if (!env.KV) return;
   const quiet = await getQuiet(env);
   const nowMin = pktMinutes();
-  const list = await env.KV.list({ prefix: "w:", limit: 100 });
+  const keys = await watchKeys(env);
   const now = Date.now();
-  for (const k of list.keys) {
-    const raw = await env.KV.get(k.name);
-    if (!raw) continue;
+  for (const key of keys) {
+    const raw = await env.KV.get(key);
+    if (!raw) { await removeWatchKey(env, key); continue; }
     let w = null;
     try { w = JSON.parse(raw); } catch (e) { continue; }
     if (!w || !w.chat) continue;
@@ -1356,7 +1408,8 @@ async function checkAll(env) {
     const ttl = { expirationTtl: WATCH_TTL };
 
     if (w.until && now >= w.until) {
-      await env.KV.delete(k.name);
+      await env.KV.delete(key);
+      await removeWatchKey(env, key);
       try { await notifyAll(env, '⏱ Watch #' + esc(w.id) + ' ka waqt poora; tracking band.'); } catch (e) { /* ignore */ }
       continue;
     }
@@ -1365,7 +1418,7 @@ async function checkAll(env) {
     if (w.urgentUntil && now > w.urgentUntil) {
       w.every = w.baseEvery || DEFAULT_EVERY;
       w.urgentUntil = 0;
-      await env.KV.put(k.name, JSON.stringify(w), ttl);
+      await env.KV.put(key, JSON.stringify(w), ttl);
       await notifyAll(env, "⏱ Urgent mode khatam — watch #" + w.id + " ab har " + w.every + " min. /urgent " + w.id + " 60 se dobara on.");
       continue;
     }
@@ -1383,7 +1436,7 @@ async function checkAll(env) {
       // tell the owner at most once an hour, never crash the cron
       if (e && e.code !== "BUDGET" && now - (w.lastErrorAt || 0) > 3600000) {
         w.lastErrorAt = now;
-        await env.KV.put(k.name, JSON.stringify(w), ttl);
+        await env.KV.put(key, JSON.stringify(w), ttl);
         try { await notifyAll(env, "⚠️ Watch #" + w.id + " check fail: " + esc(e.message)); } catch (e2) { /* ignore */ }
       }
       continue;
@@ -1393,7 +1446,7 @@ async function checkAll(env) {
     const ind = cheapestFare(j, w.flight);
     w.lastCheckAt = now;
     if (!best) {
-      await env.KV.put(k.name, JSON.stringify(w), ttl);
+      await env.KV.put(key, JSON.stringify(w), ttl);
       continue;
     }
 
@@ -1410,12 +1463,12 @@ async function checkAll(env) {
     const cooldownOk = now - (w.lastAlertAt || 0) > 10 * 60000;
     const alertNow = (firstBelow || dropped) && cooldownOk;
 
-    await env.KV.put(k.name, JSON.stringify(w), ttl);
+    await env.KV.put(key, JSON.stringify(w), ttl);
 
     if (alertNow) {
       w.lastAlertAt = now;
       w.lastAlertAmount = amount;
-      await env.KV.put(k.name, JSON.stringify(w), ttl);
+      await env.KV.put(key, JSON.stringify(w), ttl);
       try { await notifyAll(env, alertText(w, best, old, ind)); } catch (e) { /* ignore */ }
     } else if (every >= PERIODIC_MIN_EVERY && !w.urgentUntil) {
       // The request has already been spent — send the price it saw.
@@ -1572,7 +1625,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.39</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.41</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +

@@ -140,7 +140,15 @@ Misaal: `every=120` + `until` agle din 13:00 → banate waqt 1 call, phir har ~2
 |---|---|---|
 | Ignav | **1,000 searches total** (monthly nahi), phir $2/1,000 | bot: daily **60** (`MAX_DAILY_REQUESTS`), app: daily **200** (`MAX_DAILY_PROXY`) |
 | Cloudflare Worker | 100,000 requests/day | cron = 1,440/day |
-| KV | 1,000 writes/day | bot check par 1 write, budget ke andar |
+| KV reads | 100,000/day | ~3,000/day (index + watch reads) |
+| KV list | **1,000/day** | cron **KV.list nahi karta** — `w:index` se watches padhta hai |
+| KV writes | 1,000/day | bot check par 1 write, budget ke andar |
+
+> **KV list limit (important):** pehle cron har minute `KV.list` chalata tha = 1,440 list/day,
+> jo free plan ki 1,000/day limit se zyada hai (90% email ~15 ghante mein aa jati thi).
+> Ab watches ek `w:index` key mein hain; cron sirf index + watches `get` karta hai.
+> Index pehli baar missing ho to ek dafa `KV.list` se migrate hota hai, phir kabhi nahi.
+> Purana code wapas deploy na karein warna list limit dobara full ho jayegi.
 
 **Har minute check = 60 searches/hour.** Is liye:
 
