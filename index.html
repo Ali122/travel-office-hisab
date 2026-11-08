@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.39</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.40</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.39";
+var APP_VER = "2.40";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -6001,14 +6001,14 @@ function viewSettings(){
         + '<div class="hint">Price bot par <code>/id</code> bhej kar chat ID lein. Owner <code>/share ID</code> se member add kare. Khali chhorne par bot ki poori team ko notification jayegi.</div>'
         + '<label style="margin-top:8px;">Bot token (relay authentication)</label>'
         + '<input type="password" id="setTgToken" value="'+esc(st.tgBotToken||"")+'" placeholder="123456:ABC-DEF…" autocomplete="off" style="font-family:monospace;">'
-        + '<div class="hint">Price bot ka token dalein. Relay is se aapki request verify karta hai. Token sirf isi device par rehta hai.</div>'
+        + '<div class="hint">Price bot ka token dalein. Relay is se aapki request verify karta hai. Token private GitHub data ke saath sync hota hai — ek dafa save karein, baqi devices par khud aa jayega.</div>'
         + '<div class="row" style="margin-top:8px; align-items:center;">'
         +   '<button class="btn small primary" id="tgSave" style="flex:1.2; margin-top:0;">💾 Save &amp; send test</button>'
         +   '<button class="btn small btn-del" id="tgRemove" style="flex:1; margin-top:0;">🚫 Remove</button>'
         + '</div>'
         + '<label style="display:flex; gap:8px; align-items:center; margin-top:10px;"><input type="checkbox" id="setTgOn" style="width:auto"'+(st.tgNotifyOn!==false?' checked':'')+'> Send notifications for new tickets and files</label>'
         + '<div class="hint" id="tgStatus" style="margin-top:8px; font-weight:600;"></div>'
-        + '<div class="hint">Token sirf isi device par save hota he — sync/backup me nahi jata. Team members ko sirf bot ko message kar ke apni chat ID deni he, app ki zaroorat nahi.</div>'
+        + '<div class="hint">Token, chat IDs aur relay URL private GitHub data ke saath sync hote hain — har device par dobara add nahi karna padega. Sirf trusted devices/repo access walon ko dikh sakte hain.</div>'
         + '</div>';
 
   html += '<div class="card"><h2>🐙 GitHub Sync — replaces Google Sheet sync</h2>'
@@ -6072,6 +6072,7 @@ function viewSettings(){
   html += '<button class="btn small primary" id="copyIgnavCode" style="margin-top:8px;">Copy worker code</button>';
   html += '<label style="margin-top:12px;">Worker URL (proxy)</label>';
   html += '<input id="setIgnavProxy" value="'+esc(st.ignavProxy||"")+'" placeholder="https://xxx.workers.dev" autocomplete="off" style="font-family:monospace;">';
+  html += '<div class="hint">Worker URL private GitHub data ke saath sync hota hai — naye device par Price Lookup khud kaam karegi. Ignav API key Worker par rehti hai, app mein nahi.</div>';
   html += '<label style="margin-top:8px;">Ignav API key (optional — sirf tab jab proxy use na karein)</label>';
   html += '<input type="password" id="setIgnavKey" value="'+esc(st.ignavKey||"")+'" placeholder="Your Ignav key" autocomplete="off" style="font-family:monospace;">';
   html += ignavBadgeHTML(st);
@@ -6190,19 +6191,17 @@ function viewSettings(){
 }
 
 /* ================= GITHUB BACKUP ================= */
-/* Backup file mein kabhi GitHub token nahi jata — warna koi history mein dekh le sakta hai */
+/* Private sync/backup: GitHub PAT and Ignav API key stay device-local.
+   Telegram bot token, Ignav proxy URL and OCR key sync with the private data. */
 function ghStripSecretsForSave(s){
   if(!s) return s;
   var c = JSON.parse(JSON.stringify(s));
   if(c.settings){
     delete c.settings.githubPat;
     delete c.settings.ignavKey;
-    delete c.settings.ignavProxy;   // proxy URL device-specific — shared state mein na jaye
     delete c.settings.ntfyTopic;    // ntfy system removed (v2.37) — Telegram ab
     delete c.settings.ntfyServer;
     delete c.settings.ntfyOn;
-    delete c.settings.tgBotToken;   // Telegram bot token bhi secret — sync/backup me nahi jata
-    delete c.settings.ocrApiKey;    // OCR.space key bhi secret hai — sync/backup mein nahi jani chahiye (pull par local se wapas aa jati hai)
   }
   return c;
 }

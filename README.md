@@ -184,7 +184,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.39**.
+Current version: **2.40** (Telegram token, chat IDs, relay URL, Ignav proxy URL and OCR key now sync through the private GitHub data; GitHub PAT and Ignav API key stay device-local for security).
 
 ## Notifications: Telegram via Worker relay (v2.39)
 - Telegram notifications ab **Worker relay** se jati hain: app → `ab-travels-ignav.umair5075.workers.dev/notify` → `api.telegram.org`.
