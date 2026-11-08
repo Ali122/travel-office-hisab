@@ -227,6 +227,21 @@ function routePayload(w) {
   return p;
 }
 
+function cheapestFare(j, flight) {
+  const list = (j && j.itineraries) || [];
+  const want = String(flight || "").toUpperCase().replace(/\s/g, "");
+  let best = null;
+  for (const it of list) {
+    if (want && !legHasFlight(it.outbound, want)) continue;
+    const p = it && it.price;
+    if (!p) continue;
+    const a = Number(p.amount);
+    if (!isFinite(a) || a <= 0) continue;
+    if (!best || a < Number(best.price.amount)) best = it;
+  }
+  return best;
+}
+
 function bestFare(j, flight) {
   const list = (j && j.itineraries) || [];
   const want = String(flight || "").toUpperCase().replace(/\s/g, "");
@@ -681,6 +696,7 @@ async function doPrice(env, chat, r, extra, flight) {
   }
   await send(env, chat, "🔎 Search ho rahi hai: " + routeTitle(r) + (want ? " · " + esc(want) : "") + " …");
   const j = await ignavCall(env, r.ret ? "/fares/round-trip" : "/fares/one-way", routePayload(r));
+  const ind = cheapestFare(j, want);
   const list = (j.itineraries || []).filter(function (it) {
     const p = it && it.price;
     if (!p || (p.status && p.status !== "verified") || !(Number(p.amount) > 0)) return false;
@@ -688,12 +704,24 @@ async function doPrice(env, chat, r, extra, flight) {
     return true;
   }).sort(function (a, b) { return Number(a.price.amount) - Number(b.price.amount); });
   if (!list.length) {
+    if (ind) {
+      let m2 = routeTitle(r) + (want ? " · " + esc(want) : "") + "\n\n";
+      m2 += "<b>" + esc(money(ind.price.amount, ind.price.currency)) + "</b> <i>(indicative / unverified)</i>";
+      m2 += "\n" + legLine(ind.outbound, "Out");
+      if (ind.inbound) m2 += "\n" + legLine(ind.inbound, "Ret");
+      m2 += "\n\n⚠️ Is route par abhi koi verified fare nahi mila — ye sab se sasta indicative price hai. Booking se pehle confirm karein.";
+      m2 += "\n\n🕒 " + pktNowText() + " · source: Ignav";
+      return send(env, chat, m2, extra);
+    }
     return send(env, chat, want
       ? "Flight <b>" + esc(want) + "</b> ka verified fare nahi mila. Flight number ya date check karein."
       : "Koi verified fare nahi mila. Date ya route badal kar dekhein.");
   }
   let msg = routeTitle(r) + (want ? " · " + esc(want) : "") + "\n\n";
   msg += list.slice(0, 5).map(offerBlock).join("\n\n");
+  if (ind && Number(ind.price.amount) < Number(list[0].price.amount)) {
+    msg += "\n\n💡 Sab se sasta (indicative/unverified): <b>" + esc(money(ind.price.amount, ind.price.currency)) + "</b> — booking se pehle confirm karein.";
+  }
   msg += "\n\n🕒 " + pktNowText() + " · source: Ignav\n" +
     "<i>Prices indicative — booking se pehle confirm karein.</i>\n" +
     "Track karne ke liye: <code>/watch " + r.origin + " " + r.destination + " " + r.departure +
@@ -1269,7 +1297,7 @@ function routeText(w) {
     (w.ret ? " ↔ " + esc(prettyDate(w.ret)) : "");
 }
 
-function alertText(w, best, old) {
+function alertText(w, best, old, ind) {
   const p = best.price || {};
   let s = "🚨 <b>Price alert</b> — watch #" + w.id + "\n" + routeText(w) + "\n\n";
   s += "<b>" + esc(money(p.amount, p.currency)) + "</b>";
@@ -1278,6 +1306,9 @@ function alertText(w, best, old) {
     s += "  <i>(pehle " + esc(money(old, p.currency)) + ", −" + pct.toFixed(1) + "%)</i>";
   }
   if (w.target) s += "  <i>(target " + esc(money(w.target, p.currency)) + ")</i>";
+  if (ind && Number(ind.price.amount) < Number(p.amount)) {
+    s += "\n💡 Sab se sasta (indicative/unverified): " + esc(money(ind.price.amount, ind.price.currency)) + " — booking se pehle confirm karein";
+  }
   s += "\n" + legLine(best.outbound, "Out");
   if (best.inbound) s += "\n" + legLine(best.inbound, "Ret");
   s += "\n\n🕒 " + pktNowText() + " · source: Ignav · status: verified";
@@ -1285,7 +1316,7 @@ function alertText(w, best, old) {
   return s;
 }
 
-function updateText(w, best, old) {
+function updateText(w, best, old, ind) {
   const p = best.price || {};
   let s = "⏱ <b>Price update</b> — watch #" + w.id + "\n" + routeText(w) + "\n\n";
   s += "Current: <b>" + esc(money(p.amount, p.currency)) + "</b>";
@@ -1297,6 +1328,9 @@ function updateText(w, best, old) {
     else s += " (no change)";
   }
   if (w.target) s += "\nTarget: " + esc(money(w.target, p.currency));
+  if (ind && Number(ind.price.amount) < Number(p.amount)) {
+    s += "\n💡 Sab se sasta (indicative/unverified): " + esc(money(ind.price.amount, ind.price.currency)) + " — booking se pehle confirm karein";
+  }
   s += "\n" + legLine(best.outbound, "Out");
   if (best.inbound) s += "\n" + legLine(best.inbound, "Ret");
   s += "\n\n🕒 " + pktNowText() + " · source: Ignav · every " + (w.every || DEFAULT_EVERY) + " min";
@@ -1355,6 +1389,7 @@ async function checkAll(env) {
     }
 
     const best = bestFare(j, w.flight);
+    const ind = cheapestFare(j, w.flight);
     w.lastCheckAt = now;
     if (!best) {
       await env.KV.put(k.name, JSON.stringify(w), ttl);
@@ -1380,10 +1415,10 @@ async function checkAll(env) {
       w.lastAlertAt = now;
       w.lastAlertAmount = amount;
       await env.KV.put(k.name, JSON.stringify(w), ttl);
-      try { await notifyAll(env, alertText(w, best, old)); } catch (e) { /* ignore */ }
+      try { await notifyAll(env, alertText(w, best, old, ind)); } catch (e) { /* ignore */ }
     } else if (every >= PERIODIC_MIN_EVERY && !w.urgentUntil) {
       // The request has already been spent — send the price it saw.
-      try { await notifyAll(env, updateText(w, best, old)); } catch (e) { /* ignore */ }
+      try { await notifyAll(env, updateText(w, best, old, ind)); } catch (e) { /* ignore */ }
     }
   }
 }
