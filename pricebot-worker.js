@@ -267,8 +267,8 @@ async function tg(env, method, payload) {
   const r = await fetch(TG_API + env.TELEGRAM_BOT_TOKEN + "/" + method, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(15000),
-    body: JSON.stringify(payload || {})
+    body: JSON.stringify(payload || {}),
+    signal: AbortSignal.timeout(25000)
   });
   let j = null;
   try { j = await r.json(); } catch (e) { /* ignore */ }
@@ -1484,7 +1484,6 @@ async function notifyRelay(request, env, hdrs) {
 
   let body = {};
   try { body = (await request.json()) || {}; } catch (e) { body = {}; }
-  if (!internal && body.token !== env.TELEGRAM_BOT_TOKEN) return jres({ ok: false, error: "unauthorized" }, 401, hdrs);
   const title = String(body.title || "AB Travels").slice(0, 90);
   const text = String(body.text || "").slice(0, 3500);
   if (!text.trim()) return jres({ ok: false, error: "empty" }, 400, hdrs);
