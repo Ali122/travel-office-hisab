@@ -184,7 +184,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.40** (Telegram token, chat IDs, relay URL, Ignav proxy URL and OCR key now sync through the private GitHub data; GitHub PAT and Ignav API key stay device-local for security).
+Current version: **2.41** (Price bot v2.41 no longer calls KV.list every minute — fixes the Cloudflare KV free-plan 90% usage warning; the app's embedded "copy price bot code" is refreshed to the same version. v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.
