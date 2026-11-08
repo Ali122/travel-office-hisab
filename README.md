@@ -184,7 +184,15 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.38**.
+Current version: **2.39**.
+
+## Notifications: Telegram via Worker relay (v2.39)
+- Telegram notifications ab **Worker relay** se jati hain: app → `ab-travels-ignav.umair5075.workers.dev/notify` → `api.telegram.org`.
+- Kyun: kuch ISPs ghar ke broadband par `api.telegram.org` bhi block karte hain. Pehle app seedha Telegram par `no-cors` se bhejti thi — fail hone par bhi "Test bhej diya" dikhta tha aur message kahin nahi jata tha.
+- Naya Settings field **Notification relay (Worker URL)** (default `https://ab-travels-ignav.umair5075.workers.dev`); khali chhorne par default use hota he.
+- Relay Telegram ka response check karta hai; failed requests ko success nahi dikhata. Browser request ke liye device-local bot token zaroori hai.
+- `/notify` origin aur token verify karta hai, sirf bot ke allowed team chats ko bhejta hai, aur 120/hour soft cap hai.
+- **Staff portal** `PRICEBOT` service binding se relay use karta hai. Dono Workers par same `NOTIFY_KEY` secret set karein. Chat IDs synced settings se aati hain; khali hon to bot ki team use hoti hai.
 
 ## Team notifications via Telegram — ntfy removed (v2.37)
 - The ntfy system (topic/server settings, ntfy.sh push) is fully removed after repeated mobile delivery problems. Telegram is now the notification channel: reliable push on every phone, no battery settings, no extra app beyond Telegram.

@@ -205,26 +205,24 @@ async function withData(env, mutate) {
   return { error: { code: "SYNC_WRITE_FAILED", message: String((lastErr && lastErr.message) || lastErr) } };
 }
 
-/* ---------- team push notifications (same ntfy topic as the owner app) ---------- */
-async function ntfyNotify(data, title, message, tags) {
+/* ---------- team push notifications (Telegram, same as the owner app) ---------- */
+async function ntfyNotify(env, data, title, message, tags) {
   const st = (data && data.settings) || {};
-  const topic = String(st.ntfyTopic || "").trim().toLowerCase();
-  if (!topic || st.ntfyOn === false) return;
-  let base = String(st.ntfyServer || "").trim().replace(/\/+$/, "");
-  if (!base) base = "https://ntfy.sh";
-  if (!/^https?:\/\//i.test(base)) base = "https://" + base;
+  if (st.tgNotifyOn === false) return;
+  if (!env.PRICEBOT || !env.NOTIFY_KEY) return;
+  const chats = String(st.tgChatIds || "")
+    .split(/[,;\s]+/)
+    .map((c) => c.replace(/[^0-9-]/g, ""))
+    .filter((c) => /^-?\d{4,20}$/.test(c))
+    .slice(0, 10);
   try {
-    await fetch(base + "/" + encodeURIComponent(topic), {
+    const r = await env.PRICEBOT.fetch("https://pricebot/notify", {
       method: "POST",
-      headers: {
-        Title: String(title || "AB Travels").replace(/[^\x20-\x7E]/g, "").slice(0, 80) || "AB Travels",
-        Priority: "high",
-        Tags: tags || "ticket",
-        Click: "https://ali122.github.io/travel-office-hisab/"
-      },
-      body: String(message || "").slice(0, 3500)
+      headers: { "Content-Type": "application/json", "X-Notify-Key": env.NOTIFY_KEY },
+      body: JSON.stringify({ title, text: String(message || "").slice(0, 3500), chats })
     });
-  } catch {}
+    if (!r.ok) console.error("Telegram notification failed", r.status);
+  } catch { console.error("Telegram notification connection failed"); }
 }
 
 /* ---------- staff view ---------- */
@@ -366,7 +364,7 @@ async function api(req, env, url, ctx) {
     if (ctx) {
       const list = b.type === "receivable" ? (res.data.receivables || []) : (res.data.tickets || []);
       const who = list.find((x) => x.id === b.id) || {};
-      ctx.waitUntil(ntfyNotify(res.data, "Payment received",
+      ctx.waitUntil(ntfyNotify(env, res.data, "Payment received",
         [who.client, "PKR " + Math.round(amount), method, "by staff"].filter(Boolean).join(" · "), "moneybag"));
     }
     return json({ ok: true, ...staffView(res.data) });
@@ -447,7 +445,7 @@ async function api(req, env, url, ctx) {
     });
     if (res.error) return fail(res.error.code, res.error.message, 400);
     if (ctx) {
-      ctx.waitUntil(ntfyNotify(res.data, "New staff booking",
+      ctx.waitUntil(ntfyNotify(env, res.data, "New staff booking",
         [client, b.pnr ? ("PNR " + String(b.pnr).toUpperCase()) : "",
          (b.from || "") + (b.to ? "→" + b.to : ""), "Sale PKR " + Math.round(sale), "by staff"]
           .filter(Boolean).join(" · "), "ticket"));

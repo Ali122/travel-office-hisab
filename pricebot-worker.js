@@ -267,6 +267,7 @@ async function tg(env, method, payload) {
   const r = await fetch(TG_API + env.TELEGRAM_BOT_TOKEN + "/" + method, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(15000),
     body: JSON.stringify(payload || {})
   });
   let j = null;
@@ -1457,6 +1458,67 @@ async function proxyIgnav(request, env, path, hdrs) {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* app -> Telegram notification relay                                  */
+/*   The hisab app cannot reach api.telegram.org on some networks      */
+/*   (ISP blocks it), so it POSTs here and the Worker forwards it.     */
+/*   Body: { title, text, chats? }   Origin must be the app.           */
+/* ------------------------------------------------------------------ */
+
+const NOTIFY_RATE = 120; // max notifications per hour
+
+function notifyOriginOk(env, request) {
+  const origin = String(request.headers.get("Origin") || "").replace(/\/+$/, "");
+  if (!origin) return false;
+  const allow = String((env && env.ALLOWED_ORIGIN) || "").trim().replace(/\/+$/, "");
+  if (allow && allow !== "*" && origin === allow) return true;
+  return /^https:\/\/ali122\.github\.io$/i.test(origin) ||
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+}
+
+async function notifyRelay(request, env, hdrs) {
+  if (request.method !== "POST") return jres({ ok: false, error: "POST only" }, 405, hdrs);
+  const internal = !!env.NOTIFY_KEY && request.headers.get("X-Notify-Key") === env.NOTIFY_KEY;
+  if (!internal && !notifyOriginOk(env, request)) return jres({ ok: false, error: "origin" }, 403, hdrs);
+  if (!env.TELEGRAM_BOT_TOKEN) return jres({ ok: false, error: "no_token" }, 500, hdrs);
+
+  let body = {};
+  try { body = (await request.json()) || {}; } catch (e) { body = {}; }
+  if (!internal && body.token !== env.TELEGRAM_BOT_TOKEN) return jres({ ok: false, error: "unauthorized" }, 401, hdrs);
+  const title = String(body.title || "AB Travels").slice(0, 90);
+  const text = String(body.text || "").slice(0, 3500);
+  if (!text.trim()) return jres({ ok: false, error: "empty" }, 400, hdrs);
+
+  let chats = Array.isArray(body.chats) ? body.chats : String(body.chats || "").split(/[,;\s]+/);
+  chats = chats
+    .map(function (c) { return String(c == null ? "" : c).replace(/[^0-9-]/g, ""); })
+    .filter(function (c) { return /^-?\d{4,20}$/.test(c); })
+    .slice(0, 10);
+  if (!chats.length) chats = await allowedChats(env);
+  const allowed = await allowedChats(env);
+  chats = [...new Set(chats)].filter(c => allowed.includes(c));
+  if (!chats.length) return jres({ ok: false, error: "no_chats" }, 400, hdrs);
+
+  // soft hourly cap so a stuck page cannot spam the team
+  try {
+    const key = "notify:" + new Date().toISOString().slice(0, 13);
+    const used = Number((await env.KV.get(key)) || 0);
+    if (used >= NOTIFY_RATE) return jres({ ok: false, error: "rate" }, 429, hdrs);
+    await env.KV.put(key, String(used + 1), { expirationTtl: 7200 });
+  } catch (e) { /* KV down: still send */ }
+
+  const html = title + "\n" + text;
+  const extra = {
+    parse_mode: undefined,
+    reply_markup: { inline_keyboard: [[{ text: "📱 Open app", url: "https://ali122.github.io/travel-office-hisab/" }]] }
+  };
+  const sent = [], failed = [], errors = [];
+  await Promise.all(chats.map(async c => {
+    try { await send(env, c, html, extra); sent.push(c); } catch (e) { failed.push(c); errors.push(String(e.message || 'Telegram send failed').slice(0,300)); }
+  }));
+  return jres({ ok: sent.length > 0 && failed.length === 0, sent: sent, failed: failed, errors: errors }, failed.length ? 502 : 200, hdrs);
+}
+
 function page(title, body) {
   return new Response(
     "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
@@ -1511,12 +1573,12 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.29</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.39</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
     "<p>" + (env.TELEGRAM_BOT_TOKEN ? (info.indexOf("not set") >= 0 ? "<a href=\"/setup\">Connect the bot</a>" : "Bot connected.") : "") + "</p>" +
-    "<p><small>App proxy: <code>/health</code> <code>/fares</code> <code>/round-trip</code> <code>/booking-links</code></small></p>");
+    "<p><small>App proxy: <code>/health</code> <code>/fares</code> <code>/round-trip</code> <code>/booking-links</code> <code>/notify</code></small></p>");
 }
 
 export default {
@@ -1539,6 +1601,7 @@ export default {
     if (path === "/fares") return proxyIgnav(request, env, "/fares/one-way", hdrs);
     if (path === "/round-trip") return proxyIgnav(request, env, "/fares/round-trip", hdrs);
     if (path === "/booking-links") return proxyIgnav(request, env, "/fares/booking-links", hdrs);
+    if (path === "/notify") return notifyRelay(request, env, hdrs);
 
     if (path === "/telegram") {
       if (request.method !== "POST") return new Response("ok");

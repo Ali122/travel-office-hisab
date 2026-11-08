@@ -3,6 +3,10 @@ main = "src/index.js"
 compatibility_date = "2026-11-01"
 workers_dev = true
 
+[[services]]
+binding = "PRICEBOT"
+service = "ab-travels-ignav"
+
 [assets]
 directory = "./public"
 

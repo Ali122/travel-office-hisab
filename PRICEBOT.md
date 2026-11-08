@@ -183,3 +183,8 @@ Behtar tareeqa: watch sirf us waqt lagayein jab ticket actually book karwana ho.
   is liye bohat zyada parallel requests par kuch calls cap se nikal sakti hain. **Asal hard stop
   Ignav dashboard ki spending limit hai** — wahan limit zaroor set karein.
 - `ALLOWED_ORIGIN` set karein to sirf wahi website proxy use kar sakti hai. Lekin `curl` jaisi scripts apna Origin header khud bana sakti hain, is liye ise akela security guarantee na samjhein.
+- **`/notify` relay (v2.39):** app ke notifications isi Worker se Telegram par jate hain
+  (`POST /notify` with `{title, text, chats, token}`). App origin aur token verify hote hain;
+  sirf allowed team chats ko send hota hai. Staff service binding shared `NOTIFY_KEY` use karti hai.
+  120 messages/hour ka soft cap hai. Jo network `api.telegram.org` block karta he us par bhi
+  notifications chalti hain.
