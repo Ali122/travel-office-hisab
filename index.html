@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.44</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.45</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.44";
+var APP_VER = "2.45";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -4910,7 +4910,8 @@ function ignavApi(path, payload){
   if(payload){
     // __max sirf UI limit hai — Ignav API is extra field ko reject karta hai
     sendPayload = {};
-    Object.keys(payload).forEach(function(k){ if(k !== "__max") sendPayload[k] = payload[k]; });
+    // "__" se shuru hone wale fields sirf UI ke liye hain — Ignav API inhein reject karta hai
+    Object.keys(payload).forEach(function(k){ if(k.indexOf("__") !== 0) sendPayload[k] = payload[k]; });
   }
   if(px){
     var init = { headers: { "Content-Type": "application/json" } };
@@ -5094,9 +5095,15 @@ function viewFares(){
         + '</div>';
   html += '<div class="row" style="margin-top:8px;">'
         + '<div><label>Adults</label><select id="faAdults">'+[1,2,3,4,5,6,7,8,9].map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+'</select></div>'
+        + '<div><label>Children (2–11)</label><select id="faChildren">'+[0,1,2,3,4,5,6,7,8].map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+'</select></div>'
+        + '<div><label>Infants on lap (&lt;2)</label><select id="faInfantsLap">'+[0,1,2,3,4].map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+'</select></div>'
+        + '<div><label>Infants in seat</label><select id="faInfantsSeat">'+[0,1,2,3,4].map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+'</select></div>'
+        + '</div>';
+  html += '<div class="row" style="margin-top:8px;">'
         + '<div><label>Class</label><select id="faClass"><option value="">Any</option><option value="economy">Economy</option><option value="premium_economy">Premium economy</option><option value="business">Business</option><option value="first">First</option></select></div>'
         + '<div><label>Market (price currency)</label><select id="faMarket">'+FA_MARKETS.map(function(m){ return '<option value="'+m.c+'"'+(m.c===ignavMarket()?" selected":"")+'>'+esc(m.n)+'</option>'; }).join('')+'</select></div>'
         + '</div>';
+  html += '<div class="hint" style="margin-top:6px;">Ek search = ek Ignav request — passengers zyada hone se koi extra request nahi lagti. Fare poore party ka <b>total</b> hota hai (adult/child/infant ka alag breakdown API nahi deta).</div>';
   html += '<div class="row" style="margin-top:8px; align-items:center;">'
         + '<div><label>Max results</label><select id="faMax"><option value="10">10</option><option value="15" selected>15</option><option value="25">25</option></select></div>'
         + '<label style="margin:0; display:flex; gap:6px; align-items:center; padding-bottom:8px;"><input type="checkbox" id="faNonStop" style="width:auto;"> Non-stop only</label>'
@@ -5200,12 +5207,30 @@ function faOfferCard(o, curr){
     + '</div>';
 }
 function faFieldVal(id){ return (document.getElementById(id)||{}).value || ""; }
+function faPaxCounts(){
+  var adults = Math.max(1, Number(faFieldVal("faAdults")) || 1);
+  var children = Math.max(0, Number(faFieldVal("faChildren")) || 0);
+  var lap = Math.max(0, Number(faFieldVal("faInfantsLap")) || 0);
+  var seat = Math.max(0, Number(faFieldVal("faInfantsSeat")) || 0);
+  return { adults:adults, children:children, lap:lap, seat:seat, seated:adults + children + seat };
+}
+function faPartyText(p){
+  if(!p) return "";
+  if(p.adults === 1 && !p.children && !p.lap && !p.seat) return "";
+  var parts = [p.adults + (p.adults === 1 ? " adult" : " adults")];
+  if(p.children) parts.push(p.children + (p.children === 1 ? " child" : " children"));
+  if(p.seat) parts.push(p.seat + " infant" + (p.seat === 1 ? "" : "s") + " in seat");
+  if(p.lap) parts.push(p.lap + " infant" + (p.lap === 1 ? "" : "s") + " on lap");
+  return parts.join(" + ");
+}
 function faCaptureForm(){
   return {
     from:faFieldVal("faFrom"), to:faFieldVal("faTo"), date:faFieldVal("faDate"),
     trip:faFieldVal("faTrip") || "one", ret:faFieldVal("faRet"),
     from2:faFieldVal("faFrom2"), to2:faFieldVal("faTo2"), date2:faFieldVal("faDate2"),
-    adults:faFieldVal("faAdults") || "1", cls:faFieldVal("faClass") || "",
+    adults:faFieldVal("faAdults") || "1", children:faFieldVal("faChildren") || "0",
+    lap:faFieldVal("faInfantsLap") || "0", seat:faFieldVal("faInfantsSeat") || "0",
+    cls:faFieldVal("faClass") || "",
     market:faFieldVal("faMarket") || "PK", max:faFieldVal("faMax") || "15",
     nonstop:!!((document.getElementById("faNonStop")||{}).checked)
   };
@@ -5214,6 +5239,9 @@ function faApplyForm(f){
   if(!f) return;
   function set(id, v){ var el=document.getElementById(id); if(el) el.value = (v == null ? "" : v); }
   set("faFrom", f.from); set("faTo", f.to); set("faDate", f.date);
+  set("faChildren", f.children != null ? f.children : "0");
+  set("faInfantsLap", f.lap != null ? f.lap : "0");
+  set("faInfantsSeat", f.seat != null ? f.seat : "0");
   set("faAdults", f.adults); set("faClass", f.cls); set("faMarket", f.market); set("faMax", f.max);
   set("faFrom2", f.from2); set("faTo2", f.to2); set("faDate2", f.date2);
   var ns=document.getElementById("faNonStop"); if(ns) ns.checked = !!f.nonstop;
@@ -5312,6 +5340,7 @@ function faRenderOffers(j, req){
   }
   var curr = (list[0].price && list[0].price.currency) || "";
   var html = '<div class="card"><div style="display:flex; align-items:center; gap:8px;"><h2 style="margin:0; flex:1;">Results — '+list.length+' fare(s)</h2><button class="del" id="faClearResults" title="Clear results" style="background:var(--red-bg); color:var(--red); padding:4px 9px;">✕</button></div>';
+  if(req && req.__party) html += '<div class="hint" style="margin-top:0;">Party: <b>'+esc(req.__party)+'</b> · har fare poore party ka <b>total</b> hai (per-person breakdown API nahi deta). Sasta/Google/Skyscanner/Kayak links par passengers khud set karein.</div>';
   if(j && j.observed_at) html += '<div class="hint" style="margin-top:0;">Prices fetched: '+esc(String(j.observed_at).replace("T"," ").replace("Z"," UTC"))+'</div>';
   list.forEach(function(o){ html += faOfferCard(o, curr); });
   html += '</div>';
@@ -5368,6 +5397,10 @@ function ignavSearch(){
     if(!/^[A-Z]{3}$/.test(f2) || !/^[A-Z]{3}$/.test(t2)){ faSetStatus("Multi-city ke leg 2 ke From/To IATA codes dalein.", true); return; }
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date2)){ faSetStatus("Multi-city ke leg 2 ki date select karein.", true); return; }
   }
+  var pax = faPaxCounts();
+  if(pax.lap > pax.adults){ faSetStatus("Infants on lap adults se zyada nahi ho sakte — har lap infant ke liye ek adult chahiye.", true); return; }
+  if(pax.seated > 9){ faSetStatus("Total seated passengers 9 se zyada nahi (adults + children + infants in seat = " + pax.seated + ").", true); return; }
+  var partyText = faPartyText(pax);
   if(faBusy) return;
   faBusy = true;
   IGN_STATE.form = faCaptureForm();
@@ -5378,7 +5411,7 @@ function ignavSearch(){
   faRenderSasta();
   var btn = document.getElementById("faSearch"); if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
   var maxResults = Number((document.getElementById("faMax")||{}).value || 15);
-  var adults = Number((document.getElementById("faAdults")||{}).value || 1);
+  var adults = pax.adults;
   var cls = (document.getElementById("faClass")||{}).value || "";
   var nonStop = !!((document.getElementById("faNonStop")||{}).checked);
   var market = (document.getElementById("faMarket")||{}).value || ignavMarket();
@@ -5396,11 +5429,16 @@ function ignavSearch(){
     if(nonStop) payload.max_stops = 0;
   }
   if(adults > 1) payload.adults = adults;
+  if(pax.children > 0) payload.children = pax.children;
+  if(pax.lap > 0) payload.infants_on_lap = pax.lap;
+  if(pax.seat > 0) payload.infants_in_seat = pax.seat;
   if(cls) payload.cabin_class = cls;
   payload.__max = maxResults;
+  if(partyText) payload.__party = partyText;
   var searchMsg = trip === "multi"
     ? ("Searching multi-city " + f + " → " + t + " + " + f2 + " → " + t2 + "…")
     : ("Searching " + f + " → " + t + " on " + date + (trip === "round" ? (" (return " + ret + ")") : "") + "…");
+  if(partyText) searchMsg += " · " + partyText + " (1 request)";
   IGN_STATE.status = searchMsg;
   faSetStatus(searchMsg);
   if(trip === "one") faLoadSasta(f, t, sastaSeq);

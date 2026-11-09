@@ -1,5 +1,12 @@
 # Travel Office Hisab — AB Travels
 
+## Price Lookup — children & infants (v2.45)
+- Price Lookup now supports **adults, children (2–11), infants on lap (<2) and infants in seat**, using Ignav's official request fields (`adults`, `children`, `infants_on_lap`, `infants_in_seat`). Fields are sent only when above zero, so a plain 1-adult search sends exactly the same request as before.
+- Validation: one lap infant per adult, and at most 9 seated passengers (adults + children + infants in seat).
+- Ignav returns one **party total** per fare (`PriceModel` has amount/currency/status only, no per-person split), so results are labelled "party total".
+- **One search = one Ignav request**, regardless of passenger count. The proxy `MAX_DAILY_PROXY` and bot `MAX_DAILY_REQUESTS` budgets count requests, not passengers; failed requests are not billed.
+- UI-only `__max` / `__party` fields are stripped before sending (Ignav uses `additionalProperties: false` and rejects unknown fields).
+
 ## Setup guide fix (v2.44)
 - The app's Telegram price-bot setup card now lists the required `WATCH_INDEX_DO` Durable Object binding (`WatchIndex`, SQLite, migration `watch-index-v1`) and the `npx wrangler deploy -c wrangler.pricebot.toml` path. Pasting only the Worker code is not enough for v2.42+.
 
