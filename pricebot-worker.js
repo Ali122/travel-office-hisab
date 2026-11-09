@@ -1354,15 +1354,22 @@ function routeText(w) {
     (w.ret ? " ↔ " + esc(prettyDate(w.ret)) : "");
 }
 
+/* First line is the phone-notification preview: route + current price, so the
+   full message does not need to be opened. Keep it plain text (no tags). */
+function headline(w, p) {
+  return routeText(w) + " · " + money(p.amount, p.currency);
+}
+
 function alertText(w, best, old, ind) {
   const p = best.price || {};
-  let s = "🚨 <b>Price alert</b> — watch #" + w.id + "\n" + routeText(w) + "\n\n";
-  s += "<b>" + esc(money(p.amount, p.currency)) + "</b>";
+  let s = "<b>" + esc(headline(w, p)) + "</b>\n";
+  s += "🚨 <b>Price alert</b> — watch #" + w.id;
   if (old != null && Number(old) > 0 && Number(p.amount) < Number(old)) {
     const pct = ((Number(old) - Number(p.amount)) / Number(old)) * 100;
     s += "  <i>(pehle " + esc(money(old, p.currency)) + ", −" + pct.toFixed(1) + "%)</i>";
   }
   if (w.target) s += "  <i>(target " + esc(money(w.target, p.currency)) + ")</i>";
+  s += "\n";
   if (ind && Number(ind.price.amount) < Number(p.amount)) {
     s += "\n💡 Sab se sasta (indicative/unverified): " + esc(money(ind.price.amount, ind.price.currency)) + " — booking se pehle confirm karein";
   }
@@ -1375,16 +1382,18 @@ function alertText(w, best, old, ind) {
 
 function updateText(w, best, old, ind) {
   const p = best.price || {};
-  let s = "⏱ <b>Price update</b> — watch #" + w.id + "\n" + routeText(w) + "\n\n";
-  s += "Current: <b>" + esc(money(p.amount, p.currency)) + "</b>";
+  let s = "<b>" + esc(headline(w, p)) + "</b>\n";
+  s += "⏱ <b>Price update</b> — watch #" + w.id;
   if (old != null && Number(old) > 0) {
     const diff = Number(p.amount) - Number(old);
     const pct = Math.abs((diff / Number(old)) * 100);
-    s += "\nPrevious: " + esc(money(old, p.currency));
+    s += "  <i>pehle " + esc(money(old, p.currency));
     if (Math.abs(diff) >= 1) s += " (" + (diff < 0 ? "▼ " : "▲ ") + pct.toFixed(1) + "%)";
     else s += " (no change)";
+    s += "</i>";
   }
-  if (w.target) s += "\nTarget: " + esc(money(w.target, p.currency));
+  if (w.target) s += "  <i>(target " + esc(money(w.target, p.currency)) + ")</i>";
+  s += "\n";
   if (ind && Number(ind.price.amount) < Number(p.amount)) {
     s += "\n💡 Sab se sasta (indicative/unverified): " + esc(money(ind.price.amount, ind.price.currency)) + " — booking se pehle confirm karein";
   }
@@ -1629,7 +1638,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.42</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.46</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +

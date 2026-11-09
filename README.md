@@ -1,5 +1,10 @@
 # Travel Office Hisab — AB Travels
 
+## Price alert preview (v2.46)
+- Bot price notifications now start with the **route + current price** on the first line (e.g. `KHI → DXB · 15 Dec 2026 · PKR 85,400`), so the phone notification preview shows everything without opening the message.
+- Applies to both `alertText` (target/drop alert) and `updateText` (periodic price update); the change details (previous price, target, fare legs) follow on later lines.
+- `pricebot-worker.js` v2.46 redeploy karein (`npx wrangler deploy -c wrangler.pricebot.toml`); bindings/secrets wahi rahenge.
+
 ## Price Lookup — children & infants (v2.45)
 - Price Lookup now supports **adults, children (2–11), infants on lap (<2) and infants in seat**, using Ignav's official request fields (`adults`, `children`, `infants_on_lap`, `infants_in_seat`). Fields are sent only when above zero, so a plain 1-adult search sends exactly the same request as before.
 - Validation: one lap infant per adult, and at most 9 seated passengers (adults + children + infants in seat).
