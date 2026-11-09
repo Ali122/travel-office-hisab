@@ -1,7 +1,7 @@
 # Travel Office Hisab — AB Travels
 
 ## Audit fixes (v2.42)
-- Browser notification requests require the price bot token plus the origin check. Staff continues to use the shared `NOTIFY_KEY` secret.
+- Browser notification requests are verified by the HTTPS origin check (the app-side bot token is no longer required; the old token field is optional/legacy). Staff continues to use the shared `NOTIFY_KEY` secret.
 - Concurrent watch-index changes use a SQLite Durable Object instead of overwriting one KV array. First use imports existing watch keys from KV, including keys missed by the old index. Cron does not list KV every minute.
 - Staff invoices preserve blank passenger ID slots so IDs stay paired with names.
 - Price bot deploy: `npx wrangler deploy -c wrangler.pricebot.toml`. Requires `WATCH_INDEX_DO` binding and `watch-index-v1` migration (`WatchIndex`, SQLite); pasting code alone into an unconfigured Worker is insufficient.
@@ -190,7 +190,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.41** (Price bot v2.41 no longer calls KV.list every minute — fixes the Cloudflare KV free-plan 90% usage warning; the app's embedded "copy price bot code" is refreshed to the same version. v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.43** (Notification settings no longer ask for the price-bot token — v2.42 relay verifies the HTTPS origin, staff uses `NOTIFY_KEY`; docs corrected. v2.42 added the SQLite Durable Object watch index and preserved blank passenger ID slots. v2.41 stopped the every-minute KV.list. v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.

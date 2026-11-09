@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.42</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.43</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.42";
+var APP_VER = "2.43";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -5999,9 +5999,9 @@ function viewSettings(){
         + '<label style="margin-top:8px;">Chat IDs (comma se alag)</label>'
         + '<input id="setTgChats" value="'+esc(st.tgChatIds||"")+'" placeholder="123456789, 987654321" autocomplete="off" style="font-family:monospace;">'
         + '<div class="hint">Price bot par <code>/id</code> bhej kar chat ID lein. Owner <code>/share ID</code> se member add kare. Khali chhorne par bot ki poori team ko notification jayegi.</div>'
-        + '<label style="margin-top:8px;">Bot token (relay authentication)</label>'
+        + '<label style="margin-top:8px;">Bot token (optional)</label>'
         + '<input type="password" id="setTgToken" value="'+esc(st.tgBotToken||"")+'" placeholder="123456:ABC-DEF…" autocomplete="off" style="font-family:monospace;">'
-        + '<div class="hint">Price bot ka token dalein. Relay is se aapki request verify karta hai. Token private GitHub data ke saath sync hota hai — ek dafa save karein, baqi devices par khud aa jayega.</div>'
+        + '<div class="hint">v2.42+ relay origin check se verify karta hai — token ki zaroorat nahi. Purane devices ke liye save reh sakta hai; khali chhor dein.</div>'
         + '<div class="row" style="margin-top:8px; align-items:center;">'
         +   '<button class="btn small primary" id="tgSave" style="flex:1.2; margin-top:0;">💾 Save &amp; send test</button>'
         +   '<button class="btn small btn-del" id="tgRemove" style="flex:1; margin-top:0;">🚫 Remove</button>'
@@ -6481,16 +6481,16 @@ function tgRelayUrl(){
 function tgSend(title, message, opts){
   opts = opts || {};
   if(!opts.force && !tgNotifyOn()) return Promise.resolve(false);
-  var token = String((S.settings && S.settings.tgBotToken) || "").trim();
   var chats = tgChatIds();
   var text = String(message || "");
   // 1) Worker relay — Cloudflare se Telegram jata he, is liye ISP block (api.telegram.org)
-  //    hone par bhi notification pohanchti he.
+  //    hone par bhi notification pohanchti he. v2.42+ relay origin check karta he;
+  //    bot token ki zaroorat nahi.
   var relay = fetch(tgRelayUrl() + "/notify", {
     method: "POST",
     signal: AbortSignal.timeout(30000),
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title: String(title || ""), text: text, chats: chats, token: token })
+    body: JSON.stringify({ title: String(title || ""), text: text, chats: chats })
   }).then(function(r){
     if(!r.ok) throw new Error("relay " + r.status);
     return r.json();
