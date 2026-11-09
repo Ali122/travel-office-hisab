@@ -1,5 +1,9 @@
 # Travel Office Hisab — AB Travels
 
+## Multi-city proxy (v2.47)
+- The price bot Worker forwards `/search` to Ignav's `/fares/search` endpoint, using the existing proxy budget and configuration.
+- Run `python -m unittest discover -s tests -v` for the offline release checks. These checks do not exercise live bookings, payments, or Ignav.
+
 ## Price alert preview (v2.46)
 - Bot price notifications now start with the **route + current price** on the first line (e.g. `KHI → DXB · 15 Dec 2026 · PKR 85,400`), so the phone notification preview shows everything without opening the message.
 - Applies to both `alertText` (target/drop alert) and `updateText` (periodic price update); the change details (previous price, target, fare legs) follow on later lines.

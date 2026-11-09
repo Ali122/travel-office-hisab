@@ -1638,7 +1638,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.46</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.47</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
@@ -1665,6 +1665,7 @@ export default {
     }
     if (path === "/fares") return proxyIgnav(request, env, "/fares/one-way", hdrs);
     if (path === "/round-trip") return proxyIgnav(request, env, "/fares/round-trip", hdrs);
+    if (path === "/search") return proxyIgnav(request, env, "/fares/search", hdrs);
     if (path === "/booking-links") return proxyIgnav(request, env, "/fares/booking-links", hdrs);
     if (path === "/notify") return notifyRelay(request, env, hdrs);
 
