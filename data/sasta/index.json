@@ -1,7 +1,7 @@
 {
   "v": 1,
   "provider": "sasta",
-  "observed_at": "2026-11-10T09:57:45.475Z",
+  "observed_at": "2026-11-10T17:55:03.261Z",
   "results": [
     {
       "origin": "KHI",
@@ -30,7 +30,7 @@
     {
       "origin": "LHE",
       "destination": "JED",
-      "amount": 101623,
+      "amount": 124032,
       "file": "data/sasta/lhe-jed.json"
     },
     {
