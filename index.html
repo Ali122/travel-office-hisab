@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.49</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.50</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.49";
+var APP_VER = "2.50";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -446,7 +446,7 @@ function blankState(){
     months: {},        // "2024-06" -> {incomes:[], expenses:[], applied:false, appliedInfo:{}}
     draws: [],         // partner nikasi: {id, date, partner:"A"|"B"|"ABBU", amount, note}
     receivables: [],   // {id, client, note, total, payments:[{date, amount}]}
-    tickets: [],       // {id, date, client, detail, cost, sale, paid, commission}
+    tickets: [],       // {id, date, client, detail, cost, sale, paid, commission, persons}
     waseem: [],        // {id, date, kind:"commission"|"salary", note, amount}
     charityPaid: [],   // {id, date, amount, note} — di hui sadqa
     qarzaPaid: [],     // {id, date, amount, note} — qarza ki payments
@@ -2206,7 +2206,8 @@ function saleToCache(t){
     invDoc: (String(t.kind||"").toLowerCase() === "umrah") ? "umrah" : "ticket",
     invTrip: "one",
     invClient: t.client || "",
-    invPax: 1,
+    invPax: Math.max(1, Number(t.persons) || 1),
+    invPaxNames: t.client || "",
     invDate: t.date || ""
   };
 }
@@ -2273,7 +2274,7 @@ function openInvoiceForSale(id){
     invPrefill = invToCache(t.inv);
     invAutoGen = true;
   } else {
-    invPaxCount = 1;
+    invPaxCount = Math.max(1, Number(t.persons) || 1);
     invPrefill = saleToCache(t);
     invAutoGen = false;
   }
@@ -3656,6 +3657,7 @@ function viewTickets(){
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
+  html += '<div class="row" style="margin-top:8px;"><div style="flex:0 0 170px;"><label>Number of persons</label><input id="tkPersons" type="number" min="1" max="99" step="1" inputmode="numeric" value="1"></div><div style="flex:1; display:flex; align-items:flex-end;"><div class="hint" style="margin:0 0 10px;">Only a count — cost and sale stay as entered and do not multiply.</div></div></div>';
   html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
   html += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("payment"))+'</label><select id="tkPaid"><option value="paid">'+esc(T("paidopt"))+'</option><option value="unpaid">'+esc(T("unpaidopt"))+'</option></select><select id="tkPayMethod"><option>Cash</option><option>Online</option></select><input id="tkComm" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("commph"))+'" value="0"></div>';
   html += '<button class="btn green" id="addTicket">'+esc(T("savetk"))+'</button>';
@@ -3687,7 +3689,8 @@ function viewTickets(){
         + '<div class="stat" style="grid-column:1/-1;"><div class="t">'+esc(T("kulprofit"))+'</div><div class="v '+(tp>=0?"pos":"neg")+'">'+money(tp)+'</div></div>'
         + '</div>';
   var pendingCnt = list.filter(function(t){ return !(Number(t.cost) > 0) && (Number(t.sale) > 0); }).length;
-  html += '<div class="hint" style="margin-top:8px;">'+list.length+' tickets '+(ticketFilter==="all" ? "in the full record" : "in "+esc(monthLabel(ticketFilter)))+'</div>';
+  var personsTotal = 0; list.forEach(function(t){ personsTotal += Math.max(1, Number(t.persons) || 1); });
+  html += '<div class="hint" style="margin-top:8px;">'+list.length+' tickets '+(ticketFilter==="all" ? "in the full record" : "in "+esc(monthLabel(ticketFilter)))+' · '+personsTotal+' person(s)</div>';
   if(pendingCnt) html += '<div class="hint" style="color:var(--gold);">⚠ '+pendingCnt+' sale(s) pending — cost price abhi nahi dali. Neeche har sale par ✏ (Edit) dabakar cost daal dein.</div>';
   html += '<button class="btn btn-del" id="clearTickets">'+esc(T("cleartk"))+'</button>'+undoBanner()+'</div>';
 
@@ -3699,9 +3702,9 @@ function viewTickets(){
       var costPending = !(Number(t.cost) > 0) && (Number(t.sale) > 0);
       var tkPaid = 0; (t.payments||[]).forEach(function(x){ tkPaid += Number(x.amount)||0; });
       var tkRem = Math.max(0, (Number(t.sale)||0) - tkPaid);
-      var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket")).toLowerCase();
+      var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket") + " " + (t.persons||"")).toLowerCase();
       html += '<tr data-search="'+esc(hay)+'"><td>'+esc(dmy(t.date))+'</td>'
-            + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+(costPending?' <span class="pill pending" title="Cost price abhi nahi dali — ✏ se edit karein">⚠ cost pending</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.payMethod?' <div style="font-size:12px; color:var(--muted);">'+(t.payMethod==='Online'?'💳':'💵')+' '+esc(t.payMethod)+'</div>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
+            + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+((Number(t.persons)||1)>1?' <span class="pill" style="background:var(--green-bg); color:var(--green);" title="Number of persons">👥 '+Math.max(1,Number(t.persons)||1)+'</span>':'')+(costPending?' <span class="pill pending" title="Cost price abhi nahi dali — ✏ se edit karein">⚠ cost pending</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.payMethod?' <div style="font-size:12px; color:var(--muted);">'+(t.payMethod==='Online'?'💳':'💵')+' '+esc(t.payMethod)+'</div>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
             + '<td>'+(costPending?'<span style="color:var(--muted);">—</span>':money(t.cost))+'</td><td>'+money(t.sale)+'</td>'
             + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
             + '<td>'+(t.paid === false
@@ -7422,17 +7425,18 @@ function bind(){
     var kind = (document.getElementById("tkKind")||{}).value || "Ticket";
     var tkDate = readDate("tkDate", true); if(!tkDate) return;
     var detailTxt = ((document.getElementById("tkDetail")||{}).value||"").trim();
+    var persons = Math.min(99, Math.max(1, Math.floor(Number((document.getElementById("tkPersons")||{}).value) || 1)));
     S.tickets.push({ id:uid(), date:tkDate, client:client, kind:kind,
                      payMethod:((document.getElementById("tkPayMethod")||{}).value||"Cash"),
                      nic:((document.getElementById("tkNic")||{}).value||"").trim(),
-                     detail:detailTxt, cost:cost, sale:sale,
+                     detail:detailTxt, cost:cost, sale:sale, persons:persons,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
     ensureClientRecord(client, ((document.getElementById("tkNic")||{}).value||"").trim());
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
     try{
-      tgSend("New ticket added", [client, kind, detailTxt, "Sale " + money(sale)]
+      tgSend("New ticket added", [client, kind, detailTxt, "Sale " + money(sale), (persons>1 ? persons + " persons" : "")]
         .filter(Boolean).join(" · "), { priority:"high", tags:"ticket" });
     }catch(e){}
     setCardOpen("tkhist", true);
@@ -7979,9 +7983,12 @@ function bind(){
       if(s === null) return;
       var cn = prompt("Client name — khali chhod dein to purana rahega:", t.client || "");
       if(cn === null) return;
+      var pn = prompt("Number of persons — khali chhod dein to purana rahega:", Math.max(1, Number(t.persons) || 1));
+      if(pn === null) return;
       if(c !== "" && !isNaN(Number(c)) && Number(c) >= 0) t.cost = Number(c);
       if(s !== "" && !isNaN(Number(s)) && Number(s) >= 0) t.sale = Number(s);
       if(cn.trim()) t.client = cn.trim();
+      if(pn !== "" && !isNaN(Number(pn)) && Number(pn) >= 1) t.persons = Math.min(99, Math.floor(Number(pn)));
       save(); render();
     };
   });

@@ -1,5 +1,12 @@
 # Travel Office Hisab — AB Travels
 
+## Sale — number of persons (v2.50)
+- The **Add New Sale** form now has a **Number of persons** field (default **1**, 1–99). It is stored on the sale as `persons`.
+- It is **informational only**: cost, sale, profit and all monthly totals stay exactly as entered — increasing persons never multiplies them.
+- Sales list shows a 👥 badge when persons is above 1, and the Ticket Summary line shows the total person count for the filtered month.
+- The sale edit (✏) prompt now also asks for the person count, and creating an invoice from a sale pre-fills the invoice passenger count from it.
+- Older sales without the field are treated as 1 person; imports and backups keep working unchanged.
+
 ## Passenger IDs stay aligned (v2.49)
 - Multi-passenger invoices keep blank lines in the NIC/Passport box, so a passenger with no NIC does not take the next passenger's ID. Applies to the app invoice form and the staff portal form.
 
