@@ -1,5 +1,8 @@
 # Travel Office Hisab — AB Travels
 
+## Passenger IDs stay aligned (v2.49)
+- Multi-passenger invoices keep blank lines in the NIC/Passport box, so a passenger with no NIC does not take the next passenger's ID. Applies to the app invoice form and the staff portal form.
+
 ## Multi-city proxy (v2.47)
 - The price bot Worker forwards `/search` to Ignav's `/fares/search` endpoint, using the existing proxy budget and configuration.
 - Run `python -m unittest discover -s tests -v` for the offline release checks. These checks do not exercise live bookings, payments, or Ignav.

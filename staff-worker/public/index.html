@@ -308,12 +308,13 @@
   function readInvoiceForm(){
     var doc=$("siDoc")?$("siDoc").value:"ticket";
     var pax=Math.max(1,Math.min(20,Number($("siPax")?$("siPax").value:1)||1));
-    var names=pax>1?String($("siPaxNames")?$("siPaxNames").value:"").split(/\n+/).map(function(x){return x.trim();}).filter(Boolean):[];
-    var nics=pax>1?String($("siPaxNics")?$("siPaxNics").value:"").split(/\n+/).map(function(x){return x.trim();}).filter(Boolean):[];
+    function lines(id){var a=String($(id)?$(id).value:"").replace(/\r/g,"").split("\n").map(function(x){return x.trim();});while(a.length&&!a[a.length-1])a.pop();return a;}
+    var names=pax>1?lines("siPaxNames"):[];
+    var nics=pax>1?lines("siPaxNics"):[];
     var name=$("siName")?$("siName").value.trim():"";
     var nic=$("siNic")?$("siNic").value.trim():"";
     if(pax>1){
-      if(names.length<pax){ msg("Enter names for all "+pax+" passengers.",true); return null; }
+      if(names.length<pax || names.some(function(x){return !x;})){ msg("Enter names for all "+pax+" passengers.",true); return null; }
       name=names[0]; nic=nics[0]||nic;
     }
     if(!name){ msg("Passenger name is required.",true); return null; }
