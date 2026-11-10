@@ -225,7 +225,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.51** (v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.52** (v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.
@@ -254,3 +254,13 @@ Current version: **2.51** (v2.50 Sale "Number of persons" field; v2.49 passenger
 - Agar kisi route par koi **verified fare hi na mile**, to `/price` ab blank message ke bajaye indicative cheapest dikhata hai warning ke saath.
 - Alerts aur triggers waise hi **verified-only** hain — sirf display/labels badle hain, alert behaviour nahi.
 - Worker redeploy zaroori hai: Settings → **Telegram price bot** card se naya code copy karein → Cloudflare Worker → Edit code → paste → **Deploy**.
+
+
+
+## Telegram reminders — price bot ab alarm bhi deta hai (v2.52)
+- Naya command: `/remind <kaam> <waqt>` — masalan `/remind Air Arabia: Usama ki booking 1 bje expire hogi` → team ko **12:00 aur 12:30 par alarm** (default: 1 ghanta + 30 min pehle).
+- Waqt Roman Urdu mein: `1 bje` = 1 PM (1–7 baje, bina subah/raat ke, dopahar), `subah 7 bje`, `raat 11 bje`, `9:30`, `kal 1 bje`, `15 December 1 bje`, `30 min baad`, `2 ghantay baad`.
+- Apne lead times: `lead=60,30,10` (comma list; `0` = event ke waqt par). `/reminds` — upcoming list · `/unremind R12` · `/unremind all`.
+- Reminders quiet hours (02:00–09:00 PKT) ke doran bhi aate hain — ye explicit alarms hain.
+- Storage: ek KV key `reminds`; cron har minute check karta hai, sirf fire par 1 KV write (KV.list bilkul nahi — budget-safe).
+- Worker v2.52 redeploy zaroori hai (DO binding ke sath, `wrangler.pricebot.toml` recommended).

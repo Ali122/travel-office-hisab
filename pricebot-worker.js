@@ -685,6 +685,10 @@ const HELP =
   "<b>Quiet hours (default 02:00–09:00 PKT)</b>\n" +
   "<code>/quiet</code> — status · <code>/quiet on</code> · <code>/quiet off</code>\n" +
   "<code>/quiet 02:00-09:00</code> — custom window (Pakistan time)\n\n" +
+  "<b>Reminders (team ko alarm)</b>\n" +
+  "<code>/remind Air Arabia: Usama ki booking 1 bje expire hogi</code>\n" +
+  "1 ghanta pehle (12 baje) aur 30 min pehle (12:30) remind · <code>lead=60,30,10</code> se apni marzi\n" +
+  "<code>/remind Call Sarmad 30 min baad</code> · <code>/reminds</code> list · <code>/unremind R12</code> ya <code>/unremind all</code>\n\n" +
   "<b>Book link</b> <code>/book 1</code> · <b>Budget</b> <code>/budget</code>\n\n" +
   "<b>Team (dono ko alerts)</b>\n" +
   "<code>/id</code> — apna chat ID\n" +
@@ -1283,6 +1287,175 @@ async function cmdUnshare(env, chat, arg) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Reminders                                                            */
+/*   /remind Air Arabia: Usama ki booking 1 bje expire hogi             */
+/*   -> team ko 12:00 aur 12:30 par alarm (1 ghanta + 30 min pehle).    */
+/*   Stored in one KV key ("reminds"); the every-minute cron fires      */
+/*   due slots. Reminders ignore quiet hours (explicit alarms).         */
+/* ------------------------------------------------------------------ */
+
+const REMIND_KEY = "reminds";
+const MAX_REMINDS = 60;
+const REMIND_DEFAULT_LEADS = [60, 30]; // minutes before the event
+
+function readReminds(env) {
+  if (!env.KV) return Promise.resolve([]);
+  return env.KV.get(REMIND_KEY).then(function (raw) {
+    let a = [];
+    try { a = JSON.parse(raw || "[]"); } catch (e) { a = []; }
+    return Array.isArray(a) ? a : [];
+  }).catch(function () { return []; });
+}
+
+async function writeReminds(env, list) {
+  if (!env.KV) return;
+  await env.KV.put(REMIND_KEY, JSON.stringify(list.slice(0, MAX_REMINDS)));
+}
+
+function pktEventText(ms) {
+  return pktIso(ms).slice(0, 16).replace("T", " ");
+}
+
+// "1 bje" = 1 PM (1–7 baje, bina subah/raat ke, dopahar maane jate hain)
+function parseEventWhen(text) {
+  const t = String(text || "");
+  const lower = t.toLowerCase();
+  const now = Date.now();
+  let m = lower.match(/\b(\d{1,3})\s*(min|mins|minute|minutes|minit|minits)\b/);
+  if (m) return { event: now + Number(m[1]) * 60000, rel: true };
+  m = lower.match(/\b(\d{1,2})\s*(hour|hours|ghanta|ghantay|ghante)\b/);
+  if (m) return { event: now + Number(m[1]) * 3600000, rel: true };
+  m = t.match(/(\d{1,2})(?::(\d{2}))?\s*(?:baje|bje|bajay|o'?clock|am|pm)\b/i);
+  let h = 0, mi = 0;
+  if (m) {
+    h = Number(m[1]);
+    mi = Number(m[2] || 0);
+  } else {
+    m = t.match(/\b(\d{1,2}):(\d{2})\b/);
+    if (!m) return null;
+    h = Number(m[1]);
+    mi = Number(m[2]);
+  }
+  if (h > 23 || mi > 59) return null;
+  const pm = /\bpm\b|shaam|sham|raat|evening|night/.test(lower);
+  const am = /\bam\b|subah|morning/.test(lower);
+  if ((pm && !am && h < 12) || (!pm && !am && h >= 1 && h <= 7)) h += 12;
+  else if (am && h === 12) h = 0;
+  const date = naturalDate(t) || pktToday();
+  let event = Date.parse(date + "T" + ("0" + h).slice(-2) + ":" + ("0" + mi).slice(-2) + ":00+05:00");
+  if (!isFinite(event)) return null;
+  const explicitDate = /\b(kal|aaj|tomorrow|today)\b|\b\d{1,2}[-/.]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b/.test(lower);
+  if (!explicitDate && event <= now + 60000) event += 86400000;
+  return { event: event, rel: false };
+}
+
+function parseLeads(opts) {
+  const raw = String((opts && opts.lead) || "").trim();
+  if (!raw) return REMIND_DEFAULT_LEADS.slice();
+  const arr = raw.split(/[,;\s]+/).map(Number).filter(function (n) { return isFinite(n) && n >= 0 && n <= 10080; });
+  const uniq = Array.from(new Set(arr)).sort(function (a, b) { return b - a; });
+  return uniq.length ? uniq : REMIND_DEFAULT_LEADS.slice();
+}
+
+async function cmdRemind(env, chat, args, opts) {
+  if (!env.KV) return send(env, chat, "KV binding missing — Worker settings mein KV namespace (variable name KV) add karein.");
+  const text = args.join(" ").trim();
+  if (!text) return send(env, chat,
+    "Reminder likhein — misaal:\n" +
+    "<code>/remind Air Arabia: Usama ki booking 1 bje expire hogi</code> → 1 ghanta pehle (12 baje) aur 30 min pehle (12:30) remind\n" +
+    "<code>/remind Call Sarmad 30 min baad</code>\n" +
+    "Option: <code>lead=60,30,10</code> (kitne minute pehle; 0 = waqt par)");
+  const when = parseEventWhen(text);
+  if (!when) return send(env, chat,
+    "Waqt samajh nahi aaya. Misaal:\n" +
+    "<code>/remind Usama ki booking 1 bje expire hogi</code>\n" +
+    "<code>/remind Report 9:30</code>\n" +
+    "<code>/remind Call Sarmad 30 min baad</code>");
+  const leads = parseLeads(opts);
+  const slots = (when.rel ? [0] : leads).map(function (l) {
+    return { lead: when.rel ? 0 : l, at: l === 0 ? when.event : when.event - l * 60000, done: false };
+  }).filter(function (s) { return s.at > Date.now() - 30000; }).sort(function (a, b) { return a.at - b.at; });
+  if (!slots.length) return send(env, chat, "Ye waqt guzar chuka hai — reminder nahi lag saka.");
+  const list = await readReminds(env);
+  if (list.length >= MAX_REMINDS) return send(env, chat, "Max " + MAX_REMINDS + " reminders. Pehle <code>/unremind ID</code> se purana hata dein.");
+  let id = "";
+  do { id = "R" + (1 + Math.floor(Math.random() * 899)); } while (list.some(function (r) { return r.id === id; }));
+  const r = { id: id, chat: String(chat), text: text.slice(0, 300), event: when.event, rel: !!when.rel, slots: slots, createdAt: Date.now() };
+  list.push(r);
+  await writeReminds(env, list);
+  let msg = "✅ <b>Reminder #" + id + " set</b>\n" + esc(r.text) + "\n";
+  if (when.rel) {
+    msg += "\n⏰ Remind: <b>" + pktEventText(slots[0].at) + " PKT</b>";
+  } else {
+    msg += "\nEvent: <b>" + pktEventText(when.event) + " PKT</b>";
+    msg += "\n⏰ Remind: " + slots.map(function (s) {
+      return pktEventText(s.at) + " PKT" + (s.lead > 0 ? " (" + s.lead + " min pehle)" : " (waqt par)");
+    }).join(" · ");
+  }
+  msg += "\n\nHatane: <code>/unremind " + id + "</code> · list: <code>/reminds</code>";
+  return send(env, chat, msg);
+}
+
+function remindText(r, s) {
+  let t = "⏰ <b>REMINDER</b>\n";
+  t += esc(r.text) + "\n";
+  if (!r.rel) t += "\nEvent: " + pktEventText(r.event) + " PKT" + (s.lead > 0 ? " (" + s.lead + " min baqi)" : " (waqt ho gaya)") + "\n";
+  t += "\n🕒 " + pktNowText();
+  return t;
+}
+
+async function checkReminders(env) {
+  if (!env.KV) return;
+  const list = await readReminds(env);
+  if (!list.length) return;
+  const now = Date.now();
+  let changed = false;
+  const next = [];
+  for (const r of list) {
+    let pending = false;
+    for (const s of (r.slots || [])) {
+      if (s.done) continue;
+      if (s.at > now) { pending = true; continue; }
+      s.done = true;
+      changed = true;
+      try { await notifyAll(env, remindText(r, s)); } catch (e) { /* ignore */ }
+    }
+    if (pending) next.push(r);
+    else changed = true;
+  }
+  if (changed) await writeReminds(env, next);
+}
+
+async function cmdReminds(env, chat) {
+  const list = (await readReminds(env)).filter(function (r) { return (r.slots || []).some(function (s) { return !s.done; }); });
+  if (!list.length) return send(env, chat, "Koi reminder nahi. <code>/remind Usama ki booking 1 bje expire hogi</code> se lagayein.");
+  const rows = [];
+  for (const r of list) for (const s of r.slots) if (!s.done) rows.push({ at: s.at, id: r.id, txt: r.text });
+  rows.sort(function (a, b) { return a.at - b.at; });
+  let msg = "⏰ <b>Upcoming reminders</b>\n";
+  for (const row of rows) msg += "\n<b>" + pktEventText(row.at) + "</b> · #" + row.id + " · " + esc(row.txt.slice(0, 80));
+  msg += "\n\nHatane: <code>/unremind R12</code> · sab band: <code>/unremind all</code>";
+  return send(env, chat, msg);
+}
+
+async function cmdUnremind(env, chat, arg) {
+  const list = await readReminds(env);
+  const a = String(arg || "").trim();
+  if (!a) return send(env, chat, "Reminder ID dein: <code>/unremind R12</code> ya <code>/unremind all</code>");
+  if (/^all$/i.test(a)) {
+    if (!list.length) return send(env, chat, "Koi reminder nahi.");
+    await writeReminds(env, []);
+    return send(env, chat, "✅ " + list.length + " reminders band kar diye.");
+  }
+  const id = a.toUpperCase();
+  const idx = list.findIndex(function (r) { return String(r.id).toUpperCase() === id; });
+  if (idx < 0) return send(env, chat, "Reminder #" + esc(a) + " nahi mila. <code>/reminds</code> dekhein.");
+  const removed = list.splice(idx, 1)[0];
+  await writeReminds(env, list);
+  return send(env, chat, "✅ Reminder #" + esc(removed.id) + " band: " + esc(removed.text.slice(0, 120)));
+}
+
+/* ------------------------------------------------------------------ */
 /* webhook + scheduler                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -1336,6 +1509,9 @@ async function handleUpdate(env, upd) {
   if (cmd === "/book" || cmd === "/booking") return cmdBook(env, chat, args[0]);
   if (cmd === "/budget" || cmd === "/usage") return cmdBudget(env, chat, args[0]);
   if (cmd === "/quiet" || cmd === "/night") return cmdQuiet(env, chat, args);
+  if (cmd === "/remind" || cmd === "/reminder") return cmdRemind(env, chat, args, parsed.opts);
+  if (cmd === "/reminds" || cmd === "/reminders") return cmdReminds(env, chat);
+  if (cmd === "/unremind" || cmd === "/unreminder") return cmdUnremind(env, chat, args && args[0]);
 
   // Anything that is not a command is treated as a normal message:
   // "DXB to KHI 15 December", "KHI UET 15-12-2026 har ghantay", "kal raat 10 baje tak" ...
@@ -1638,7 +1814,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.47</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.52</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
@@ -1702,7 +1878,10 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
-    const job = checkAll(env).catch(function () { /* never crash the cron */ });
+    const job = Promise.all([
+      checkAll(env).catch(function () { /* never crash the cron */ }),
+      checkReminders(env).catch(function () { /* reminders must not crash the cron */ })
+    ]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(job);
   }
 };

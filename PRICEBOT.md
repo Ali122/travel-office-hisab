@@ -196,3 +196,10 @@ Behtar tareeqa: watch sirf us waqt lagayein jab ticket actually book karwana ho.
   sirf allowed team chats ko send hota hai. Staff service binding shared `NOTIFY_KEY` use karti hai.
   120 messages/hour ka soft cap hai. Jo network `api.telegram.org` block karta he us par bhi
   notifications chalti hain.
+
+
+## /remind — team reminders (v2.52)
+- `/remind <text> <waqt>` — masalan `/remind Air Arabia: Usama ki booking 1 bje expire hogi` → default 60 + 30 min pehle (12:00, 12:30 par) team ko alarm.
+- Waqt parsing: `1 bje` = 1 PM (1–7 baje bina marker dopahar), `subah/raat/shaam … baje`, `9:30`, `kal/aaj`, `15 December 1 bje`, `30 min baad`, `2 ghantay baad`. Option `lead=60,30,10,0`.
+- `/reminds` — upcoming list · `/unremind R12` · `/unremind all`.
+- Storage: ek KV key `reminds`; cron har minute check karta hai, sirf fire par 1 KV write. Reminders quiet hours ko ignore karte hain.
