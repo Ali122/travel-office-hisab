@@ -1,5 +1,11 @@
 # Travel Office Hisab — AB Travels
 
+## No added-by names anywhere (v2.51)
+- Ticket Files and the staff portal no longer show **who uploaded** a file. The "Aap ka naam (uploads par)" box is gone from the app.
+- New uploads do not store an uploader name at all; Telegram notifications already carry no added-by name.
+- Old files and backups that still contain `uploadedBy` keep working — the field is simply never displayed.
+- Staff portal: deploy `staff-worker` again (`npx wrangler deploy` in `staff-worker/`) to get the same change there.
+
 ## Sale — number of persons (v2.50)
 - The **Add New Sale** form now has a **Number of persons** field (default **1**, 1–99). It is stored on the sale as `persons`.
 - It is **informational only**: cost, sale, profit and all monthly totals stay exactly as entered — increasing persons never multiplies them.

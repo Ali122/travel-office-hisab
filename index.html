@@ -291,7 +291,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.50</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.51</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -349,7 +349,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.50";
+var APP_VER = "2.51";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -454,7 +454,7 @@ function blankState(){
     invoices: [],      // {id, date, savedAt, d} — sale se link na ho to yahan save hoti hai
     airlineIds: [],    // {id, name, login, pass, note} — password protected section
     clients: [],       // {id, name, phone, nic, passExp, note} — Customers tab
-    fileTickets: []    // {id, name, file, size, type, client, pnr, note, uploadedAt, uploadedBy, sha} — shared ticket files
+    fileTickets: []    // {id, name, file, size, type, client, pnr, note, uploadedAt, sha} - shared ticket files
   };
 }
 function load(){
@@ -3099,8 +3099,7 @@ function invSaveToFiles(){
     return fileUploadOne(file, {
       client: d.name || (d.paxNames || [])[0] || "",
       pnr: d.pnr || "",
-      note: "Invoice" + (d.docType === "umrah" ? " (Umrah)" : ""),
-      by: fileDeviceName()
+      note: "Invoice" + (d.docType === "umrah" ? " (Umrah)" : "")
     });
   }).then(function(){
     saveNow(function(){});
@@ -6366,10 +6365,6 @@ function fileSizeTxt(n){
   if(n >= 1024) return Math.round(n / 1024) + " KB";
   return Math.max(0, Math.round(n)) + " B";
 }
-function fileDeviceName(){
-  try{ return localStorage.getItem("ab_device_name") || (S.settings.partnerA || "Owner"); }
-  catch(e){ return S.settings.partnerA || "Owner"; }
-}
 function fileEntry(id){
   return (S.fileTickets || []).filter(function(x){ return x && x.id === id; })[0] || null;
 }
@@ -6595,7 +6590,6 @@ function fileUploadOne(file, meta){
       pnr: String(meta.pnr || "").toUpperCase(),
       note: meta.note || "",
       uploadedAt: Date.now(),
-      uploadedBy: meta.by || "",
       sha: (j && j.content && j.content.sha) || ""
     };
     if(!Array.isArray(S.fileTickets)) S.fileTickets = [];
@@ -6628,14 +6622,10 @@ function fileUploadAll(){
     fileSetFlash("GitHub sync off hai — Settings → GitHub Sync mein token save karein, phir upload karein.", true);
     render(); return;
   }
-  var nameEl = document.getElementById("fileName");
-  var by = nameEl ? String(nameEl.value || "").trim() : fileDeviceName();
-  if(by){ try{ localStorage.setItem("ab_device_name", by); }catch(e){} }
   var meta = {
     client: ((document.getElementById("fileClient") || {}).value || "").trim(),
     pnr: ((document.getElementById("filePnr") || {}).value || "").trim().toUpperCase(),
-    note: ((document.getElementById("fileNote") || {}).value || "").trim(),
-    by: by || fileDeviceName()
+    note: ((document.getElementById("fileNote") || {}).value || "").trim()
   };
   var arr = [];
   for(var i = 0; i < fs.length; i++) arr.push(fs[i]);
@@ -6711,7 +6701,6 @@ function fileRow(f){
     + '<div style="font-size:12.5px; color:var(--muted); word-break:break-word;">'
     + meta
     + (when ? ' · ' + esc(when) : '')
-    + (f.uploadedBy ? ' · ' + esc(f.uploadedBy) : '')
     + '</div>'
     + (f.note ? '<div style="font-size:12px; color:var(--muted);">' + esc(f.note) + '</div>' : '')
     + '</div></div>'
@@ -6737,7 +6726,6 @@ function viewFiles(){
         + '</div>'
         + '<div class="row" style="margin-top:8px;">'
         + '<div><label>Note (optional)</label><input id="fileNote" placeholder="e.g. Umrah package invoice"></div>'
-        + '<div><label>Aap ka naam (uploads par)</label><input id="fileName" placeholder="Umair"></div>'
         + '</div>'
         + '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">'
         + '<button class="btn primary" id="filePick">＋ Choose file(s)</button>'
@@ -6821,8 +6809,7 @@ function fileAddLinkNote(kind, title, url, text, client, pnr){
     note: "",
     size: kind === "note" ? String(text || "").length : 0,
     type: kind === "link" ? "text/uri-list" : "text/plain",
-    uploadedAt: Date.now(),
-    uploadedBy: fileDeviceName()
+    uploadedAt: Date.now()
   };
   if(!Array.isArray(S.fileTickets)) S.fileTickets = [];
   S.fileTickets.push(e);
@@ -6845,7 +6832,6 @@ function fileSilentUpload(file){
     client: ((document.getElementById("pasteClient") || {}).value || "").trim(),
     pnr: ((document.getElementById("pastePnr") || {}).value || "").trim(),
     note: "Pasted document",
-    by: fileDeviceName(),
     silent: true
   };
   filePasteStatus("Uploading " + file.name + " (" + fileSizeTxt(file.size) + ")…");
@@ -7083,11 +7069,6 @@ function bindFilesTab(app){
         if(list && list.length){ input.files = list; fileOnPick(input); }
       }catch(x){}
     };
-  }
-  var nameEl = document.getElementById("fileName");
-  if(nameEl){
-    nameEl.value = fileDeviceName();
-    nameEl.onchange = function(){ try{ localStorage.setItem("ab_device_name", String(this.value || "").trim()); }catch(e){} };
   }
   var up = document.getElementById("fileUpload");
   if(up) up.onclick = fileUploadAll;

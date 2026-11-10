@@ -598,7 +598,7 @@
       else if(kind==="note") btns+='<button class="btn small primary file-open" data-id="'+esc(f.id)+'">View</button><button class="btn small gray file-copy" data-id="'+esc(f.id)+'">Copy</button>';
       else btns+='<button class="btn small primary file-open" data-id="'+esc(f.id)+'">Open</button><button class="btn small gray file-save" data-id="'+esc(f.id)+'">Download</button>';
       h+='<div class="item"><div class="top"><div><b>'+esc(f.client||f.title||f.name||"File")+'</b>'+tag
-        +'<div class="hint">'+meta+(f.pnr?' · PNR '+esc(f.pnr):'')+(when?' · '+esc(when):'')+(f.uploadedBy?' · '+esc(f.uploadedBy):'')+'</div>'
+        +'<div class="hint">'+meta+(f.pnr?' · PNR '+esc(f.pnr):'')+(when?' · '+esc(when):'')+'</div>'
         +(f.note?'<div class="hint">'+esc(f.note)+'</div>':'')
         +'</div></div>'
         +'<div class="row" style="margin-top:8px">'+btns+'</div>'

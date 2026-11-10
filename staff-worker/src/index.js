@@ -276,8 +276,7 @@ function staffView(s) {
     text: String(f.text || "").slice(0, 2000),
     size: Number(f.size) || 0,
     type: f.type || "application/pdf",
-    uploadedAt: Number(f.uploadedAt) || 0,
-    uploadedBy: f.uploadedBy || ""
+    uploadedAt: Number(f.uploadedAt) || 0
   }));
   // Staff-created invoices only. Owner invoices stay hidden from staff.
   const invoices = (s.invoices || [])
