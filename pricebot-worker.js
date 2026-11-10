@@ -1312,8 +1312,18 @@ async function writeReminds(env, list) {
   await env.KV.put(REMIND_KEY, JSON.stringify(list.slice(0, MAX_REMINDS)));
 }
 
+function hhmm12(hm) {
+  const parts = String(hm).split(":");
+  let h = Number(parts[0]);
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12;
+  if (h === 0) h = 12;
+  return h + ":" + parts[1] + " " + ap;
+}
+
 function pktEventText(ms) {
-  return pktIso(ms).slice(0, 16).replace("T", " ");
+  // "10 Nov 2026 1:00 PM PKT"
+  return prettyDate(pktIso(ms).slice(0, 10)) + " " + hhmm12(pktIso(ms).slice(11, 16)) + " PKT";
 }
 
 // "1 bje" = 1 PM (1–7 baje, bina subah/raat ke, dopahar maane jate hain)
@@ -1814,7 +1824,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.52</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.53</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +

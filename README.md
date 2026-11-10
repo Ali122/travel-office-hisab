@@ -225,7 +225,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.52** (v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.53** (v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.
@@ -264,3 +264,9 @@ Current version: **2.52** (v2.52 Telegram reminders in the price bot; v2.50 Sale
 - Reminders quiet hours (02:00–09:00 PKT) ke doran bhi aate hain — ye explicit alarms hain.
 - Storage: ek KV key `reminds`; cron har minute check karta hai, sirf fire par 1 KV write (KV.list bilkul nahi — budget-safe).
 - Worker v2.52 redeploy zaroori hai (DO binding ke sath, `wrangler.pricebot.toml` recommended).
+
+
+
+## Reminder waqt ab 12-ghantay (am/pm) mein (v2.53)
+- `/remind` ke tamam messages (confirmation, alarm, `/reminds` list) ab waqt 12-ghantay ke format mein dikhate hain: `10 Nov 2026 1:00 PM PKT` (date + am/pm dono).
+- Sirf display badla — reminders ka kaam waisa hi hai. Worker v2.53 redeploy zaroori hai.

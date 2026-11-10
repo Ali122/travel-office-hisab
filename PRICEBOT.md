@@ -203,3 +203,6 @@ Behtar tareeqa: watch sirf us waqt lagayein jab ticket actually book karwana ho.
 - Waqt parsing: `1 bje` = 1 PM (1–7 baje bina marker dopahar), `subah/raat/shaam … baje`, `9:30`, `kal/aaj`, `15 December 1 bje`, `30 min baad`, `2 ghantay baad`. Option `lead=60,30,10,0`.
 - `/reminds` — upcoming list · `/unremind R12` · `/unremind all`.
 - Storage: ek KV key `reminds`; cron har minute check karta hai, sirf fire par 1 KV write. Reminders quiet hours ko ignore karte hain.
+
+
+- Reminder ka waqt messages mein 12-ghantay (am/pm) format mein dikh ta hai: `10 Nov 2026 1:00 PM PKT` (v2.53).
