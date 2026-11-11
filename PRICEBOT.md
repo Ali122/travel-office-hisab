@@ -206,3 +206,12 @@ Behtar tareeqa: watch sirf us waqt lagayein jab ticket actually book karwana ho.
 
 
 - Reminder ka waqt messages mein 12-ghantay (am/pm) format mein dikh ta hai: `10 Nov 2026 1:00 PM PKT` (v2.53).
+
+
+## Reminder fixes (v2.54)
+- Reminders ab **Durable Object** (`WatchIndex`, `WATCH_INDEX_DO`) mein store hote hain — pehle ek KV key pe likhte the, jahan do `/remind` ek saath bhejne par ek reminder gayab ho jati thi, aur cron ke chalne ke beech naya reminder add karne par purana delete ho jata tha. Ab har write serialize hota hai.
+- Waqt parsing: "kal raat 10 bje" = **kal** raat 10 baje (pehle aaj raat par lag jata tha), "raat 12 bje" = **raat 12:00** midnight (pehle dopahar 12:00), "12 bje" bina marker = 12:00 PM.
+- Messages mein "PKT PKT" dobara nahi aata.
+- Event qareeb ho aur lead times nikal chuke hon to reminder **event ke waqt** par lag jata hai (pehle "waqt guzar chuka hai" error aa jata tha).
+- Worker redeploy ke liye: `npx wrangler deploy -c wrangler.pricebot.toml` (ya Cloudflare dashboard → Edit code → paste → Deploy). `WATCH_INDEX_DO` binding aur secrets wahi rahenge.
+
