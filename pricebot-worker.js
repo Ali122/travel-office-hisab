@@ -1934,6 +1934,36 @@ async function setupPage(env, url) {
   }
 }
 
+/* Telegram Cloudflare se 10-25s le leta hai - status page har baar wait na kare,
+   is liye webhook info KV mein cache hoti hai (cron har 10 min refresh karta hai). */
+const WEBHOOK_CACHE_KEY = "webhook_info";
+const WEBHOOK_CACHE_TTL = 15 * 60 * 1000;
+
+async function cachedWebhookInfo(env, allowFetch) {
+  let cached = null;
+  try {
+    const raw = env.KV ? await env.KV.get(WEBHOOK_CACHE_KEY) : null;
+    if (raw) {
+      const c = JSON.parse(raw);
+      if (c && c.info && c.at && (Date.now() - c.at) < WEBHOOK_CACHE_TTL) cached = c.info;
+    }
+  } catch (e) { /* ignore */ }
+  if (cached) return cached;
+  if (!allowFetch) return null;
+  try {
+    const info = await Promise.race([
+      tg(env, "getWebhookInfo", {}),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 12000))
+    ]);
+    try {
+      if (env.KV) await env.KV.put(WEBHOOK_CACHE_KEY, JSON.stringify({ info: info, at: Date.now() }), { expirationTtl: 7200 });
+    } catch (e2) { /* ignore */ }
+    return info;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function statusPage(env) {
   const rows = [];
   rows.push("<li>Ignav key: " + (env.IGNAV_API_KEY ? "<span class=\"ok\">set</span>" : "<span class=\"bad\">missing</span>") + "</li>");
@@ -1950,15 +1980,15 @@ async function statusPage(env) {
   }
   let info = "";
   if (env.TELEGRAM_BOT_TOKEN) {
-    try {
-      const w = await Promise.race([tg(env, "getWebhookInfo", {}), new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 9000))]);
-      info = "<li>Webhook: " + (w.url ? "<span class=\"ok\">connected</span> <code>" + esc(w.url) + "</code>" : "<span class=\"bad\">not set</span> — <a href=\"/setup\">open /setup</a>") +
+    const w = await cachedWebhookInfo(env, true);
+    if (w) {
+      info = "<li>Webhook: " + (w.url ? "<span class=\"ok\">connected</span> <code>" + esc(w.url) + "</code>" : "<span class=\"bad\">not set</span> - <a href=\"/setup\">open /setup</a>") +
         (w.last_error_message ? "<br><small>last error: " + esc(w.last_error_message) + "</small>" : "") + "</li>";
-    } catch (e) {
+    } else {
       info = "<li>Webhook: <span style=\"color:var(--gold)\">check slow</span> <small>(Telegram jawab nahi de raha - bot par message bhej kar test karein)</small></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.54</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.55</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
@@ -2024,7 +2054,15 @@ export default {
   async scheduled(controller, env, ctx) {
     const job = Promise.all([
       checkAll(env).catch(function () { /* never crash the cron */ }),
-      checkReminders(env).catch(function () { /* reminders must not crash the cron */ })
+      checkReminders(env).catch(function () { /* reminders must not crash the cron */ }),
+      // webhook info cache refresh (Telegram se seedha, background mein)
+      (async function () {
+        try {
+          const raw = env.KV ? await env.KV.get(WEBHOOK_CACHE_KEY) : null;
+          const c = raw ? JSON.parse(raw) : null;
+          if (!c || !c.at || (Date.now() - c.at) > 10 * 60 * 1000) await cachedWebhookInfo(env, true);
+        } catch (e) { /* ignore */ }
+      })()
     ]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(job);
   }
