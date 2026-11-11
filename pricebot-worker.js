@@ -1924,7 +1924,7 @@ async function setupPage(env, url) {
   try {
     await tg(env, "setWebhook", body);
     let info = null;
-    try { info = await Promise.race([tg(env, "getWebhookInfo", {}), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 5000))]); } catch (e) { /* ignore */ }
+    try { info = await Promise.race([tg(env, "getWebhookInfo", {}), new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 9000))]); } catch (e) { /* ignore */ }
     return page("Setup OK", "<h1>✅ Bot connected</h1><p>Webhook: <code>" + esc(hook) + "</code></p>" +
       "<p>Pending updates: " + esc(info && info.pending_update_count != null ? info.pending_update_count : "?") + "</p>" +
       "<p>Ab Telegram mein apna bot kholein aur <code>/start</code> bhejein.</p>" +
@@ -1951,11 +1951,11 @@ async function statusPage(env) {
   let info = "";
   if (env.TELEGRAM_BOT_TOKEN) {
     try {
-      const w = await Promise.race([tg(env, "getWebhookInfo", {}), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 5000))]);
+      const w = await Promise.race([tg(env, "getWebhookInfo", {}), new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 9000))]);
       info = "<li>Webhook: " + (w.url ? "<span class=\"ok\">connected</span> <code>" + esc(w.url) + "</code>" : "<span class=\"bad\">not set</span> — <a href=\"/setup\">open /setup</a>") +
         (w.last_error_message ? "<br><small>last error: " + esc(w.last_error_message) + "</small>" : "") + "</li>";
     } catch (e) {
-      info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
+      info = "<li>Webhook: <span style=\"color:var(--gold)\">check slow</span> <small>(Telegram jawab nahi de raha - bot par message bhej kar test karein)</small></li>";
     }
   }
   return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.54</small></h1><ul>" + rows.join("") + info +
