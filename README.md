@@ -1,5 +1,17 @@
 # Travel Office Hisab — AB Travels
 
+## Reminder fixes + UI polish (v2.54)
+- **"kal raat 10 bje"** ab **kal** raat 10 baje par lagta hai (pehle aaj raat par lag jata tha).
+- **"raat 12 bje"** ab raat 12:00 (midnight) hai — pehle dopahar 12:00 ban jata tha.
+- Notification messages mein dobara "PKT PKT" nahi aata (pehle har reminder message mein "PKT PKT" likha tha).
+- Reminders ab Durable Object mein store hote hain: do `/remind` ek saath bhejne par dono bachte hain, aur cron ke chalne ke beech naya reminder add karne par purana delete nahi hota.
+- Event qareeb ho (lead times nikal chuke hon) to reminder **event ke waqt** par bhi lag jata hai — pehle "waqt guzar chuka hai" error aa jata tha.
+- Invoice par "PASSENGERS (3)" likha ho to 3 rows dikhti hain (khali naam/NIC bhi).
+- UI: mobile par header ki ayat 2 lines par clamp hoti hai (tap se poori khulti hai), sale form ke "Status / Method / Commission" ke labels ab visible hain, keyboard focus ring add hua hai.
+- Checks: `python -m unittest discover -s tests -v` — price bot aur staff worker ke behaviour checks (Node ya headless Chrome se, offline).
+
+## Reminder fixes (v2.52 / v2.53 — dost ka kaam)
+
 ## No added-by names anywhere (v2.51)
 - Ticket Files and the staff portal no longer show **who uploaded** a file. The "Aap ka naam (uploads par)" box is gone from the app.
 - New uploads do not store an uploader name at all; Telegram notifications already carry no added-by name.

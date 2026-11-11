@@ -923,6 +923,58 @@ export class WatchIndex {
   }
   async fetch(request) {
     const b = await request.json();
+    // Reminder store - same Durable Object, serial writes (no lost updates).
+    if (b.action === "remind-list") {
+      const items = await this.state.storage.list({ prefix: "remind:" });
+      return jres(Array.from(items.values()));
+    }
+    if (b.action === "remind-add") {
+      const r = (b.payload && b.payload.reminder) || null;
+      if (!r || !r.id) return jres({ ok: false }, 400);
+      const items = await this.state.storage.list({ prefix: "remind:" });
+      if (items.size >= 60) return jres({ ok: false, full: true });
+      await this.state.storage.put("remind:" + r.id, r);
+      return jres({ ok: true });
+    }
+    if (b.action === "remind-remove") {
+      const id = (b.payload && b.payload.id) || "";
+      if (!id) return jres({ ok: false }, 400);
+      await this.state.storage.delete("remind:" + id);
+      return jres({ ok: true });
+    }
+    if (b.action === "remind-replace") {
+      const list = (b.payload && Array.isArray(b.payload.list)) ? b.payload.list : [];
+      const existing = await this.state.storage.list({ prefix: "remind:" });
+      for (const key of existing.keys()) await this.state.storage.delete(key);
+      for (const r of list.slice(0, 60)) await this.state.storage.put("remind:" + r.id, r);
+      return jres({ ok: true });
+    }
+    if (b.action === "remind-clear") {
+      const existing = await this.state.storage.list({ prefix: "remind:" });
+      for (const key of existing.keys()) await this.state.storage.delete(key);
+      return jres({ ok: true, removed: existing.size });
+    }
+    // Claim: poora read-modify-write Durable Object ke andar hota hai, is liye
+    // ek doosre waqt naya reminder add kar raha ho to wo kho nahi jata.
+    if (b.action === "remind-claim") {
+      const now = Date.now();
+      const items = await this.state.storage.list({ prefix: "remind:" });
+      const fired = [];
+      for (const r of items.values()) {
+        let pending = false;
+        const slots = [];
+        for (const s of (r.slots || [])) {
+          if (s.done) { slots.push(s); continue; }
+          if (s.at > now) { pending = true; slots.push(s); continue; }
+          s.done = true;
+          slots.push(s);
+          fired.push({ id: r.id, text: r.text, event: r.event, rel: r.rel, slot: s });
+        }
+        if (pending) await this.state.storage.put("remind:" + r.id, Object.assign({}, r, { slots: slots }));
+        else await this.state.storage.delete("remind:" + r.id);
+      }
+      return jres({ fired: fired });
+    }
     if (b.action === "add" || b.action === "remove") {
       if (!/^w:[^:]+:[^:]+$/.test(String(b.key || ""))) return jres({ error: "key" }, 400);
       if (b.action === "add") await this.state.storage.put("watch:" + b.key, true);
@@ -1298,18 +1350,86 @@ const REMIND_KEY = "reminds";
 const MAX_REMINDS = 60;
 const REMIND_DEFAULT_LEADS = [60, 30]; // minutes before the event
 
-function readReminds(env) {
-  if (!env.KV) return Promise.resolve([]);
-  return env.KV.get(REMIND_KEY).then(function (raw) {
+/* Reminders bhi Durable Object mein rakhein - ek KV key pe read-modify-write se
+   do reminders ek saath add ho to ek gayab ho jati thi (wahi bug jo watch
+   index mein tha). DO ke andar har write serialize hota hai. */
+async function remindDoCall(env, action, payload) {
+  if (!env.WATCH_INDEX_DO) throw new Error("WATCH_INDEX_DO binding missing");
+  const stub = env.WATCH_INDEX_DO.get(env.WATCH_INDEX_DO.idFromName("team-watches"));
+  const r = await stub.fetch("https://watch-index/", {
+    method: "POST", body: JSON.stringify({ action: action, payload: payload || null })
+  });
+  if (!r.ok) throw new Error("Reminder store unavailable");
+  return r.json();
+}
+async function readReminds(env) {
+  if (env.WATCH_INDEX_DO) {
+    try {
+      const res = await remindDoCall(env, "remind-list");
+      return Array.isArray(res) ? res : [];
+    } catch (e) { /* fall through to KV */ }
+  }
+  if (!env.KV) return [];
+  try {
+    const raw = await env.KV.get(REMIND_KEY);
     let a = [];
     try { a = JSON.parse(raw || "[]"); } catch (e) { a = []; }
     return Array.isArray(a) ? a : [];
-  }).catch(function () { return []; });
+  } catch (e) { return []; }
 }
 
 async function writeReminds(env, list) {
+  if (env.WATCH_INDEX_DO) {
+    try {
+      await remindDoCall(env, "remind-replace", { list: list });
+      return;
+    } catch (e) { /* fall through to KV */ }
+  }
   if (!env.KV) return;
-  await env.KV.put(REMIND_KEY, JSON.stringify(list.slice(0, MAX_REMINDS)));
+  await env.KV.put(REMIND_KEY, JSON.stringify((list || []).slice(0, MAX_REMINDS)));
+}
+/* Naya reminder add karein - DO use karte waqt ye atomic hai. */
+async function addRemind(env, r) {
+  if (env.WATCH_INDEX_DO) {
+    try {
+      const res = await remindDoCall(env, "remind-add", { reminder: r });
+      return !!(res && res.ok);
+    } catch (e) { /* fall through to KV */ }
+  }
+  const list = await readReminds(env);
+  if (list.length >= MAX_REMINDS) return false;
+  list.push(r);
+  await writeReminds(env, list);
+  return true;
+}
+/* Cron ke liye: jo slots due hain unhe atomically claim karein (do baar fire
+   na ho) aur baqi list wapas dein. */
+async function claimDueReminders(env) {
+  if (env.WATCH_INDEX_DO) {
+    const res = await remindDoCall(env, "remind-claim");
+    const fired = (res && Array.isArray(res.fired)) ? res.fired : [];
+    return fired.map(function (item) {
+      return { r: { id: item.id, text: item.text, event: item.event, rel: item.rel, slots: [item.slot] }, slot: item.slot };
+    });
+  }
+  // KV fallback (DO binding ke bina) - purana read-modify-write
+  const now = Date.now();
+  const fired = [];
+  const list = await readReminds(env);
+  if (!list.length) return fired;
+  const next = [];
+  for (const r of list) {
+    let pending = false;
+    for (const s of (r.slots || [])) {
+      if (s.done) continue;
+      if (s.at > now) { pending = true; continue; }
+      s.done = true;
+      fired.push({ r: r, slot: s });
+    }
+    if (pending) next.push(r);
+  }
+  if (fired.length) await writeReminds(env, next);
+  return fired;
 }
 
 function hhmm12(hm) {
@@ -1349,12 +1469,23 @@ function parseEventWhen(text) {
   if (h > 23 || mi > 59) return null;
   const pm = /\bpm\b|shaam|sham|raat|evening|night/.test(lower);
   const am = /\bam\b|subah|morning/.test(lower);
-  if ((pm && !am && h < 12) || (!pm && !am && h >= 1 && h <= 7)) h += 12;
+  // "raat 12 bje" = midnight (00:00), noon sirf "12 bje" ya "12 pm" par
+  const midnight = (pm && !am) && h === 12 && /\braat\b|\bnight\b|\bmidnight\b/.test(lower);
+  if (midnight) h = 0;
+  else if ((pm && !am && h < 12) || (!pm && !am && h >= 1 && h <= 7)) h += 12;
   else if (am && h === 12) h = 0;
-  const date = naturalDate(t) || pktToday();
+  // "kal raat 10 bje" = kal raat 10 baje. naturalDate "kal raat" ko flight
+  // context (jis mein "raat" sirf "tak" ka hissa hai) ke liye ignore karta hai,
+  // is liye reminder ke liye date alag se nikaalein.
+  const explicitDate = /\b(kal|aaj|tomorrow|today)\b|\b\d{1,2}[-/.]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b/.test(lower);
+  let date = naturalDate(t);
+  if (!date) {
+    if (/\b(kal|tomorrow)\b/.test(lower)) date = addDaysIso(pktToday(), 1);
+    else if (/\b(aaj|today)\b/.test(lower)) date = pktToday();
+    else date = pktToday();
+  }
   let event = Date.parse(date + "T" + ("0" + h).slice(-2) + ":" + ("0" + mi).slice(-2) + ":00+05:00");
   if (!isFinite(event)) return null;
-  const explicitDate = /\b(kal|aaj|tomorrow|today)\b|\b\d{1,2}[-/.]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b/.test(lower);
   if (!explicitDate && event <= now + 60000) event += 86400000;
   return { event: event, rel: false };
 }
@@ -1385,21 +1516,26 @@ async function cmdRemind(env, chat, args, opts) {
   const slots = (when.rel ? [0] : leads).map(function (l) {
     return { lead: when.rel ? 0 : l, at: l === 0 ? when.event : when.event - l * 60000, done: false };
   }).filter(function (s) { return s.at > Date.now() - 30000; }).sort(function (a, b) { return a.at - b.at; });
+  // Event qareeb hai aur lead times nikal chuke hain - kam az kam event ke waqt
+  // par to ek reminder lag jaye (warna user ko kuch hi nahi milta).
+  if (!slots.length && !when.rel && when.event > Date.now() + 30000) {
+    slots.push({ lead: 0, at: when.event, done: false });
+  }
   if (!slots.length) return send(env, chat, "Ye waqt guzar chuka hai — reminder nahi lag saka.");
   const list = await readReminds(env);
   if (list.length >= MAX_REMINDS) return send(env, chat, "Max " + MAX_REMINDS + " reminders. Pehle <code>/unremind ID</code> se purana hata dein.");
   let id = "";
   do { id = "R" + (1 + Math.floor(Math.random() * 899)); } while (list.some(function (r) { return r.id === id; }));
   const r = { id: id, chat: String(chat), text: text.slice(0, 300), event: when.event, rel: !!when.rel, slots: slots, createdAt: Date.now() };
-  list.push(r);
-  await writeReminds(env, list);
+  const added = await addRemind(env, r);
+  if (!added) return send(env, chat, "Reminder save nahi hua - thori der baad dobara try karein.");
   let msg = "✅ <b>Reminder #" + id + " set</b>\n" + esc(r.text) + "\n";
   if (when.rel) {
-    msg += "\n⏰ Remind: <b>" + pktEventText(slots[0].at) + " PKT</b>";
+    msg += "\n⏰ Remind: <b>" + pktEventText(slots[0].at) + "</b>";
   } else {
-    msg += "\nEvent: <b>" + pktEventText(when.event) + " PKT</b>";
+    msg += "\nEvent: <b>" + pktEventText(when.event) + "</b>";
     msg += "\n⏰ Remind: " + slots.map(function (s) {
-      return pktEventText(s.at) + " PKT" + (s.lead > 0 ? " (" + s.lead + " min pehle)" : " (waqt par)");
+      return pktEventText(s.at) + (s.lead > 0 ? " (" + s.lead + " min pehle)" : " (waqt par)");
     }).join(" · ");
   }
   msg += "\n\nHatane: <code>/unremind " + id + "</code> · list: <code>/reminds</code>";
@@ -1409,31 +1545,20 @@ async function cmdRemind(env, chat, args, opts) {
 function remindText(r, s) {
   let t = "⏰ <b>REMINDER</b>\n";
   t += esc(r.text) + "\n";
-  if (!r.rel) t += "\nEvent: " + pktEventText(r.event) + " PKT" + (s.lead > 0 ? " (" + s.lead + " min baqi)" : " (waqt ho gaya)") + "\n";
+  if (!r.rel) t += "\nEvent: " + pktEventText(r.event) + (s.lead > 0 ? " (" + s.lead + " min baqi)" : " (waqt ho gaya)") + "\n";
   t += "\n🕒 " + pktNowText();
   return t;
 }
 
 async function checkReminders(env) {
-  if (!env.KV) return;
-  const list = await readReminds(env);
-  if (!list.length) return;
-  const now = Date.now();
-  let changed = false;
-  const next = [];
-  for (const r of list) {
-    let pending = false;
-    for (const s of (r.slots || [])) {
-      if (s.done) continue;
-      if (s.at > now) { pending = true; continue; }
-      s.done = true;
-      changed = true;
-      try { await notifyAll(env, remindText(r, s)); } catch (e) { /* ignore */ }
-    }
-    if (pending) next.push(r);
-    else changed = true;
+  if (!env.KV && !env.WATCH_INDEX_DO) return;
+  let fired = [];
+  try {
+    fired = await claimDueReminders(env);
+  } catch (e) { return; }
+  for (const item of fired) {
+    try { await notifyAll(env, remindText(item.r, item.slot)); } catch (e) { /* ignore */ }
   }
-  if (changed) await writeReminds(env, next);
 }
 
 async function cmdReminds(env, chat) {
@@ -1454,14 +1579,23 @@ async function cmdUnremind(env, chat, arg) {
   if (!a) return send(env, chat, "Reminder ID dein: <code>/unremind R12</code> ya <code>/unremind all</code>");
   if (/^all$/i.test(a)) {
     if (!list.length) return send(env, chat, "Koi reminder nahi.");
-    await writeReminds(env, []);
+    if (env.WATCH_INDEX_DO) {
+      try { await remindDoCall(env, "remind-clear"); } catch (e) { /* ignore */ }
+    } else {
+      await writeReminds(env, []);
+    }
     return send(env, chat, "✅ " + list.length + " reminders band kar diye.");
   }
   const id = a.toUpperCase();
   const idx = list.findIndex(function (r) { return String(r.id).toUpperCase() === id; });
   if (idx < 0) return send(env, chat, "Reminder #" + esc(a) + " nahi mila. <code>/reminds</code> dekhein.");
-  const removed = list.splice(idx, 1)[0];
-  await writeReminds(env, list);
+  const removed = list[idx];
+  if (env.WATCH_INDEX_DO) {
+    try { await remindDoCall(env, "remind-remove", { id: removed.id }); } catch (e) { /* ignore */ }
+  } else {
+    list.splice(idx, 1);
+    await writeReminds(env, list);
+  }
   return send(env, chat, "✅ Reminder #" + esc(removed.id) + " band: " + esc(removed.text.slice(0, 120)));
 }
 
@@ -1824,7 +1958,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span class=\"bad\">" + esc(e.message) + "</span></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.53</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.54</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
