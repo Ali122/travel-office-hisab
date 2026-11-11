@@ -1,5 +1,16 @@
 # Travel Office Hisab — AB Travels
 
+## Contact number + payment reminders (v2.57)
+- **Add New Sale** form mein ab **Contact number** ka box hai. Number sale par save hota hai aur client record mein bhi (purana number khali ho to).
+- Sale likhte hi client ka naam likhte hi number bhi auto-fill ho jata hai (client suggestions).
+- Sale ka ✏ (edit) par bhi contact number poocha jata hai — purani sales ka number wahin add kar sakte hain.
+- **Pending Payments** mein har unpaid sale aur client entry par number dikhta hai, aur teen buttons milte hain:
+  - **📞 Call** — phone par seedha call (tel: link).
+  - **💬 WhatsApp** — payment reminder message bhar kar WhatsApp khulta hai (naam + raqam + tareekh).
+  - **🔔 Remind team** — Telegram par team ko yaad dila deta hai (naam, raqam, number).
+- Pending Payments ke top par **"Remind team: all pending"** button — poori pending list (naam + raqam + number) ek message mein team ko bhej deta hai.
+- Sales list mein bhi unpaid sale ke saath contact number dikhta hai.
+
 ## Telegram reliability (v2.55 / v2.56)
 - **"Webhook: timeout"** ka asal reason: status page har baar Telegram API pe wait karta tha, aur Cloudflare → Telegram ki raasta 15–40s leti hai (kabhi block bhi hoti hai). Ab webhook info **KV mein cache** hoti hai (cron har 10 min refresh karta hai) — status page ab foran jawab deta hai aur sach dikhata hai.
 - `tg()` mein **ek retry** add hua hai (timeout / network error / flood-control par dobara try), aur timeout 20s → 40s barha hai — Telegram temporarily slow ho to notification drop nahi hoti.

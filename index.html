@@ -308,7 +308,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.56</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.57</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -366,7 +366,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.56";
+var APP_VER = "2.57";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -3671,7 +3671,7 @@ function viewTickets(){
   html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
   html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
-  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"></div>';
+  html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkPhone" type="tel" inputmode="tel" placeholder="Contact number (for reminders)"></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
   html += '<div class="row" style="margin-top:8px;"><div style="flex:0 0 170px;"><label>Number of persons</label><input id="tkPersons" type="number" min="1" max="99" step="1" inputmode="numeric" value="1"></div><div style="flex:1; display:flex; align-items:flex-end;"><div class="hint" style="margin:0 0 10px;">Only a count — cost and sale stay as entered and do not multiply.</div></div></div>';
   html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
@@ -3729,6 +3729,7 @@ function viewTickets(){
             + '<td>'+(t.paid === false
                   ? '<button class="btn small tk-toggle" data-id="'+t.id+'" style="margin:0 4px 0 0; padding:5px 9px; background:var(--gold); color:#fff;">'+esc(T("unpaid"))+'</button>'
                     +(tkPaid?'<div class="hint" style="font-size:11px;">Received '+money(tkPaid)+'<br>Remaining '+money(tkRem)+'</div>':'')
+                    +(clientPhoneFor(t.client, t.phone)?'<div style="font-size:11px; color:var(--muted);">☎ '+esc(clientPhoneFor(t.client, t.phone))+'</div>':'')
                   : '<span class="pill done">'+esc(T("paidp"))+'</span>')
                 +(t.doubleEntry?'<button class="del" data-unflagTk="'+t.id+'" style="background:var(--green-bg); color:var(--green); margin-right:4px;" title="OK — remove this flag (ticket stays)">✓</button>':'')
                 +'<button class="del tk-inv" data-id="'+t.id+'" title="'+(t.inv?'View invoice':'Create invoice for this sale')+'" style="background:'+(t.inv?'var(--green-bg)':'var(--blue-bg)')+'; color:'+(t.inv?'var(--green)':'var(--blue)')+'; margin-right:4px;">🧾'+(t.inv?' ✓':'')+'</button>'
@@ -5517,7 +5518,7 @@ function clientStats(name){
   return { count:tk.length, sale:sale, unpaid:unpaid, bak:bak };
 }
 /* Sales/Invoice mein naam likhte hi client khud-ba-khud yahan save ho jaye */
-function ensureClientRecord(name, nic){
+function ensureClientRecord(name, nic, phone){
   var nm = String(name||"").trim();
   if(!nm) return;
   var key = nm.toLowerCase();
@@ -5525,13 +5526,26 @@ function ensureClientRecord(name, nic){
   for(var i = 0; i < list.length; i++){
     if(String(list[i].name||"").trim().toLowerCase() === key){
       if(nic && !String(list[i].nic||"").trim()) list[i].nic = nic;
+      if(phone && !String(list[i].phone||"").trim()) list[i].phone = String(phone).trim();
       return;
     }
   }
-  list.push({ id:uid(), name:nm, phone:"", nic:String(nic||"").trim(), passExp:"", note:"" });
+  list.push({ id:uid(), name:nm, phone:String(phone||"").trim(), nic:String(nic||"").trim(), passExp:"", note:"" });
+}
+/* Sale / receivable ka contact number - pehle uska, warna client record se */
+function clientPhoneFor(name, fallback){
+  var p = String(fallback || "").trim();
+  if(p) return p;
+  return fileClientPhone(name);
+}
+/* WhatsApp pe payment reminder ka message */
+function pendingReminderText(client, amount, dateStr){
+  var co = String((S.settings && S.settings.invCompany) || "AB Travels").trim();
+  return "Assalam-o-Alaikum " + (client || "") + ",\n\n" + co + " par aap ka payment pending hai: " + money(amount) +
+    (dateStr ? " (" + dateStr + ")" : "") + ".\n\nJab mumkin ho please pay kar dein. Shukriya.";
 }
 /* Client name likhte hi purane clients ki suggestions (Sales + Invoice) */
-function bindClientSuggest(inputId, fillNicId){
+function bindClientSuggest(inputId, fillNicId, fillPhoneId){
   var inp = document.getElementById(inputId);
   if(!inp) return;
   var drop = null;
@@ -5551,6 +5565,10 @@ function bindClientSuggest(inputId, fillNicId){
       row.onmousedown = function(ev){
         ev.preventDefault();
         inp.value = c.name || "";
+        if(fillPhoneId && c.phone){
+          var ph = document.getElementById(fillPhoneId);
+          if(ph && !ph.value) ph.value = c.phone;
+        }
         if(fillNicId && c.nic){
           var n = document.getElementById(fillNicId);
           if(n && !n.value) n.value = c.nic;
@@ -5937,6 +5955,7 @@ function viewBakaya(){
   htmlX += '<div class="card"><h2>'+esc(T("newcl"))+'</h2>';
   htmlX += '<label>'+esc(T("cliname"))+'</label><input id="rvClient" placeholder="Name">';
   htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("tafseel"))+'</label><input id="rvNote" placeholder="e.g. Umrah package booking"></div>';
+  htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">Contact number (for reminders)</label><input id="rvPhone" type="tel" inputmode="tel" placeholder="03xx-xxxxxxx"></div>';
   htmlX += '<div class="row" style="margin-top:8px;"><label style="width:100%;">'+esc(T("kulraqam"))+'</label><input id="rvTotal" type="number" min="0" inputmode="decimal" placeholder="Rs"><input id="rvDate" type="date" value="'+today()+'" style="max-width:160px;"></div>';
   htmlX += '<button class="btn small primary" id="addRv" style="width:100%;">'+esc(T("addk"))+'</button>';
   htmlX += '</div>';
@@ -5946,6 +5965,7 @@ function viewBakaya(){
   var unpaidT = S.tickets.filter(function(x){ return x.paid === false && ticketRemaining(x) > 0; });
   if(mf.cur!=="all") unpaidT = unpaidT.filter(function(x){ return String(x.date||"").slice(0,7) === mf.cur; });
   html += '<div class="card" data-collapse="rvunpaid"><h2>'+esc(T("unpaidtkh"))+(mf.cur==="all"?"":' — '+esc(monthLabel(mf.cur)))+'</h2>';
+  html += '<div class="row" style="margin-top:0; margin-bottom:10px;"><button class="btn small" id="remindAllPending" style="flex:0 0 auto; margin-top:0;">🔔 Remind team: all pending</button><div class="hint" style="flex:1; margin:0 0 0 4px; align-self:center;">Team ko Telegram par poori pending list bhej dein.</div></div>';
   if(!unpaidT.length){
     html += '<div class="empty">'+esc(T("emptyub"))+'</div>';
   } else {
@@ -5957,7 +5977,16 @@ function viewBakaya(){
       html += '<div style="text-align:right;"><div class="gld" style="font-weight:800;">'+money(rem)+'</div><div style="font-size:12px; color:var(--muted);">'+esc(T("ublbl2"))+(paid?' · Received '+money(paid)+' of '+money(x.sale):' · Sale '+money(x.sale))+'</div></div>';
       html += '</div>';
       if(paid) html += '<div class="hint" style="margin-top:5px;">Partial payments: '+money(paid)+' received · '+money(rem)+' remaining</div>';
-      html += '<button class="btn small green tk-toggle" data-id="'+x.id+'" style="margin-top:8px;">'+esc(T("markpaid"))+'</button>';
+      var xPhone = clientPhoneFor(x.client, x.phone);
+      if(xPhone) html += '<div style="font-size:12.5px; color:var(--muted); margin-top:6px;">☎ '+esc(xPhone)+'</div>';
+      html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">';
+      if(xPhone){
+        html += '<a class="btn small" href="tel:'+esc(xPhone)+'" style="flex:0 0 auto; margin-top:0; text-decoration:none;">📞 Call</a>';
+        html += '<button class="btn small pv-wa" data-client="'+esc(x.client)+'" data-phone="'+esc(xPhone)+'" data-amt="'+rem+'" data-date="'+esc(x.date||"")+'" style="flex:0 0 auto; margin-top:0;">💬 WhatsApp</button>';
+      }
+      html += '<button class="btn small pv-remind" data-client="'+esc(x.client)+'" data-phone="'+esc(xPhone)+'" data-amt="'+rem+'" style="flex:0 0 auto; margin-top:0;">🔔 Remind team</button>';
+      html += '<button class="btn small green tk-toggle" data-id="'+x.id+'" style="flex:0 0 auto; margin-top:0;">'+esc(T("markpaid"))+'</button>';
+      html += '</div>';
       html += '</div>';
     });
   }
@@ -5995,6 +6024,15 @@ function viewBakaya(){
       } else {
         html += '<div class="ok-msg" style="margin-top:8px;">✓ Fully paid</div>';
       }
+      var rPhone = clientPhoneFor(r.client, r.phone);
+      if(rPhone) html += '<div style="font-size:12.5px; color:var(--muted); margin-top:6px;">☎ '+esc(rPhone)+'</div>';
+      html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">';
+      if(rPhone){
+        html += '<a class="btn small" href="tel:'+esc(rPhone)+'" style="flex:0 0 auto; margin-top:0; text-decoration:none;">📞 Call</a>';
+        html += '<button class="btn small pv-wa" data-client="'+esc(r.client)+'" data-phone="'+esc(rPhone)+'" data-amt="'+rem+'" data-date="'+esc(r.date||"")+'" style="flex:0 0 auto; margin-top:0;">💬 WhatsApp</button>';
+      }
+      html += '<button class="btn small pv-remind" data-client="'+esc(r.client)+'" data-phone="'+esc(rPhone)+'" data-amt="'+rem+'" style="flex:0 0 auto; margin-top:0;">🔔 Remind team</button>';
+      html += '</div>';
       html += '<button class="del" data-type="receivable" data-id="'+r.id+'" style="margin-top:8px;">Delete</button>';
       html += '</div>';
     });
@@ -7378,7 +7416,8 @@ function bind(){
     var total = Number(document.getElementById("rvTotal").value);
     if(!name || !(total>0)) return;
     var dd = readDate("rvDate", true); if(!dd) return;
-    S.receivables.push({ id:uid(), client:name, note:document.getElementById("rvNote").value.trim(), total:total, date:dd, payments:[] });
+    S.receivables.push({ id:uid(), client:name, note:document.getElementById("rvNote").value.trim(), total:total, date:dd,
+                         phone:((document.getElementById("rvPhone")||{}).value||"").trim(), payments:[] });
     monthFilter.BAK = String(dd).slice(0,7);
     save(); render();
     setCardOpen("rvlist", true);
@@ -7430,10 +7469,11 @@ function bind(){
     S.tickets.push({ id:uid(), date:tkDate, client:client, kind:kind,
                      payMethod:((document.getElementById("tkPayMethod")||{}).value||"Cash"),
                      nic:((document.getElementById("tkNic")||{}).value||"").trim(),
+                     phone:((document.getElementById("tkPhone")||{}).value||"").trim(),
                      detail:detailTxt, cost:cost, sale:sale, persons:persons,
                      paid:(document.getElementById("tkPaid").value === "unpaid" ? false : true),
                      commission:Number(document.getElementById("tkComm").value) || 0 });
-    ensureClientRecord(client, ((document.getElementById("tkNic")||{}).value||"").trim());
+    ensureClientRecord(client, ((document.getElementById("tkNic")||{}).value||"").trim(), ((document.getElementById("tkPhone")||{}).value||"").trim());
     ticketFilter = String(tkDate).slice(0,7); // naya ticket foran nazar aaye
     save(); render();
     try{
@@ -7986,10 +8026,13 @@ function bind(){
       if(cn === null) return;
       var pn = prompt("Number of persons — khali chhod dein to purana rahega:", Math.max(1, Number(t.persons) || 1));
       if(pn === null) return;
+      var ph = prompt("Contact number — khali chhod dein to purana rahega:", t.phone || clientPhoneFor(t.client, ""));
+      if(ph === null) return;
       if(c !== "" && !isNaN(Number(c)) && Number(c) >= 0) t.cost = Number(c);
       if(s !== "" && !isNaN(Number(s)) && Number(s) >= 0) t.sale = Number(s);
       if(cn.trim()) t.client = cn.trim();
       if(pn !== "" && !isNaN(Number(pn)) && Number(pn) >= 1) t.persons = Math.min(99, Math.floor(Number(pn)));
+      if(ph.trim()){ t.phone = ph.trim(); ensureClientRecord(t.client, "", t.phone); }
       save(); render();
     };
   });
@@ -8099,6 +8142,54 @@ function bind(){
       save(); render();
     };
   });
+  // WhatsApp par payment reminder bheje
+  app.querySelectorAll(".pv-wa").forEach(function(b){
+    b.onclick = function(){
+      var phone = String(b.getAttribute("data-phone")||"");
+      var digits = fileWaDigits(phone);
+      if(!digits){ notify("Is client ka number save nahi hai.", true); return; }
+      var client = String(b.getAttribute("data-client")||"");
+      var amt = Number(b.getAttribute("data-amt")||0);
+      var dt = String(b.getAttribute("data-date")||"");
+      try{
+        window.open("https://wa.me/"+digits+"?text="+encodeURIComponent(pendingReminderText(client, amt, dmy(dt))), "_blank", "noopener");
+      }catch(e){}
+    };
+  });
+  // Team ko Telegram par yaad dila dein
+  app.querySelectorAll(".pv-remind").forEach(function(b){
+    b.onclick = function(){
+      var client = String(b.getAttribute("data-client")||"");
+      var amt = Number(b.getAttribute("data-amt")||0);
+      var phone = String(b.getAttribute("data-phone")||"").trim();
+      tgSend("Payment reminder needed",
+        [client, money(amt), phone ? ("☎ "+phone) : ""].filter(Boolean).join(" · "), { force:true }).then(function(ok){
+          notify(ok ? "✓ Team ko reminder bhej diya." : "Reminder nahi gaya - Settings mein Telegram check karein.", !ok);
+        });
+    };
+  });
+  var rpa = document.getElementById("remindAllPending");
+  if(rpa) rpa.onclick = function(){
+    var lines = [];
+    (S.tickets||[]).forEach(function(t){
+      if(t.paid !== false) return;
+      var rem = ticketRemaining(t);
+      if(rem <= 0) return;
+      var ph = clientPhoneFor(t.client, t.phone);
+      lines.push("• " + (t.client||"") + " - " + money(rem) + (ph ? " (" + ph + ")" : ""));
+    });
+    (S.receivables||[]).forEach(function(r){
+      var p = 0; (r.payments||[]).forEach(function(x){ p += Number(x.amount)||0; });
+      var rem = (Number(r.total)||0) - p;
+      if(rem <= 0) return;
+      var ph = clientPhoneFor(r.client, r.phone);
+      lines.push("• " + (r.client||"") + " - " + money(rem) + (ph ? " (" + ph + ")" : ""));
+    });
+    if(!lines.length){ notify("Koi pending payment nahi hai."); return; }
+    tgSend("Pending payments reminder ("+lines.length+")", lines.join("\n"), { force:true }).then(function(ok){
+      notify(ok ? "✓ Pending list team ko bhej di." : "Reminder nahi gaya - Telegram check karein.", !ok);
+    });
+  };
 
   var aw = document.getElementById("addWs");
   if(aw) aw.onclick = function(){
@@ -8605,7 +8696,7 @@ function bind(){
     downloadCsv(rows, "clients-" + dmy(today()).replace(/\//g,"-") + ".csv");
   };
   // Client name likhne par purane clients ki suggestion (NIC khud bhar jata he)
-  bindClientSuggest("tkClient", "tkNic");
+  bindClientSuggest("tkClient", "tkNic", "tkPhone");
   bindClientSuggest("invClient", "invNic1");
   // ===== NIC / Passport scan =====
   var cScanBtn = document.getElementById("clScanBtn");
