@@ -1,5 +1,11 @@
 # Travel Office Hisab — AB Travels
 
+## Telegram reliability (v2.55 / v2.56)
+- **"Webhook: timeout"** ka asal reason: status page har baar Telegram API pe wait karta tha, aur Cloudflare → Telegram ki raasta 15–40s leti hai (kabhi block bhi hoti hai). Ab webhook info **KV mein cache** hoti hai (cron har 10 min refresh karta hai) — status page ab foran jawab deta hai aur sach dikhata hai.
+- `tg()` mein **ek retry** add hua hai (timeout / network error / flood-control par dobara try), aur timeout 20s → 40s barha hai — Telegram temporarily slow ho to notification drop nahi hoti.
+- App ka relay request timeout 30s → 70s (worker ke retry ka intezaar karta hai).
+- Worker live: **v2.56** — status page par `Webhook: connected`, relay dono team chats par OK.
+
 ## Reminder fixes + UI polish (v2.54)
 - **"kal raat 10 bje"** ab **kal** raat 10 baje par lagta hai (pehle aaj raat par lag jata tha).
 - **"raat 12 bje"** ab raat 12:00 (midnight) hai — pehle dopahar 12:00 ban jata tha.
