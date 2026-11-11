@@ -267,18 +267,36 @@ function bestFare(j, flight) {
 
 async function tg(env, method, payload) {
   if (!env.TELEGRAM_BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN secret is not set in the Worker.");
-  const r = await fetch(TG_API + env.TELEGRAM_BOT_TOKEN + "/" + method, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {}),
-    signal: AbortSignal.timeout(25000)
-  });
-  let j = null;
-  try { j = await r.json(); } catch (e) { /* ignore */ }
-  if (!j || j.ok !== true) {
-    throw new Error("Telegram " + method + " failed: " + ((j && j.description) || r.status));
+  /* Cloudflare se Telegram ki raasta kabhi 15-40s leti hai (kabhi block bhi hoti
+     hai). Is liye ek retry - timeout ya network error par dobara try, taake
+     notification drop na ho. */
+  let lastErr = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await fetch(TG_API + env.TELEGRAM_BOT_TOKEN + "/" + method, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {}),
+        signal: AbortSignal.timeout(attempt === 0 ? 20000 : 40000)
+      });
+      let j = null;
+      try { j = await r.json(); } catch (e) { /* ignore */ }
+      if (!j || j.ok !== true) {
+        const desc = String((j && j.description) || r.status);
+        // Flood control / server error par retry
+        if (attempt === 0 && /flood|try again|retry|5\d\d/i.test(desc)) {
+          lastErr = new Error("Telegram " + method + " failed: " + desc);
+          continue;
+        }
+        throw new Error("Telegram " + method + " failed: " + desc);
+      }
+      return j.result;
+    } catch (e) {
+      lastErr = e;
+      if (attempt === 0) continue; // timeout / network error - ek aur try
+    }
   }
-  return j.result;
+  throw lastErr || new Error("Telegram " + method + " failed");
 }
 
 async function send(env, chat, html, extra) {
@@ -1988,7 +2006,7 @@ async function statusPage(env) {
       info = "<li>Webhook: <span style=\"color:var(--gold)\">check slow</span> <small>(Telegram jawab nahi de raha - bot par message bhej kar test karein)</small></li>";
     }
   }
-  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.55</small></h1><ul>" + rows.join("") + info +
+  return page("AB Travels worker", "<h1>✈️ AB Travels worker <small>v2.56</small></h1><ul>" + rows.join("") + info +
     "<li>Today's searches: <b>" + esc(used) + "</b> / " + budgetCap(env) + "</li>" +
     "<li>Owner chat: <code>" + esc(owner) + "</code></li>" +
     "<li>Team alerts: " + (team.length ? team.map(function (c) { return "<code>" + esc(c) + "</code>"; }).join(", ") : "<i>sirf owner</i>") + "</li></ul>" +
