@@ -4,11 +4,11 @@
   "origin": "KHI",
   "destination": "ISB",
   "currency": "PKR",
-  "amount": 21780,
+  "amount": 23000,
   "price_basis": "per_person",
   "taxes_included": null,
   "fare_breakdown": null,
   "source_url": "https://www.sastaticket.pk/flights/cheap-flights-from-karachi-to-islamabad",
-  "observed_at": "2026-11-11T18:44:19.897Z",
-  "headline": "Cheap Flights from Karachi (KHI) to Islamabad (ISB) (PKR 21,780)"
+  "observed_at": "2026-11-12T01:04:10.840Z",
+  "headline": "Cheap Flights from Karachi (KHI) to Islamabad (ISB) (PKR 23,000)"
 }
