@@ -1,5 +1,18 @@
 # Travel Office Hisab — AB Travels
 
+## Phone UI — neeche ki quick bar, chhota header, saaf forms (v2.63)
+- **Neeche ki quick bar (sirf phones par):** Sales · Invoice · Files · Pending · ☰ Menu. Pehle har tab badalne ke liye ☰ kholna parta tha (2 taps); ab char sab se zyada use hone wale tabs ek tap mein, aur jo tab khula hai wo highlight rehta hai. Menu button wahi purana drawer kholta hai.
+- **Header chhota:** phone par verse ki Urdu line ab ek line (tap kar ke poori khulti hai) aur Arabic font thora chhota — screen par ~30px zyada jagah. 410px se chhoti screen par theme/update buttons ab doosri line par nahi girte.
+- **Tab badalne par page upar se shuru hota hai** — pehle agla tab beech mein khulta tha (jaise Invoice seedha "Trip type" par).
+- **Header ki asli height naapi jati hai** (`--header-h`) — is liye "＋ New sale" jaisa jump target ab header ke neeche chhupta nahi.
+- **Sales form ke boxes par labels** (Client name, Contact number, Detail, Cost price, Sale price) — pehle sirf placeholder tha, type karne ke baad box pehchanna mushkil tha.
+- **Settings mein search box** — 13-screen lambi Settings mein sirf milte julte cards dikhte hain (khali karein to sab wapas).
+- **Invoice form mein section headings** — Invoice type · Passengers · Flight details · Baggage & options.
+- **Summary:** backup reminder ab summary ke **neeche** (pehle sab se upar bara button tha).
+- **Buttons ka apna look:** bina rang wale `.btn` ab grey UA dabbe nahi (CSV button ka blue-on-grey text khatam); checkbox/radio ka ek hi style; naya focus-friendly accent.
+- **Pichhla tab yaad rehta hai** — app dobara kholne par wahi tab khulta hai.
+- Mobile ki quick bar aur `main` ka bottom padding safe-area (iPhone home bar) ka khayal rakhte hain.
+
 ## Sales register uses the full laptop width (v2.62)
 - On a laptop/desktop the **Sales** tab now stretches to the window instead of sitting in an 820px column, so both side margins are used and the table no longer needs left/right scrolling at 1280px and wider.
 - Cell padding is slightly tighter on wide screens so Cost, Sale, Profit, Status, Type, Detail, Pax, Phone and actions all fit in one view.
@@ -287,7 +300,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.53** (v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key is unchanged; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.63** (v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.
