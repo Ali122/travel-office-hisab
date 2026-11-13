@@ -1,5 +1,9 @@
 # Travel Office Hisab — AB Travels
 
+## Sales register — top totals panel removed (v2.60)
+- The **Cost / Sale / Profit / Persons** strip above the sales grid is gone. Those figures are already in **Monthly summary** and in the grid's Σ footer row, so the register is now shorter on mobile.
+- Nothing else changed: month filter, search, grid columns, row actions and the Σ footer totals still work the same.
+
 ## Sales register refinements (v2.59)
 - **Month khud current month par khulta hai** — pehle har dafa "All months" aata tha. Agar is mahine koi sale na ho to sab se naya mahina jis mein sales hain khulta hai; sales hi na hon to "All months".
 - **Actions ab ek chhota `⋯` button** — us par tap (ya row par tap) se neeche menu khulta hai: ✔ Paid · 🧾 Invoice · ✏ Edit · **📝 Detail** · 📅 Date · ✕ Delete. Row ke andar baqi buttons chhupe rehte hain, is liye **actions ke liye left/right scroll khatam** — ye column hamesha daayen freeze hai (mobile par bhi).

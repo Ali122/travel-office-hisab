@@ -155,11 +155,6 @@
   .sheet-tools{display:flex; gap:6px; flex:0 0 auto;}
   .sheet-tools .btn{margin-top:0; white-space:nowrap; width:auto; flex:0 0 auto;}
   .sheet-bar-row > div{min-width:0;}
-  .sheet-stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-bottom:1px solid var(--line);}
-  .sheet-stats > div{padding:6px 10px; border-right:1px solid var(--line-soft); min-width:0;}
-  .sheet-stats > div:last-child{border-right:0;}
-  .sheet-stats span{display:block; font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
-  .sheet-stats b{display:block; font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .sheet-note{padding:6px 12px; font-size:11.5px; color:var(--gold); background:var(--gold-bg); border-bottom:1px solid var(--line);}
   .sheet-scroll{overflow:auto; max-height:min(68vh, 620px); -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
   table.sheet-grid{width:auto; min-width:100%; border-collapse:separate; border-spacing:0; font-size:12.5px; line-height:1.25;}
@@ -213,9 +208,6 @@
   .app-toast.err{background:#b91c1c; color:#fff;}
   @media (max-width:600px){
     .sheet-bar-row .sb-month{flex:0 0 52%;}
-    .sheet-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
-    .sheet-stats > div:nth-child(2n){border-right:0;}
-    .sheet-stats > div:nth-child(-n+2){border-bottom:1px solid var(--line-soft);}
     .sheet-tools{width:100%;}
     .sheet-tools .btn{flex:1;}
     .sheet-scroll{max-height:74vh;}
@@ -391,7 +383,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.59</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.60</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -449,7 +441,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.59";
+var APP_VER = "2.60";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -3865,12 +3857,6 @@ function viewTickets(){
         + '<button class="btn small green" id="tkNewBtn">＋ New sale</button>'
         + '<button class="btn small" id="tkCsv" title="Download these rows as a CSV file (opens in Google Sheets / Excel)">⬇ CSV</button>'
         + '</div></div>';
-  html += '<div class="sheet-stats">'
-        + '<div><span>Cost</span><b>'+money(tc)+'</b></div>'
-        + '<div><span>Sale</span><b>'+money(ts)+'</b></div>'
-        + '<div><span>Profit</span><b class="'+(tp>=0?"pos":"neg")+'">'+money(tp)+'</b></div>'
-        + '<div><span>Persons</span><b>'+personsTotal+'</b></div>'
-        + '</div>';
 
   if(!list.length){
     html += '<div class="empty">'+(ticketFilter==="all" ? esc(T("emptytk")) : "No sales in "+esc(monthLabel(ticketFilter))+". Choose &lsquo;All months&rsquo; in the filter.")+'</div>';
