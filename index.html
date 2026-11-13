@@ -139,6 +139,88 @@
   th{text-align:left; color:var(--muted); font-size:12px; padding:6px 4px; border-bottom:1px solid var(--line);}
   td{padding:8px 4px; border-bottom:1px solid var(--line); vertical-align:top;}
   td:last-child, th:last-child{text-align:right; white-space:nowrap;}
+  /* ---------- Sales register — Google-Sheets style grid ---------- */
+  .sheet-bar{padding:10px 12px 2px;}
+  .sheet-bar-row{display:flex; gap:8px; align-items:flex-end;}
+  .sheet-bar-row .sb-month{flex:0 0 46%; min-width:0;}
+  .sheet-bar-row .sb-search{flex:1; min-width:0;}
+  .sheet-card{padding:0; overflow:hidden;}
+  .sheet-top{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:9px 12px; background:var(--stat-a); border-bottom:1px solid var(--line);}
+  .sheet-title{display:flex; align-items:center; gap:7px; flex:1; min-width:0; font-size:14px; font-weight:800;}
+  .sheet-title > span{min-width:0;}
+  .sheet-title > span:nth-child(2){overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sheet-dot{color:var(--green); flex:0 0 auto;}
+  .sheet-sub-title{font-weight:600; color:var(--muted); font-size:12px;}
+  .sheet-count{flex:0 0 auto; font-size:11px; font-weight:800; color:var(--green); background:var(--green-bg); border-radius:999px; padding:1px 8px;}
+  .sheet-tools{display:flex; gap:6px; flex:0 0 auto;}
+  .sheet-tools .btn{margin-top:0; white-space:nowrap; width:auto; flex:0 0 auto;}
+  .sheet-bar-row > div{min-width:0;}
+  .sheet-stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-bottom:1px solid var(--line);}
+  .sheet-stats > div{padding:6px 10px; border-right:1px solid var(--line-soft); min-width:0;}
+  .sheet-stats > div:last-child{border-right:0;}
+  .sheet-stats span{display:block; font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
+  .sheet-stats b{display:block; font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sheet-note{padding:6px 12px; font-size:11.5px; color:var(--gold); background:var(--gold-bg); border-bottom:1px solid var(--line);}
+  .sheet-scroll{overflow:auto; max-height:min(68vh, 620px); -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
+  table.sheet-grid{width:auto; min-width:100%; border-collapse:separate; border-spacing:0; font-size:12.5px; line-height:1.25;}
+  .sheet-grid th, .sheet-grid td{padding:5px 8px; height:31px; white-space:nowrap; vertical-align:middle; text-align:left; border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft);}
+  .sheet-grid thead th{position:sticky; top:0; z-index:3; background:var(--stat-b); color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; border-bottom:1px solid var(--line);}
+  .sheet-grid td{max-width:200px; overflow:hidden; text-overflow:ellipsis;}
+  .sheet-grid tbody tr:nth-child(even) td{background:var(--stat-a);}
+  .sheet-grid tbody tr:hover td{background:var(--blue-bg);}
+  .sheet-grid .rn{position:sticky; left:0; z-index:2; width:32px; min-width:32px; text-align:right; font-size:10.5px; color:var(--muted); background:var(--stat-a); border-right:1px solid var(--line);}
+  .sheet-grid thead .rn{z-index:6; background:var(--stat-b);}
+  .sheet-grid .c-date{position:sticky; left:32px; z-index:2; background:var(--card); box-shadow:2px 0 0 var(--line);}
+  .sheet-grid thead .c-date{z-index:6; background:var(--stat-b);}
+  .sheet-grid tbody tr:nth-child(even) .rn, .sheet-grid tbody tr:nth-child(even) .c-date{background:var(--stat-a);}
+  .sheet-grid tbody tr:hover .rn, .sheet-grid tbody tr:hover .c-date{background:var(--blue-bg);}
+  .sheet-grid .num{text-align:right; font-variant-numeric:tabular-nums;}
+  .sheet-grid .c-act{text-align:right;}
+  .sheet-grid .c-phone a{color:var(--blue); text-decoration:none; font-weight:600;}
+  .sheet-grid .ia{display:inline-flex; align-items:center; justify-content:center; width:25px; height:23px; padding:0; margin:0 0 0 3px; border:0; border-radius:6px; font-size:12px; line-height:1; cursor:pointer; background:var(--blue-bg); color:var(--blue);}
+  .sheet-grid .ia-red{background:var(--red-bg); color:var(--red);}
+  .sheet-grid .ia-gold{background:var(--gold-bg); color:var(--gold);}
+  .sheet-grid .ia-green{background:var(--green-bg); color:var(--green);}
+  .sheet-grid .ia-gray{background:var(--stat-b); color:var(--muted);}
+  .sheet-grid tfoot td{position:sticky; bottom:0; z-index:2; background:var(--stat-a); font-weight:800; border-top:2px solid var(--line); border-bottom:0;}
+  .sheet-grid tfoot .rn{z-index:3;}
+  .sheet-grid tbody tr{cursor:pointer;}
+  .sheet-grid .c-sale{font-weight:800;}
+  /* Bari screens par Actions column daayen freeze — scroll karte waqt bhi buttons samne rehte hain */
+  @media (min-width:700px){
+    .sheet-grid .c-act{position:sticky; right:0; z-index:2; background:var(--card); box-shadow:-2px 0 0 var(--line);}
+    .sheet-grid thead .c-act{z-index:6; background:var(--stat-b);}
+    .sheet-grid tbody tr:nth-child(even) .c-act{background:var(--stat-a);}
+    .sheet-grid tbody tr:hover .c-act{background:var(--blue-bg);}
+    .sheet-grid tfoot .c-act{background:var(--stat-a);}
+  }
+  /* Row tap -> neeche chhota action bar (Sheets ke context menu jaisa) */
+  .row-sheet-back{position:fixed; inset:0; background:rgba(15,23,42,.38); z-index:94;}
+  .row-sheet-actions{position:fixed; left:0; right:0; bottom:0; z-index:95; background:var(--card); border-top:1px solid var(--line); box-shadow:0 -10px 30px rgba(15,23,42,.22); padding:10px 12px calc(12px + env(safe-area-inset-bottom));}
+  .row-sheet-actions .rsa-title{font-size:12.5px; color:var(--muted); margin-bottom:8px; line-height:1.45;}
+  .row-sheet-actions .rsa-title b{color:var(--ink); font-size:13.5px;}
+  .row-sheet-actions .rsa-btns{display:flex; gap:6px; flex-wrap:wrap;}
+  .row-sheet-actions .rsa-btns .btn{flex:1 1 auto; min-width:88px; margin-top:0; padding:9px 10px; font-size:13px;}
+  .cell-sub{font-size:10px; font-weight:600; color:var(--muted); margin-left:4px;}
+  .cell-chip{display:inline-block; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px; background:var(--blue-bg); color:var(--blue);}
+  .cell-flag{font-size:11px; color:var(--gold);}
+  .cell-warn{color:var(--gold); font-weight:800;}
+  .cell-muted{color:var(--muted);}
+  .sheet-foot-hint{padding:6px 12px; font-size:11px; color:var(--muted); border-top:1px solid var(--line-soft);}
+  .app-toast{position:fixed; left:50%; bottom:18px; transform:translate(-50%,20px); max-width:min(92vw,420px); background:#0f172a; color:#fff; padding:10px 16px; border-radius:12px; font-size:13.5px; font-weight:600; box-shadow:0 8px 24px rgba(15,23,42,.35); opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; z-index:90; text-align:center; line-height:1.45;}
+  .app-toast.show{opacity:1; transform:translate(-50%,0);}
+  .app-toast.err{background:#b91c1c; color:#fff;}
+  @media (max-width:600px){
+    .sheet-bar-row .sb-month{flex:0 0 52%;}
+    .sheet-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .sheet-stats > div:nth-child(2n){border-right:0;}
+    .sheet-stats > div:nth-child(-n+2){border-bottom:1px solid var(--line-soft);}
+    .sheet-tools{width:100%;}
+    .sheet-tools .btn{flex:1;}
+    .sheet-scroll{max-height:74vh;}
+  }
+
+
   .del{background:var(--red-bg); color:var(--red); border:none; border-radius:8px; padding:5px 9px; font-weight:700; cursor:pointer;}
   .pill{display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;}
   .pill.done{background:var(--green-bg); color:var(--green);}
@@ -308,7 +390,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.57</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.58</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -366,7 +448,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.57";
+var APP_VER = "2.58";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -1783,6 +1865,71 @@ function undoToast(){
   var b = el.querySelector("#undoToastBtn");
   if(b) b.onclick = function(){ restoreLastSnapshot(); };
   setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 25000);
+}
+/* Sales row par tap -> chhota menu (Edit / Invoice / Date / Paid / Delete) */
+function closeRowSheet(){
+  ["rowSheetBack","rowSheetBar"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && el.parentNode) el.parentNode.removeChild(el);
+  });
+}
+function openRowSheet(tr){
+  closeRowSheet();
+  var t = (S.tickets||[]).filter(function(x){ return x.id === tr.getAttribute("data-id"); })[0];
+  if(!t) return;
+  var back = document.createElement("div");
+  back.id = "rowSheetBack"; back.className = "row-sheet-back";
+  back.onclick = closeRowSheet;
+
+  var bar = document.createElement("div");
+  bar.id = "rowSheetBar"; bar.className = "row-sheet-actions";
+
+  var title = document.createElement("div");
+  title.className = "rsa-title";
+  title.innerHTML = "<b>"+esc(t.client||"")+"</b> · "+esc(dmy(t.date))+" · Sale "+money(t.sale)
+    + (t.detail ? " · "+esc(t.detail) : "")
+    + (t.paid === false ? " · <span style='color:var(--gold); font-weight:700;'>Unpaid</span>" : "");
+  bar.appendChild(title);
+
+  var btns = document.createElement("div");
+  btns.className = "rsa-btns";
+  bar.appendChild(btns);
+
+  function add(label, cls, selector){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn small" + (cls ? " " + cls : "");
+    b.textContent = label;
+    b.onclick = function(){
+      var src = tr.querySelector(selector);
+      closeRowSheet();
+      if(src) setTimeout(function(){ src.click(); }, 40);
+    };
+    btns.appendChild(b);
+  }
+  if(t.paid === false) add("✔ Paid", "green", ".tk-toggle");
+  add("🧾 Invoice", "", ".tk-inv");
+  add("✏ Edit", "", ".tk-edit");
+  add("📅 Date", "", ".tk-datedit");
+  add("✕ Delete", "btn-del", "[data-type='ticket']");
+
+  document.body.appendChild(back);
+  document.body.appendChild(bar);
+}
+/* Chhota toast — screen ke neeche se ubhar kar aata hai (app-wide) */
+var _appToastTimer = null;
+function appToast(msg, isErr){
+  var el = document.getElementById("appToast");
+  if(!el){
+    el = document.createElement("div");
+    el.id = "appToast";
+    document.body.appendChild(el);
+  }
+  el.className = "app-toast show" + (isErr ? " err" : "");
+  el.textContent = msg;
+  if(_appToastTimer) clearTimeout(_appToastTimer);
+  _appToastTimer = setTimeout(function(){ el.className = "app-toast"; }, 3400);
+  return el;
 }
 function undoBanner(){
   if(!undoInfo) return "";
@@ -3247,6 +3394,8 @@ function wrapTables(root){
     var tb = tables[i];
     // Invoice print/preview apne fixed layout mein rehne dein (PDF capture ke liye zaroori)
     if(tb.closest && tb.closest("#invPrint")) continue;
+    // Sales register (Google-Sheets style) apna grid + scroll container khud rakhta hai
+    if(tb.hasAttribute("data-sheet")) continue;
     if(tb.parentNode && tb.parentNode.classList && tb.parentNode.classList.contains("table-wrap")) continue;
     // Header row ke label utha kar har cell ko data-label dein — mobile stacked view ke liye
     var rows = tb.querySelectorAll("tr");
@@ -3665,10 +3814,109 @@ function viewTickets(){
   if(ticketFilter !== "all" && months.indexOf(ticketFilter) === -1) ticketFilter = "all";
   var list = (ticketFilter === "all") ? all : all.filter(function(t){ return String(t.date||"").slice(0,7) === ticketFilter; });
 
+  var tc = 0, ts = 0, personsTotal = 0;
+  list.forEach(function(t){
+    tc += Number(t.cost) || 0;
+    ts += Number(t.sale) || 0;
+    personsTotal += Math.max(1, Number(t.persons) || 1);
+  });
+  var tp = ts - tc;
+  var pendingCnt = list.filter(function(t){ return !(Number(t.cost) > 0) && (Number(t.sale) > 0); }).length;
+
   var html = "";
 
-  // Add New Sale — sab se oper
-  html += '<div class="card"><h2>'+esc(T("newtk"))+'</h2>';
+  /* ---- Upar patli patti: month + search (Google Sheets ke toolbar jaisa) ---- */
+  var opts = '<option value="all"'+(ticketFilter==="all"?" selected":"")+'>All months — '+all.length+' sales</option>';
+  months.forEach(function(m){
+    opts += '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+esc(monthLabel(m))+' — '+(mc[m]||0)+' sales</option>';
+  });
+  html += '<div class="card sheet-bar">'
+        + '<div class="sheet-bar-row">'
+        + '<div class="sb-month"><label>Month</label><select id="tkMonthFilter">'+opts+'</select></div>'
+        + '<div class="sb-search"><label>Search</label><input id="tkSearch" placeholder="Client ka naam likhein…" autocomplete="off"></div>'
+        + '</div>'
+        + '<div class="hint" id="tkSearchCount" style="margin-top:6px;"></div>'
+        + '</div>';
+
+  /* ---- Sheet: header + stat strip + grid ---- */
+  html += '<div class="card sheet-card">';
+  html += '<div class="sheet-top">'
+        + '<div class="sheet-title"><span class="sheet-dot">▦</span><span>Sales register'+(ticketFilter==="all"?"":' <span class="sheet-sub-title">— '+esc(monthLabel(ticketFilter))+'</span>')+'</span><span class="sheet-count">'+list.length+'</span></div>'
+        + '<div class="sheet-tools">'
+        + '<button class="btn small green" id="tkNewBtn">＋ New sale</button>'
+        + '<button class="btn small" id="tkCsv" title="Download these rows as a CSV file (opens in Google Sheets / Excel)">⬇ CSV</button>'
+        + '</div></div>';
+  html += '<div class="sheet-stats">'
+        + '<div><span>Cost</span><b>'+money(tc)+'</b></div>'
+        + '<div><span>Sale</span><b>'+money(ts)+'</b></div>'
+        + '<div><span>Profit</span><b class="'+(tp>=0?"pos":"neg")+'">'+money(tp)+'</b></div>'
+        + '<div><span>Persons</span><b>'+personsTotal+'</b></div>'
+        + '</div>';
+
+  if(!list.length){
+    html += '<div class="empty">'+(ticketFilter==="all" ? esc(T("emptytk")) : "No sales in "+esc(monthLabel(ticketFilter))+". Choose &lsquo;All months&rsquo; in the filter.")+'</div>';
+    html += '</div>';
+  } else {
+    if(pendingCnt) html += '<div class="sheet-note">⚠ '+pendingCnt+' sale(s) mein cost price khali hai — row ke ✏ se daal dein.</div>';
+    html += '<div class="sheet-scroll"><table id="tkList" class="sheet-grid" data-sheet="1">';
+    html += '<thead><tr>'
+          + '<th class="rn">#</th><th class="c-date">Date</th><th>Client</th><th class="num">Sale</th>'
+          + '<th class="num">Profit</th><th>Status</th><th class="num">Cost</th><th>Type</th>'
+          + '<th class="c-detail">Detail</th><th class="num">Pax</th><th class="c-phone">Phone</th>'
+          + '<th class="c-act">Actions</th>'
+          + '</tr></thead><tbody>';
+    var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+    sorted.forEach(function(t, i){
+      var p = (Number(t.sale)||0) - (Number(t.cost)||0);
+      var costPending = !(Number(t.cost) > 0) && (Number(t.sale) > 0);
+      var tkPaid = 0; (t.payments||[]).forEach(function(x){ tkPaid += Number(x.amount)||0; });
+      var tkRem = Math.max(0, (Number(t.sale)||0) - tkPaid);
+      var phone = clientPhoneFor(t.client, t.phone);
+      var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket") + " " + (t.persons||"") + " " + (phone||"")).toLowerCase();
+      var st = (t.paid === false)
+        ? '<span class="pill pending">'+esc(T("unpaid"))+'</span>'+(tkRem > 0 ? '<span class="cell-sub">due '+money(tkRem)+'</span>' : '')
+        : '<span class="pill done">'+esc(T("paidp"))+'</span>'+(tkPaid > 0 ? '<span class="cell-sub">'+money(tkPaid)+'</span>' : '');
+      html += '<tr data-search="'+esc(hay)+'" data-id="'+esc(t.id)+'" data-cost="'+(Number(t.cost)||0)+'" data-sale="'+(Number(t.sale)||0)+'">'
+            + '<td class="rn">'+(i+1)+'</td>'
+            + '<td class="c-date">'+esc(dmy(t.date))+'</td>'
+            + '<td class="c-client" title="'+esc(t.client)+'"><b>'+esc(t.client)+'</b>'
+            + (t.doubleEntry ? ' <span class="cell-flag" title="Possible duplicate">⚠</span>' : '')
+            + (t.commission ? ' <span class="cell-sub">'+esc(T("wscomm"))+money(t.commission)+'</span>' : '')
+            + '</td>'
+            + '<td class="num c-sale">'+money(t.sale)+'</td>'
+            + '<td class="num '+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
+            + '<td class="c-status">'+st+'</td>'
+            + '<td class="num">'+(costPending ? '<span class="cell-warn" title="Cost price missing">—</span>' : money(t.cost))+'</td>'
+            + '<td>'+(t.kind ? '<span class="cell-chip">'+esc(t.kind)+'</span>' : '<span class="cell-muted">—</span>')+'</td>'
+            + '<td class="c-detail" title="'+esc(t.detail||"")+'">'+(t.detail ? esc(t.detail) : '<span class="cell-muted">—</span>')+'</td>'
+            + '<td class="num">'+Math.max(1, Number(t.persons)||1)+'</td>'
+            + '<td class="c-phone">'+(phone ? '<a href="tel:'+esc(phone)+'">☎ '+esc(phone)+'</a>' : '<span class="cell-muted">—</span>')+'</td>'
+            + '<td class="c-act">'
+            + (t.paid === false ? '<button class="del ia ia-gold tk-toggle" data-id="'+t.id+'" title="Mark as paid">✔</button>' : '')
+            + (t.doubleEntry ? '<button class="del ia ia-green" data-unflagTk="'+t.id+'" title="Remove duplicate flag">✓</button>' : '')
+            + '<button class="del ia '+(t.inv?'ia-green':'ia-blue')+' tk-inv" data-id="'+t.id+'" title="'+(t.inv?'View invoice':'Create invoice')+'">🧾</button>'
+            + '<button class="del ia ia-blue tk-edit" data-id="'+t.id+'" title="Edit sale">✏</button>'
+            + '<button class="del ia ia-gray tk-datedit" data-id="'+t.id+'" title="Change date">📅</button>'
+            + '<button class="del ia ia-red" data-type="ticket" data-id="'+t.id+'" title="Delete">✕</button>'
+            + '</td></tr>';
+    });
+    html += '</tbody><tfoot><tr>'
+          + '<td class="rn">Σ</td><td class="c-date"></td>'
+          + '<td><b>'+list.length+' sales</b></td>'
+          + '<td class="num" id="tkSumSale">'+money(ts)+'</td>'
+          + '<td class="num '+(tp>=0?"pos":"neg")+'" id="tkSumProfit">'+money(tp)+'</td>'
+          + '<td></td>'
+          + '<td class="num" id="tkSumCost">'+money(tc)+'</td>'
+          + '<td></td><td class="c-detail"></td>'
+          + '<td class="num">'+personsTotal+'</td><td class="c-phone"></td><td class="c-act"></td>'
+          + '</tr></tfoot></table></div>';
+    html += '<div class="sheet-foot-hint">↔ Sideways scroll karke baqi columns dekhein · kisi bhi row par tap karein to Edit/Invoice/Delete menu khulta hai</div>';
+    html += '</div>';
+  }
+  html += undoBanner();
+
+  /* ---- Naya sale: form (sales mojood hon to band) ---- */
+  html += '<div class="card" data-collapse="tknew" data-open="'+(all.length ? "0" : "1")+'"><h2>'+esc(T("newtk"))+'</h2>';
   html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkPhone" type="tel" inputmode="tel" placeholder="Contact number (for reminders)"></div>';
@@ -3683,79 +3931,21 @@ function viewTickets(){
   html += '<div class="hint">'+esc(T("tkhint"))+'</div>';
   html += '</div>';
 
-  // Sab se oper: mahina chunne wala filter
-  if(all.length){
-    var opts = '<option value="all"'+(ticketFilter==="all"?" selected":"")+'>All months — '+all.length+' tickets</option>';
-    months.forEach(function(m){
-      var n = mc[m] || 0;
-      opts += '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+esc(monthLabel(m))+' — '+n+' tickets</option>';
-    });
-    html += '<div class="card" style="padding-bottom:10px;"><label>Month filter</label>'
-          + '<select id="tkMonthFilter">'+opts+'</select>'
-          + '<div class="hint">Pick a month to see only that month&rsquo;s tickets and profit. <b>All months</b> shows the complete record.</div></div>';
-  }
-
-  html += '<div class="card" style="padding-bottom:10px;"><label>Search by client name</label>'
-        + '<input id="tkSearch" placeholder="Client ka naam likhein — uski sari tickets/umrah nikal ayengi" autocomplete="off">'
-        + '<div class="hint" id="tkSearchCount"></div></div>';
-
-  var tc=0, ts=0;
-  list.forEach(function(t){ tc += Number(t.cost)||0; ts += Number(t.sale)||0; });
-  var tp = ts - tc;
-  html += '<div class="card"><h2>'+esc(T("tkhul"))+(ticketFilter==="all" ? "" : ' — '+esc(monthLabel(ticketFilter)))+'</h2><div class="grid2">'
-        + '<div class="stat"><div class="t">'+esc(T("kulcost"))+'</div><div class="v">'+money(tc)+'</div></div>'
-        + '<div class="stat"><div class="t">'+esc(T("kulsale"))+'</div><div class="v">'+money(ts)+'</div></div>'
-        + '<div class="stat" style="grid-column:1/-1;"><div class="t">'+esc(T("kulprofit"))+'</div><div class="v '+(tp>=0?"pos":"neg")+'">'+money(tp)+'</div></div>'
-        + '</div>';
-  var pendingCnt = list.filter(function(t){ return !(Number(t.cost) > 0) && (Number(t.sale) > 0); }).length;
-  var personsTotal = 0; list.forEach(function(t){ personsTotal += Math.max(1, Number(t.persons) || 1); });
-  html += '<div class="hint" style="margin-top:8px;">'+list.length+' tickets '+(ticketFilter==="all" ? "in the full record" : "in "+esc(monthLabel(ticketFilter)))+' · '+personsTotal+' person(s)</div>';
-  if(pendingCnt) html += '<div class="hint" style="color:var(--gold);">⚠ '+pendingCnt+' sale(s) pending — cost price abhi nahi dali. Neeche har sale par ✏ (Edit) dabakar cost daal dein.</div>';
-  html += '<button class="btn btn-del" id="clearTickets">'+esc(T("cleartk"))+'</button>'+undoBanner()+'</div>';
-
-  if(list.length){
-    var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
-    html += '<div class="card" data-collapse="tkhist"><h2>'+esc(T("tkhist"))+'</h2><table id="tkList"><tr><th>'+esc(T("thdate"))+'</th><th>'+esc(T("thcl"))+'</th><th>Cost</th><th>Sale</th><th>Profit</th><th></th></tr>';
-    sorted.forEach(function(t){
-      var p = (Number(t.sale)||0) - (Number(t.cost)||0);
-      var costPending = !(Number(t.cost) > 0) && (Number(t.sale) > 0);
-      var tkPaid = 0; (t.payments||[]).forEach(function(x){ tkPaid += Number(x.amount)||0; });
-      var tkRem = Math.max(0, (Number(t.sale)||0) - tkPaid);
-      var hay = ((t.client||"") + " " + (t.detail||"") + " " + (t.kind||"Ticket") + " " + (t.persons||"")).toLowerCase();
-      html += '<tr data-search="'+esc(hay)+'"><td>'+esc(dmy(t.date))+'</td>'
-            + '<td><b>'+esc(t.client)+'</b>'+(t.kind?' <span class="pill" style="background:var(--blue-bg); color:var(--blue);">'+esc(t.kind)+'</span>':'')+((Number(t.persons)||1)>1?' <span class="pill" style="background:var(--green-bg); color:var(--green);" title="Number of persons">👥 '+Math.max(1,Number(t.persons)||1)+'</span>':'')+(costPending?' <span class="pill pending" title="Cost price abhi nahi dali — ✏ se edit karein">⚠ cost pending</span>':'')+(t.doubleEntry?' <span class="pill pending">⚠ possible duplicate</span>':'')+(t.payMethod?' <div style="font-size:12px; color:var(--muted);">'+(t.payMethod==='Online'?'💳':'💵')+' '+esc(t.payMethod)+'</div>':'')+(t.detail?'<div style="font-size:12px; color:var(--muted);">'+esc(t.detail)+'</div>':'')+(t.commission?'<div style="font-size:12px; color:var(--muted);">'+esc(T("wscomm"))+money(t.commission)+'</div>':'')+'</td>'
-            + '<td>'+(costPending?'<span style="color:var(--muted);">—</span>':money(t.cost))+'</td><td>'+money(t.sale)+'</td>'
-            + '<td class="'+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
-            + '<td>'+(t.paid === false
-                  ? '<button class="btn small tk-toggle" data-id="'+t.id+'" style="margin:0 4px 0 0; padding:5px 9px; background:var(--gold); color:#fff;">'+esc(T("unpaid"))+'</button>'
-                    +(tkPaid?'<div class="hint" style="font-size:11px;">Received '+money(tkPaid)+'<br>Remaining '+money(tkRem)+'</div>':'')
-                    +(clientPhoneFor(t.client, t.phone)?'<div style="font-size:11px; color:var(--muted);">☎ '+esc(clientPhoneFor(t.client, t.phone))+'</div>':'')
-                  : '<span class="pill done">'+esc(T("paidp"))+'</span>')
-                +(t.doubleEntry?'<button class="del" data-unflagTk="'+t.id+'" style="background:var(--green-bg); color:var(--green); margin-right:4px;" title="OK — remove this flag (ticket stays)">✓</button>':'')
-                +'<button class="del tk-inv" data-id="'+t.id+'" title="'+(t.inv?'View invoice':'Create invoice for this sale')+'" style="background:'+(t.inv?'var(--green-bg)':'var(--blue-bg)')+'; color:'+(t.inv?'var(--green)':'var(--blue)')+'; margin-right:4px;">🧾'+(t.inv?' ✓':'')+'</button>'
-                +'<button class="del tk-edit" data-id="'+t.id+'" title="Edit sale (cost / sale / client)" style="background:var(--blue-bg); color:var(--blue); margin-right:4px;">✏</button>'
-                +'<button class="del" data-type="ticket" data-id="'+t.id+'">✕</button>'
-                +'<button class="del tk-datedit" data-id="'+t.id+'" title="Edit date" style="background:#64748b; color:#fff; margin-left:4px;">📅</button></td></tr>';
-    });
-    html += '</table></div>';
-  } else {
-    html += '<div class="card"><div class="empty">'+(ticketFilter==="all" ? esc(T("emptytk")) : "No tickets in "+esc(monthLabel(ticketFilter))+". Choose &lsquo;All months&rsquo; in the filter.")+'</div></div>';
-  }
-
   if(months.length){
     var shiftMids = Object.keys(S.months || {}).concat(months).filter(function(m,i,a){ return /^\d{4}-\d{2}$/.test(m) && a.indexOf(m) === i; }).sort();
-    html += '<div class="card"><h2>Move tickets to another month</h2>';
-    html += '<div class="hint" style="margin-top:0;">If an import brought tickets with the wrong month, move all tickets of one month to another month here (the day stays the same). To change a single ticket&rsquo;s date, press 📅 in the table.</div>';
+    html += '<div class="card" data-collapse="tkmove" data-open="0"><h2>Move sales to another month</h2>';
+    html += '<div class="hint" style="margin-top:0;">If an import brought sales with the wrong month, move all sales of one month to another month here (the day stays the same). To change a single sale&rsquo;s date, press 📅 in the table.</div>';
     html += '<div class="row"><select id="tkFrom">'+shiftMids.map(function(m){ return '<option value="'+m+'"'+(m===ticketFilter?" selected":"")+'>'+monthLabel(m)+' — from</option>'; }).join("")+'</select>'
           + '<select id="tkTo">'+shiftMids.map(function(m){ return '<option value="'+m+'">'+monthLabel(m)+' — to</option>'; }).join("")+'</select></div>';
-    html += '<button class="btn small" id="tkShift" style="width:100%;">Move tickets</button>';
+    html += '<button class="btn small" id="tkShift" style="width:100%;">Move sales</button>';
     html += '</div>';
   }
 
   if(all.length){
-    html += '<div class="card"><h2>Remove duplicate tickets</h2>';
-    html += '<div class="hint" style="margin-top:0;">If the same ticket appears in two months (same client + cost + sale), the oldest date is kept and the other copies are removed.</div>';
-    html += '<button class="btn btn-del" id="dedupeTickets">Check duplicates</button>';
+    html += '<div class="card" data-collapse="tkdup" data-open="0"><h2>Clean up sales</h2>';
+    html += '<div class="hint" style="margin-top:0;">If the same sale appears twice (same client + cost + sale), the oldest date is kept and the other copies are removed.</div>';
+    html += '<button class="btn small green" id="dedupeTickets" style="width:100%;">Remove duplicate sales</button>';
+    html += '<button class="btn btn-del" id="clearTickets">'+esc(T("cleartk"))+'</button>';
     html += '</div>';
   }
   return html;
@@ -7235,7 +7425,47 @@ function bind(){
   if(sel) sel.onchange = function(){ selectedMonth = sel.value; render(); };
 
   var tmf = document.getElementById("tkMonthFilter");
-  if(tmf) tmf.onchange = function(){ ticketFilter = tmf.value; render(); setCardOpen("tkhist", true); };
+  if(tmf) tmf.onchange = function(){ ticketFilter = tmf.value; render(); };
+  var tkNewBtn = document.getElementById("tkNewBtn");
+  if(tkNewBtn) tkNewBtn.onclick = function(){
+    setCardOpen("tknew", true);
+    var card = document.querySelector('.card[data-collapse="tknew"]');
+    if(card && card.scrollIntoView) card.scrollIntoView({behavior:"smooth", block:"start"});
+    var c = document.getElementById("tkClient");
+    if(c) setTimeout(function(){ try{ c.focus(); }catch(e){} }, 350);
+  };
+  app.querySelectorAll("#tkList tbody tr[data-id]").forEach(function(tr){
+    tr.onclick = function(ev){
+      var el = ev.target;
+      if(el && el.closest && el.closest("button, a")) return;   // buttons/links apna kaam karein
+      openRowSheet(tr);
+    };
+  });
+  if(!window.__rowSheetEsc){
+    window.__rowSheetEsc = true;
+    document.addEventListener("keydown", function(ev){
+      if(ev.key === "Escape") closeRowSheet();
+    });
+  }
+  var tkCsvBtn = document.getElementById("tkCsv");
+  if(tkCsvBtn) tkCsvBtn.onclick = function(){
+    var src = (S.tickets || []);
+    if(ticketFilter !== "all") src = src.filter(function(t){ return String(t.date||"").slice(0,7) === ticketFilter; });
+    src = src.slice().sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); });
+    if(!src.length){ appToast("Is list mein koi sale nahi hai.", true); return; }
+    var rows = [];
+    function line(arr){ rows.push(arr.map(csvVal).join(",")); }
+    line(["Date","Client","Type","Detail","Persons","Phone","Cost","Sale","Profit","Payment","Received","Remaining"]);
+    src.forEach(function(t){
+      var paid = 0; (t.payments||[]).forEach(function(x){ paid += Number(x.amount)||0; });
+      var sale = Number(t.sale)||0;
+      line([dmy(t.date), t.client||"", t.kind||"Ticket", t.detail||"", Math.max(1, Number(t.persons)||1),
+            clientPhoneFor(t.client, t.phone), Number(t.cost)||0, sale, sale - (Number(t.cost)||0),
+            (t.paid === false ? "Unpaid" : "Paid"), paid, Math.max(0, sale - paid)]);
+    });
+    downloadCsv(rows, "abtravels-sales-" + (ticketFilter === "all" ? "all" : ticketFilter) + ".csv");
+    appToast("✓ CSV download ho gayi — Google Sheets / Excel mein khol lein.");
+  };
 
   ["DASH","A","B","ABBU","WS","BAK"].forEach(function(k){
     var fm = document.getElementById(k+"MonthFilter");
@@ -7480,22 +7710,28 @@ function bind(){
       tgSend("New ticket added", [client, kind, detailTxt, "Sale " + money(sale), (persons>1 ? persons + " persons" : "")]
         .filter(Boolean).join(" · "), { priority:"high", tags:"ticket" });
     }catch(e){}
-    setCardOpen("tkhist", true);
+    setCardOpen("tknew", false);
+    var sheetEl = document.getElementById("tkList");
+    if(sheetEl && sheetEl.scrollIntoView) setTimeout(function(){ sheetEl.scrollIntoView({behavior:"smooth", block:"start"}); }, 80);
   };
   // Sales search — client ke naam se tickets/umrah dhoondein
   var tks = document.getElementById("tkSearch");
   if(tks) tks.oninput = function(){
     var q = this.value.trim().toLowerCase();
     var cnt = document.getElementById("tkSearchCount");
-    var shown = 0;
-    document.querySelectorAll("#tkList tr[data-search]").forEach(function(r){
+    var rowsAll = document.querySelectorAll("#tkList tbody tr[data-search]");
+    var shown = 0, sc = 0, ss = 0;
+    rowsAll.forEach(function(r){
       var hay = r.getAttribute("data-search") || "";
       var ok = !q || hay.indexOf(q) >= 0;
       r.style.display = ok ? "" : "none";
-      if(ok) shown++;
+      if(ok){ shown++; sc += Number(r.getAttribute("data-cost"))||0; ss += Number(r.getAttribute("data-sale"))||0; }
     });
-    if(cnt) cnt.textContent = q ? (shown + " result(s) for '" + this.value.trim() + "'") : "";
-    if(q) setCardOpen("tkhist", true);
+    var eC = document.getElementById("tkSumCost"), eS = document.getElementById("tkSumSale"), eP = document.getElementById("tkSumProfit");
+    if(eC) eC.innerHTML = money(sc);
+    if(eS) eS.innerHTML = money(ss);
+    if(eP){ eP.innerHTML = money(ss - sc); eP.className = "num " + ((ss - sc) >= 0 ? "pos" : "neg"); }
+    if(cnt) cnt.textContent = q ? (shown + " of " + rowsAll.length + " sales — ‘" + this.value.trim() + "’") : "";
   };
   // Invoice generator
   var gi = document.getElementById("genInv");
@@ -8147,7 +8383,7 @@ function bind(){
     b.onclick = function(){
       var phone = String(b.getAttribute("data-phone")||"");
       var digits = fileWaDigits(phone);
-      if(!digits){ notify("Is client ka number save nahi hai.", true); return; }
+      if(!digits){ appToast("Is client ka number save nahi hai.", true); return; }
       var client = String(b.getAttribute("data-client")||"");
       var amt = Number(b.getAttribute("data-amt")||0);
       var dt = String(b.getAttribute("data-date")||"");
@@ -8164,7 +8400,7 @@ function bind(){
       var phone = String(b.getAttribute("data-phone")||"").trim();
       tgSend("Payment reminder needed",
         [client, money(amt), phone ? ("☎ "+phone) : ""].filter(Boolean).join(" · "), { force:true }).then(function(ok){
-          notify(ok ? "✓ Team ko reminder bhej diya." : "Reminder nahi gaya - Settings mein Telegram check karein.", !ok);
+          appToast(ok ? "✓ Team ko reminder bhej diya." : "Reminder nahi gaya - Settings mein Telegram check karein.", !ok);
         });
     };
   });
@@ -8185,9 +8421,9 @@ function bind(){
       var ph = clientPhoneFor(r.client, r.phone);
       lines.push("• " + (r.client||"") + " - " + money(rem) + (ph ? " (" + ph + ")" : ""));
     });
-    if(!lines.length){ notify("Koi pending payment nahi hai."); return; }
+    if(!lines.length){ appToast("Koi pending payment nahi hai.", true); return; }
     tgSend("Pending payments reminder ("+lines.length+")", lines.join("\n"), { force:true }).then(function(ok){
-      notify(ok ? "✓ Pending list team ko bhej di." : "Reminder nahi gaya - Telegram check karein.", !ok);
+      appToast(ok ? "✓ Pending list team ko bhej di." : "Reminder nahi gaya - Telegram check karein.", !ok);
     });
   };
 

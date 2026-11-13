@@ -1,5 +1,18 @@
 # Travel Office Hisab — AB Travels
 
+## Sales register — Google Sheets jaisa grid (v2.58)
+- **Sales tab** ka list ab **spreadsheet jaisa** hai: row numbers (#), column headers, poori grid lines, aur har sale ek chhoti single-line row mein — lambi cards khatam, is liye neeche scroll kam karna parta hai.
+- **Header row aur Date column frozen** hain — 600 sales hon to bhi naam/tareekh samne rehte hain, sirf andar ka hissa scroll hota hai.
+- **Khaas columns pehle**: Date · Client · **Sale** · **Profit** · **Status** (Paid/Unpaid + baqi raqam) — phir Cost, Type, Detail, Pax, Phone.
+- **Bari screen par Actions column daayen frozen** — scroll karte waqt bhi ✔ Paid / 🧾 Invoice / ✏ Edit / 📅 Date / ✕ Delete samne rehte hain.
+- **Kisi bhi row par tap** karein to neeche chhota menu khulta hai: ✔ Paid · 🧾 Invoice · ✏ Edit · 📅 Date · ✕ Delete (mobile par bhi asaan).
+- Upar wahi ek patli patti: **Month filter + Search**. Search karte hi **totals bhi update** hote hain (jitni rows nazar aa rahi hain unka Sale/Profit).
+- Neeche **Σ totals row** (Cost / Sale / Profit / Persons) — bilkul sheets ke TOTAL jaisa.
+- **⬇ CSV** button — jo rows nazar aa rahi hain wo CSV file ban jati hain, Google Sheets ya Excel mein seedha khul jati hain.
+- **"＋ New sale"** button form kholta hai; sale save hote hi form band ho kar naya row sheet mein samne aa jata hai.
+- "Move sales to another month" aur "Clean up sales" (duplicates / clear all) ab alag chhote collapsed cards mein — main view saaf rehta hai.
+- Chhota fix: Pending Payments ke reminder messages par ab **toast** (neeche confirmation) aata hai; pehle `notify` galti se local variable tha.
+
 ## Contact number + payment reminders (v2.57)
 - **Add New Sale** form mein ab **Contact number** ka box hai. Number sale par save hota hai aur client record mein bhi (purana number khali ho to).
 - Sale likhte hi client ka naam likhte hi number bhi auto-fill ho jata hai (client suggestions).
