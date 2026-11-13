@@ -13,6 +13,13 @@
 - **Pichhla tab yaad rehta hai** — app dobara kholne par wahi tab khulta hai.
 - Mobile ki quick bar aur `main` ka bottom padding safe-area (iPhone home bar) ka khayal rakhte hain.
 
+## Company website at /company/ (2026-11-13)
+- Public AB Travels website: `https://ali122.github.io/travel-office-hisab/company/` — files live in `company/` (`index.html`, `style.css`, `main.js`, `assets/logo.png`). Static, free GitHub Pages hosting, no build step or dependencies.
+- **English + اردو** toggle in the header: switches text, `<html lang/dir>` (full RTL), page title, meta description and the prefilled WhatsApp message, then remembers the choice in `localStorage` (`abt-lang`).
+- Contact shown: WhatsApp **0314-3176560**, mobile **0314-3176560**, alternate **0310-3311199**, email **ahmedbrothers053@gmail.com**. No street address is published yet.
+- The quote form has **no backend**: on submit it validates name/phone and opens `wa.me` with the details prefilled. Nothing is stored on the website.
+- Tested 320–1920px, English/Urdu, mobile menu, form validation, all links, no console errors, no horizontal overflow.
+
 ## Sales register uses the full laptop width (v2.62)
 - On a laptop/desktop the **Sales** tab now stretches to the window instead of sitting in an 820px column, so both side margins are used and the table no longer needs left/right scrolling at 1280px and wider.
 - Cell padding is slightly tighter on wide screens so Cost, Sale, Profit, Status, Type, Detail, Pax, Phone and actions all fit in one view.
