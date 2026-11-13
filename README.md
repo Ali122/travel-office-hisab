@@ -1,5 +1,9 @@
 # Travel Office Hisab — AB Travels
 
+## Sales register column order (v2.61)
+- Columns now run **Cost → Sale → Profit → Status**, then Type, Detail, Pax, Phone and the actions button. The Σ footer row follows the same order.
+- CSV export already uses Cost, Sale, Profit, so both views match.
+
 ## Sales register — top totals panel removed (v2.60)
 - The **Cost / Sale / Profit / Persons** strip above the sales grid is gone. Those figures are already in **Monthly summary** and in the grid's Σ footer row, so the register is now shorter on mobile.
 - Nothing else changed: month filter, search, grid columns, row actions and the Σ footer totals still work the same.

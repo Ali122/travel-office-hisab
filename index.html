@@ -383,7 +383,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.60</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.61</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -441,7 +441,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.60";
+var APP_VER = "2.61";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -3865,8 +3865,8 @@ function viewTickets(){
     if(pendingCnt) html += '<div class="sheet-note">⚠ '+pendingCnt+' sale(s) mein cost price khali hai — row ke ✏ se daal dein.</div>';
     html += '<div class="sheet-scroll"><table id="tkList" class="sheet-grid" data-sheet="1">';
     html += '<thead><tr>'
-          + '<th class="rn">#</th><th class="c-date">Date</th><th>Client</th><th class="num">Sale</th>'
-          + '<th class="num">Profit</th><th>Status</th><th class="num">Cost</th><th>Type</th>'
+          + '<th class="rn">#</th><th class="c-date">Date</th><th>Client</th><th class="num">Cost</th>'
+          + '<th class="num">Sale</th><th class="num">Profit</th><th>Status</th><th>Type</th>'
           + '<th class="c-detail">Detail</th><th class="num">Pax</th><th class="c-phone">Phone</th>'
           + '<th class="c-act" title="Actions">⋯</th>'
           + '</tr></thead><tbody>';
@@ -3899,10 +3899,10 @@ function viewTickets(){
             + (t.doubleEntry ? ' <span class="cell-flag" title="Possible duplicate">⚠</span>' : '')
             + (t.commission ? ' <span class="cell-sub">'+esc(T("wscomm"))+money(t.commission)+'</span>' : '')
             + '</span></td>'
+            + '<td class="num">'+(costPending ? '<span class="cell-warn" title="Cost price missing">—</span>' : money(t.cost))+'</td>'
             + '<td class="num c-sale">'+money(t.sale)+'</td>'
             + '<td class="num '+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
             + '<td class="c-status">'+st+'</td>'
-            + '<td class="num">'+(costPending ? '<span class="cell-warn" title="Cost price missing">—</span>' : money(t.cost))+'</td>'
             + '<td>'+(t.kind ? '<span class="cell-chip">'+esc(t.kind)+'</span>' : '<span class="cell-muted">—</span>')+'</td>'
             + '<td class="c-detail" title="'+esc(t.detail||"")+'">'+(t.detail ? '<span class="cell-clip">'+esc(t.detail)+'</span>' : '<span class="cell-muted">—</span>')+'</td>'
             + '<td class="num">'+Math.max(1, Number(t.persons)||1)+'</td>'
@@ -3922,14 +3922,13 @@ function viewTickets(){
     html += '</tbody><tfoot><tr>'
           + '<td class="rn">Σ</td><td class="c-date"></td>'
           + '<td><b>'+list.length+' sales</b></td>'
+          + '<td class="num" id="tkSumCost">'+money(tc)+'</td>'
           + '<td class="num" id="tkSumSale">'+money(ts)+'</td>'
           + '<td class="num '+(tp>=0?"pos":"neg")+'" id="tkSumProfit">'+money(tp)+'</td>'
-          + '<td></td>'
-          + '<td class="num" id="tkSumCost">'+money(tc)+'</td>'
-          + '<td></td><td class="c-detail"></td>'
+          + '<td></td><td></td><td class="c-detail"></td>'
           + '<td class="num">'+personsTotal+'</td><td class="c-phone"></td><td class="c-act"></td>'
           + '</tr></tfoot></table></div>';
-    html += '<div class="sheet-foot-hint">⋯ button (ya row par tap) se Edit / Invoice / Detail / Date / Delete · ↔ sideways scroll se Cost, Type, Detail, Phone</div>';
+    html += '<div class="sheet-foot-hint">⋯ button (ya row par tap) se Edit / Invoice / Detail / Date / Delete · ↔ sideways scroll se Sale, Profit, Status, Type, Detail, Phone</div>';
     html += '</div>';
   }
   html += undoBanner();
