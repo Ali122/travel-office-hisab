@@ -1876,7 +1876,7 @@ function notifyOriginOk(env, request) {
   if (!origin) return false;
   const allow = String((env && env.ALLOWED_ORIGIN) || "").trim().replace(/\/+$/, "");
   if (allow && allow !== "*" && origin === allow) return true;
-  return /^https:\/\/ali122\.github\.io$/i.test(origin) ||
+  return /^https:\/\/(?:abtravels|ali122)\.github\.io$/i.test(origin) ||
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
 }
 
@@ -1913,7 +1913,7 @@ async function notifyRelay(request, env, hdrs) {
   const html = title + "\n" + text;
   const extra = {
     parse_mode: undefined,
-    reply_markup: { inline_keyboard: [[{ text: "📱 Open app", url: "https://ali122.github.io/travel-office-hisab/" }]] }
+    reply_markup: { inline_keyboard: [[{ text: "📱 Open app", url: "https://abtravels.github.io/travel-office-hisab/" }]] }
   };
   const sent = [], failed = [], errors = [];
   await Promise.all(chats.map(async c => {

@@ -34,7 +34,7 @@ bhi hai, is liye app ki `Price Lookup` bhi isi URL se kaam karti hai.
    | `TELEGRAM_WEBHOOK_SECRET` | Secret (optional) | koi bhi random word, maslan `hisab2026` |
    | `MAX_DAILY_REQUESTS` | Text (optional) | bot ke daily searches, default `60` |
    | `MAX_DAILY_PROXY` | Text (optional) | app (browser) ke daily searches, default `200` |
-   | `ALLOWED_ORIGIN` | Text (optional) | sirf ye website app proxy use kar sake, maslan `https://ali122.github.io` |
+   | `ALLOWED_ORIGIN` | Text (optional) | sirf ye website app proxy use kar sake, maslan `https://abtravels.github.io` |
 
 5. Worker → **Settings → Bindings → Add → KV namespace**:
    - Variable name: **`KV`**

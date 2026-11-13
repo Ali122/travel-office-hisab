@@ -14,7 +14,7 @@
  *   GITHUB_TOKEN     fine-grained PAT with Contents: Read and write on the backup repo
  *
  * Optional vars/secrets:
- *   GITHUB_REPO      owner/repo, default Ali122/travel-office-hisab-backup
+ *   GITHUB_REPO      owner/repo, default abtravels/travel-office-hisab-backup
  *   GITHUB_BRANCH    default main
  */
 const COOKIE = "staff_session";
@@ -132,7 +132,7 @@ function ensure(s) {
 
 /* ---------- GitHub data source ---------- */
 function ghRepo(env) {
-  return String(env.GITHUB_REPO || "Ali122/travel-office-hisab-backup").trim();
+  return String(env.GITHUB_REPO || "abtravels/travel-office-hisab-backup").trim();
 }
 function ghBranch(env) {
   return String(env.GITHUB_BRANCH || "main").trim();

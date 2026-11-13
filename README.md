@@ -13,8 +13,13 @@
 - **Pichhla tab yaad rehta hai** — app dobara kholne par wahi tab khulta hai.
 - Mobile ki quick bar aur `main` ka bottom padding safe-area (iPhone home bar) ka khayal rakhte hain.
 
+## GitHub account renamed: Ali122 → abtravels (2026-11-13)
+- New links: app **https://abtravels.github.io/travel-office-hisab/** · company website **https://abtravels.github.io/travel-office-hisab/company/**
+- Old `ali122.github.io` links stopped working (GitHub does not redirect Pages sites); repo links on github.com still redirect.
+- Updated everywhere in code: price bot relay origin + Telegram "Open app" button, `scrape.js` user agent, staff portal logo URL, app's default GitHub backup repo (`abtravels/travel-office-hisab-backup`), staff portal default `GITHUB_REPO`, and the website's canonical/OG/JSON-LD URLs.
+
 ## Company website at /company/ (2026-11-13)
-- Public AB Travels website: `https://ali122.github.io/travel-office-hisab/company/` — files live in `company/` (`index.html`, `style.css`, `main.js`, `assets/logo.png`). Static, free GitHub Pages hosting, no build step or dependencies.
+- Public AB Travels website: `https://abtravels.github.io/travel-office-hisab/company/` — files live in `company/` (`index.html`, `style.css`, `main.js`, `assets/logo.png`). Static, free GitHub Pages hosting, no build step or dependencies.
 - **English + اردو** toggle in the header: switches text, `<html lang/dir>` (full RTL), page title, meta description and the prefilled WhatsApp message, then remembers the choice in `localStorage` (`abt-lang`).
 - Contact shown: WhatsApp **0314-3176560**, mobile **0314-3176560**, alternate **0310-3311199**, email **ahmedbrothers053@gmail.com**. No street address is published yet.
 - The quote form has **no backend**: on submit it validates name/phone and opens `wa.me` with the details prefilled. Nothing is stored on the website.
@@ -126,7 +131,7 @@
 Single-file web app for a travel agency's monthly accounts. No build step, no server:
 open `index.html` in any browser. The whole UI is in English.
 
-**Live app:** https://ali122.github.io/travel-office-hisab/
+**Live app:** https://abtravels.github.io/travel-office-hisab/
 
 ## What it does
 
