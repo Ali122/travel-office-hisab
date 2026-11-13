@@ -1,5 +1,14 @@
 # Travel Office Hisab — AB Travels
 
+## App ka naya link + origin fix (v2.64)
+- **GitHub account ka naam badal gaya hai**, is liye app ka purana link `ali122.github.io/travel-office-hisab/` ab **404** deta hai. Naya live link: **https://abtravels.github.io/travel-office-hisab/** — bookmarks/home-screen icon dobara banayein.
+- **Notification relay** (`pricebot-worker.js` ka `/notify`) sirf `ali122.github.io` origin qabool karta tha — naye host se aane wali Telegram notifications 403 ho rahi thin. Ab **dono hosts** (`ali122` aur `abtravels`) allowed hain, aur Telegram ke "📱 Open app" button ka URL naya hai.
+- Worker redeploy zaroori hai (`npx wrangler deploy -c wrangler.pricebot.toml`). Redeploy se pehle bhi kaam chalana ho to Cloudflare → Worker → Settings → Variables mein `ALLOWED_ORIGIN = https://abtravels.github.io` set kar dein.
+- Hardcoded purane links (`og:image`, company site ke canonical/og/schema URLs, staff portal ka logo, `scrape.js` UA) sab naye host par.
+- **Bottom bar ka highlight fix:** Sales/Summary/Settings jaise pages par ab ghalat tab highlight nahi hota (quick bar sirf apne 4 tabs par active dikhati hai).
+- Drawer khulte waqt seedha active tab par scroll ho jata hai.
+- Invoice ka pehla heading ab **TYPE & AIRLINE** hai (pehle "INVOICE TYPE" heading ke neeche wahi "Invoice type" label dobara aata tha).
+
 ## Phone UI — neeche ki quick bar, chhota header, saaf forms (v2.63)
 - **Neeche ki quick bar (sirf phones par):** Sales · Invoice · Files · Pending · ☰ Menu. Pehle har tab badalne ke liye ☰ kholna parta tha (2 taps); ab char sab se zyada use hone wale tabs ek tap mein, aur jo tab khula hai wo highlight rehta hai. Menu button wahi purana drawer kholta hai.
 - **Header chhota:** phone par verse ki Urdu line ab ek line (tap kar ke poori khulti hai) aur Arabic font thora chhota — screen par ~30px zyada jagah. 410px se chhoti screen par theme/update buttons ab doosri line par nahi girte.
@@ -14,7 +23,7 @@
 - Mobile ki quick bar aur `main` ka bottom padding safe-area (iPhone home bar) ka khayal rakhte hain.
 
 ## Company website at /company/ (2026-11-13)
-- Public AB Travels website: `https://ali122.github.io/travel-office-hisab/company/` — files live in `company/` (`index.html`, `style.css`, `main.js`, `assets/logo.png`). Static, free GitHub Pages hosting, no build step or dependencies.
+- Public AB Travels website: `https://abtravels.github.io/travel-office-hisab/company/` — files live in `company/` (`index.html`, `style.css`, `main.js`, `assets/logo.png`). Static, free GitHub Pages hosting, no build step or dependencies.
 - **English + اردو** toggle in the header: switches text, `<html lang/dir>` (full RTL), page title, meta description and the prefilled WhatsApp message, then remembers the choice in `localStorage` (`abt-lang`).
 - Contact shown: WhatsApp **0314-3176560**, mobile **0314-3176560**, alternate **0310-3311199**, email **ahmedbrothers053@gmail.com**. No street address is published yet.
 - The quote form has **no backend**: on submit it validates name/phone and opens `wa.me` with the details prefilled. Nothing is stored on the website.
@@ -126,7 +135,7 @@
 Single-file web app for a travel agency's monthly accounts. No build step, no server:
 open `index.html` in any browser. The whole UI is in English.
 
-**Live app:** https://ali122.github.io/travel-office-hisab/
+**Live app:** https://abtravels.github.io/travel-office-hisab/
 
 ## What it does
 
@@ -307,7 +316,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.63** (v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.64** (v2.64 new GitHub Pages link `abtravels.github.io` + relay origin allowlist for both hosts; v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.

@@ -17,7 +17,7 @@ const { chromium } = require("playwright");
 
 const OUT_DIR = path.join(__dirname, "data", "sasta");
 const BASE = "https://www.sastaticket.pk/flights/cheap-flights-from-";
-const UA = "ABTravelsPriceBot/1.0 (+https://ali122.github.io/travel-office-hisab/)";
+const UA = "ABTravelsPriceBot/1.0 (+https://abtravels.github.io/travel-office-hisab/)";
 
 // Keep this list small. Each route is one page load.
 const ROUTES = [
