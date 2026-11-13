@@ -202,6 +202,8 @@
   .row-sheet-actions .rsa-btns{display:flex; gap:6px; flex-wrap:wrap;}
   .row-sheet-actions .rsa-btns .btn{flex:1 1 auto; min-width:88px; margin-top:0; padding:9px 10px; font-size:13px;}
   .cell-sub{font-size:10px; font-weight:600; color:var(--muted); margin-left:4px;}
+  .cell-clip{display:inline-block; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle;}
+  .c-client .cell-clip{max-width:170px;}
   .cell-chip{display:inline-block; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px; background:var(--blue-bg); color:var(--blue);}
   .cell-flag{font-size:11px; color:var(--gold);}
   .cell-warn{color:var(--gold); font-weight:800;}
@@ -3879,16 +3881,16 @@ function viewTickets(){
       html += '<tr data-search="'+esc(hay)+'" data-id="'+esc(t.id)+'" data-cost="'+(Number(t.cost)||0)+'" data-sale="'+(Number(t.sale)||0)+'">'
             + '<td class="rn">'+(i+1)+'</td>'
             + '<td class="c-date">'+esc(dmy(t.date))+'</td>'
-            + '<td class="c-client" title="'+esc(t.client)+'"><b>'+esc(t.client)+'</b>'
+            + '<td class="c-client" title="'+esc(t.client)+'"><span class="cell-clip"><b>'+esc(t.client)+'</b>'
             + (t.doubleEntry ? ' <span class="cell-flag" title="Possible duplicate">⚠</span>' : '')
             + (t.commission ? ' <span class="cell-sub">'+esc(T("wscomm"))+money(t.commission)+'</span>' : '')
-            + '</td>'
+            + '</span></td>'
             + '<td class="num c-sale">'+money(t.sale)+'</td>'
             + '<td class="num '+(p>=0?"pos":"neg")+'">'+money(p)+'</td>'
             + '<td class="c-status">'+st+'</td>'
             + '<td class="num">'+(costPending ? '<span class="cell-warn" title="Cost price missing">—</span>' : money(t.cost))+'</td>'
             + '<td>'+(t.kind ? '<span class="cell-chip">'+esc(t.kind)+'</span>' : '<span class="cell-muted">—</span>')+'</td>'
-            + '<td class="c-detail" title="'+esc(t.detail||"")+'">'+(t.detail ? esc(t.detail) : '<span class="cell-muted">—</span>')+'</td>'
+            + '<td class="c-detail" title="'+esc(t.detail||"")+'">'+(t.detail ? '<span class="cell-clip">'+esc(t.detail)+'</span>' : '<span class="cell-muted">—</span>')+'</td>'
             + '<td class="num">'+Math.max(1, Number(t.persons)||1)+'</td>'
             + '<td class="c-phone">'+(phone ? '<a href="tel:'+esc(phone)+'">☎ '+esc(phone)+'</a>' : '<span class="cell-muted">—</span>')+'</td>'
             + '<td class="c-act">'
