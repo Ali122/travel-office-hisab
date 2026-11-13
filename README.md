@@ -1,5 +1,10 @@
 # Travel Office Hisab — AB Travels
 
+## Sales register: mouse wheel ab page bhi scroll karta hai (v2.66)
+- **Masla:** register par mouse rakh kar wheel ghumane se sirf andar ki list scroll hoti thi aur page upar/neeche nahi hota tha — register se mouse hatana parta tha. Wajah: `.sheet-scroll` par `overscroll-behavior:contain` tha, jo list ke aakhir par bhi scroll ko page tak nahi jane deta.
+- **Fix:** ab chaining normal hai (`overscroll-behavior:auto`) — list khatam hone par page khud aage scroll ho jata hai.
+- **Chhoti list (maslan November ki kam sales):** agar rows itni kam hain ke andar scroll ki zaroorat hi nahi, to andar ka scroll box **hata diya jata hai** (`fit` class, JS se naapa jata hai) — poora page ek hi scroll mein chalta hai. List lambi ho to frozen header/columns wala box waise hi kaam karta hai.
+
 ## Drawer polish (v2.65)
 - Drawer khulte hi active tab beech mein aa jata hai — lekin **MENU heading aur ✕ (close) button ab sticky** hain, is liye neeche wale tab (Settings, Monthly Accounts) par bhi band karne ka button hamesha nazar aata hai.
 - Quick bar ke active tab ka gold accent bar thora neeche shift kiya taake bar ke top border par crop na ho.
@@ -326,7 +331,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.65** (v2.65 sticky drawer header + quick-bar accent tweak; v2.64 new GitHub Pages link `abtravels.github.io` + relay origin allowlist for both hosts; v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.67** (v2.67 PC par mouse wheel register ke upar ho to bhi PAGE scroll hota hai; v2.66 sales register wheel/scroll fix; v2.65 sticky drawer header + quick-bar accent tweak; v2.64 new GitHub Pages link `abtravels.github.io` + relay origin allowlist for both hosts; v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.
@@ -371,3 +376,10 @@ Current version: **2.65** (v2.65 sticky drawer header + quick-bar accent tweak; 
 ## Reminder waqt ab 12-ghantay (am/pm) mein (v2.53)
 - `/remind` ke tamam messages (confirmation, alarm, `/reminds` list) ab waqt 12-ghantay ke format mein dikhate hain: `10 Nov 2026 1:00 PM PKT` (date + am/pm dono).
 - Sirf display badla — reminders ka kaam waisa hi hai. Worker v2.53 redeploy zaroori hai.
+
+
+
+## Sales register: PC par wheel hamesha PAGE scroll karta hai (v2.67)
+- Masla: mouse register (Sales register grid) ke upar ho to mouse wheel pehle register ke andar ke scroll box ko pakar leta tha — page upar/neeche nahi jata tha; mouse ko register se bahar le jana parta tha.
+- Ab desktop/mouse par register ka andar ka scroll box bilkul nahi banta (`@media (hover:hover) and (pointer:fine)` mein `.sheet-scroll` ka max-height hata diya gaya) — wheel ka matlab hamesha page scroll. Sticky column headers ab page ke header ke neeche chipakte hain (`top:var(--header-h)`).
+- Mobile/touch par behavior nahi badla (andar ka scroll waisa hi hai). Sirf display fix — data ya save kaam par asar nahi. Worker redeploy ki zaroorat nahi.
