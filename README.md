@@ -1,5 +1,10 @@
 # Travel Office Hisab — AB Travels
 
+## Sales register uses the full laptop width (v2.62)
+- On a laptop/desktop the **Sales** tab now stretches to the window instead of sitting in an 820px column, so both side margins are used and the table no longer needs left/right scrolling at 1280px and wider.
+- Cell padding is slightly tighter on wide screens so Cost, Sale, Profit, Status, Type, Detail, Pax, Phone and actions all fit in one view.
+- Other tabs keep their normal width; phones/tablets below 1000px keep the sideways-scroll grid unchanged.
+
 ## Sales register column order (v2.61)
 - Columns now run **Cost → Sale → Profit → Status**, then Type, Detail, Pax, Phone and the actions button. The Σ footer row follows the same order.
 - CSV export already uses Cost, Sale, Profit, so both views match.
