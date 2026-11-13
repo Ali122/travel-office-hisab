@@ -1,4 +1,4 @@
-﻿# AB Travels â€” Staff Portal
+# AB Travels â€” Staff Portal
 
 A separate, password-protected Cloudflare Worker for staff. It reads and writes the same
 private `HisabData.json` file used by the owner app, so no second database is needed.
@@ -30,7 +30,7 @@ npx.cmd wrangler login
 
 Create a **fine-grained personal access token** for the private backup repository:
 
-- Repository: `Ali122/travel-office-hisab-backup`
+- Repository: `abtravels/travel-office-hisab-backup`
 - Permission: **Contents â€” Read and write**
 
 Do not paste the token into any file in this repository.
@@ -54,7 +54,7 @@ npx.cmd wrangler secret put SESSION_SECRET
 - `STAFF_PASSWORD` â€” the password staff type on the login screen.
 - `SESSION_SECRET` â€” signs the session cookie. If omitted, `STAFF_PASSWORD` is used.
 - Changing either secret invalidates all existing staff sessions.
-- Repository defaults are `Ali122/travel-office-hisab-backup` and branch `main`.
+- Repository defaults are `abtravels/travel-office-hisab-backup` and branch `main`.
   Override with `GITHUB_REPO` / `GITHUB_BRANCH` if needed.
 
 ## 4. Deploy
