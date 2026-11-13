@@ -186,14 +186,13 @@
   .sheet-grid tfoot .rn{z-index:3;}
   .sheet-grid tbody tr{cursor:pointer;}
   .sheet-grid .c-sale{font-weight:800;}
-  /* Bari screens par Actions column daayen freeze — scroll karte waqt bhi buttons samne rehte hain */
-  @media (min-width:700px){
-    .sheet-grid .c-act{position:sticky; right:0; z-index:2; background:var(--card); box-shadow:-2px 0 0 var(--line);}
-    .sheet-grid thead .c-act{z-index:6; background:var(--stat-b);}
-    .sheet-grid tbody tr:nth-child(even) .c-act{background:var(--stat-a);}
-    .sheet-grid tbody tr:hover .c-act{background:var(--blue-bg);}
-    .sheet-grid tfoot .c-act{background:var(--stat-a);}
-  }
+  /* Chhota ⋯ column hamesha daayen freeze — kabhi sideways scroll karne ki zaroorat nahi */
+  .sheet-grid .c-act{position:sticky; right:0; z-index:3; width:40px; min-width:40px; text-align:center; padding-left:4px; padding-right:4px; background:var(--card); box-shadow:-2px 0 0 var(--line);}
+  .sheet-grid thead .c-act{z-index:6; background:var(--stat-b);}
+  .sheet-grid tbody tr:nth-child(even) .c-act{background:var(--stat-a);}
+  .sheet-grid tbody tr:hover .c-act{background:var(--blue-bg);}
+  .sheet-grid tfoot .c-act{background:var(--stat-a);}
+  .sheet-grid .ia-more{width:28px; height:25px; margin:0; font-size:16px; font-weight:800; letter-spacing:1px; background:var(--stat-b); color:var(--ink); border:1px solid var(--line);}
   /* Row tap -> neeche chhota action bar (Sheets ke context menu jaisa) */
   .row-sheet-back{position:fixed; inset:0; background:rgba(15,23,42,.38); z-index:94;}
   .row-sheet-actions{position:fixed; left:0; right:0; bottom:0; z-index:95; background:var(--card); border-top:1px solid var(--line); box-shadow:0 -10px 30px rgba(15,23,42,.22); padding:10px 12px calc(12px + env(safe-area-inset-bottom));}
@@ -392,7 +391,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.58</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.59</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -450,7 +449,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.58";
+var APP_VER = "2.59";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -1897,14 +1896,15 @@ function openRowSheet(tr){
   btns.className = "rsa-btns";
   bar.appendChild(btns);
 
-  function add(label, cls, selector){
+  function add(label, cls, action){
     var b = document.createElement("button");
     b.type = "button";
     b.className = "btn small" + (cls ? " " + cls : "");
     b.textContent = label;
     b.onclick = function(){
-      var src = tr.querySelector(selector);
       closeRowSheet();
+      if(typeof action === "function"){ setTimeout(action, 40); return; }
+      var src = tr.querySelector(action);
       if(src) setTimeout(function(){ src.click(); }, 40);
     };
     btns.appendChild(b);
@@ -1912,6 +1912,16 @@ function openRowSheet(tr){
   if(t.paid === false) add("✔ Paid", "green", ".tk-toggle");
   add("🧾 Invoice", "", ".tk-inv");
   add("✏ Edit", "", ".tk-edit");
+  add("📝 Detail", "", function(){
+    var v = prompt("Detail (route / PNR / note)\n\nKhali chhod dein to purana detail rahega.\nMitana ho to sirf - likhein.", t.detail || "");
+    if(v === null) return;
+    var txt = v.trim();
+    if(txt === "-") txt = "";
+    else if(!txt) return;
+    t.detail = txt;
+    save(); render();
+    appToast(txt ? "✓ Detail save ho gaya." : "Detail hata diya.");
+  });
   add("📅 Date", "", ".tk-datedit");
   add("✕ Delete", "btn-del", "[data-type='ticket']");
 
@@ -3804,7 +3814,7 @@ function viewMonth(){
 }
 
 /* ================= TICKETS ================= */
-var ticketFilter = "all";
+var ticketFilter = null; /* null = auto: khud current month chun lein */
 function viewTickets(){
   var all = S.tickets || [];
   var ms = {}, mc = {};
@@ -3813,6 +3823,13 @@ function viewTickets(){
     if(/^\d{4}-\d{2}$/.test(m)){ ms[m] = true; mc[m] = (mc[m] || 0) + 1; }
   });
   var months = Object.keys(ms).sort();
+  /* Pehli dafa: current month khud khule. Us mahine koi sale na ho to latest month. */
+  if(ticketFilter === null){
+    var nowMid = String(today()).slice(0,7);
+    if(ms[nowMid]) ticketFilter = nowMid;
+    else if(months.length) ticketFilter = months[months.length - 1];
+    else ticketFilter = "all";
+  }
   if(ticketFilter !== "all" && months.indexOf(ticketFilter) === -1) ticketFilter = "all";
   var list = (ticketFilter === "all") ? all : all.filter(function(t){ return String(t.date||"").slice(0,7) === ticketFilter; });
 
@@ -3865,9 +3882,20 @@ function viewTickets(){
           + '<th class="rn">#</th><th class="c-date">Date</th><th>Client</th><th class="num">Sale</th>'
           + '<th class="num">Profit</th><th>Status</th><th class="num">Cost</th><th>Type</th>'
           + '<th class="c-detail">Detail</th><th class="num">Pax</th><th class="c-phone">Phone</th>'
-          + '<th class="c-act">Actions</th>'
+          + '<th class="c-act" title="Actions">⋯</th>'
           + '</tr></thead><tbody>';
-    var sorted = list.slice().sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+    var order = {};
+    all.forEach(function(x, xi){ order[x.id] = xi; });
+    var sorted = list.slice().sort(function(a,b){
+      var byDate = String(b.date||"").localeCompare(String(a.date||""));
+      if(byDate) return byDate;
+      return (order[b.id] || 0) - (order[a.id] || 0);   // ek hi date: jo baad mein add hua wo pehle
+    });
+    var dayOnly = (ticketFilter !== "all");
+    function dayNum(s){
+      var m = String(s||"").match(/^\d{4}-\d{2}-(\d{2})/);
+      return m ? String(Number(m[1])) : String(s||"");
+    }
     sorted.forEach(function(t, i){
       var p = (Number(t.sale)||0) - (Number(t.cost)||0);
       var costPending = !(Number(t.cost) > 0) && (Number(t.sale) > 0);
@@ -3880,7 +3908,7 @@ function viewTickets(){
         : '<span class="pill done">'+esc(T("paidp"))+'</span>'+(tkPaid > 0 ? '<span class="cell-sub">'+money(tkPaid)+'</span>' : '');
       html += '<tr data-search="'+esc(hay)+'" data-id="'+esc(t.id)+'" data-cost="'+(Number(t.cost)||0)+'" data-sale="'+(Number(t.sale)||0)+'">'
             + '<td class="rn">'+(i+1)+'</td>'
-            + '<td class="c-date">'+esc(dmy(t.date))+'</td>'
+            + '<td class="c-date" title="'+esc(dmy(t.date))+'">'+(dayOnly ? esc(dayNum(t.date)) : esc(dmy(t.date)))+'</td>'
             + '<td class="c-client" title="'+esc(t.client)+'"><span class="cell-clip"><b>'+esc(t.client)+'</b>'
             + (t.doubleEntry ? ' <span class="cell-flag" title="Possible duplicate">⚠</span>' : '')
             + (t.commission ? ' <span class="cell-sub">'+esc(T("wscomm"))+money(t.commission)+'</span>' : '')
@@ -3894,12 +3922,15 @@ function viewTickets(){
             + '<td class="num">'+Math.max(1, Number(t.persons)||1)+'</td>'
             + '<td class="c-phone">'+(phone ? '<a href="tel:'+esc(phone)+'">☎ '+esc(phone)+'</a>' : '<span class="cell-muted">—</span>')+'</td>'
             + '<td class="c-act">'
+            + '<button class="del ia ia-more js-row-menu" data-id="'+t.id+'" title="Actions — Edit / Invoice / Detail / Date / Delete">⋯</button>'
+            + '<span class="row-actions" hidden>'
             + (t.paid === false ? '<button class="del ia ia-gold tk-toggle" data-id="'+t.id+'" title="Mark as paid">✔</button>' : '')
             + (t.doubleEntry ? '<button class="del ia ia-green" data-unflagTk="'+t.id+'" title="Remove duplicate flag">✓</button>' : '')
             + '<button class="del ia '+(t.inv?'ia-green':'ia-blue')+' tk-inv" data-id="'+t.id+'" title="'+(t.inv?'View invoice':'Create invoice')+'">🧾</button>'
             + '<button class="del ia ia-blue tk-edit" data-id="'+t.id+'" title="Edit sale">✏</button>'
             + '<button class="del ia ia-gray tk-datedit" data-id="'+t.id+'" title="Change date">📅</button>'
             + '<button class="del ia ia-red" data-type="ticket" data-id="'+t.id+'" title="Delete">✕</button>'
+            + '</span>'
             + '</td></tr>';
     });
     html += '</tbody><tfoot><tr>'
@@ -3912,7 +3943,7 @@ function viewTickets(){
           + '<td></td><td class="c-detail"></td>'
           + '<td class="num">'+personsTotal+'</td><td class="c-phone"></td><td class="c-act"></td>'
           + '</tr></tfoot></table></div>';
-    html += '<div class="sheet-foot-hint">↔ Sideways scroll karke baqi columns dekhein · kisi bhi row par tap karein to Edit/Invoice/Delete menu khulta hai</div>';
+    html += '<div class="sheet-foot-hint">⋯ button (ya row par tap) se Edit / Invoice / Detail / Date / Delete · ↔ sideways scroll se Cost, Type, Detail, Phone</div>';
     html += '</div>';
   }
   html += undoBanner();
@@ -3922,6 +3953,7 @@ function viewTickets(){
   html += '<label>'+esc(T("tareekh"))+'</label><input id="tkDate" type="date" value="'+today()+'">';
   html += '<div class="row" style="margin-top:8px;"><div><label>Sale type</label><select id="tkKind"><option>Ticket</option><option>Change</option><option>Umrah</option><option>Hajj</option></select></div></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkClient" placeholder="'+esc(T("clientph"))+'"><input id="tkPhone" type="tel" inputmode="tel" placeholder="Contact number (for reminders)"></div>';
+  html += '<div class="row" style="margin-top:8px;"><input id="tkDetail" placeholder="Detail — route / PNR / note (e.g. KHI-DXB EK601)"></div>';
   html += '<div class="row" style="margin-top:8px;"><input id="tkCost" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("costph"))+'"><input id="tkSale" type="number" min="0" inputmode="decimal" placeholder="'+esc(T("saleph"))+'"></div>';
   html += '<div class="row" style="margin-top:8px;"><div style="flex:0 0 170px;"><label>Number of persons</label><input id="tkPersons" type="number" min="1" max="99" step="1" inputmode="numeric" value="1"></div><div style="flex:1; display:flex; align-items:flex-end;"><div class="hint" style="margin:0 0 10px;">Only a count — cost and sale stay as entered and do not multiply.</div></div></div>';
   html += '<div class="hint" id="tkProfitHint">'+esc(T("profit"))+'<b>Rs 0</b></div>';
@@ -7436,6 +7468,13 @@ function bind(){
     var c = document.getElementById("tkClient");
     if(c) setTimeout(function(){ try{ c.focus(); }catch(e){} }, 350);
   };
+  app.querySelectorAll(".js-row-menu").forEach(function(b){
+    b.onclick = function(ev){
+      if(ev) ev.stopPropagation();
+      var tr = b.closest ? b.closest("tr") : null;
+      if(tr) openRowSheet(tr);
+    };
+  });
   app.querySelectorAll("#tkList tbody tr[data-id]").forEach(function(tr){
     tr.onclick = function(ev){
       var el = ev.target;

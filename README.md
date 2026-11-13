@@ -1,5 +1,12 @@
 # Travel Office Hisab — AB Travels
 
+## Sales register refinements (v2.59)
+- **Month khud current month par khulta hai** — pehle har dafa "All months" aata tha. Agar is mahine koi sale na ho to sab se naya mahina jis mein sales hain khulta hai; sales hi na hon to "All months".
+- **Actions ab ek chhota `⋯` button** — us par tap (ya row par tap) se neeche menu khulta hai: ✔ Paid · 🧾 Invoice · ✏ Edit · **📝 Detail** · 📅 Date · ✕ Delete. Row ke andar baqi buttons chhupe rehte hain, is liye **actions ke liye left/right scroll khatam** — ye column hamesha daayen freeze hai (mobile par bhi).
+- **Naya sale sab se oper** — pehle ek hi date ki sales naam ke hisab se lag jati thin; ab date ke andar **jo sale baad mein add hui wo pehle** dikhti hai (latest first).
+- **Date column mein sirf din** (jab koi mahina chuna ho) — `7`, `9` waghera; "All months" par poori tareekh `07/11/26`. Mahina/year upar filter aur sheet title mein pehle se likha hota hai.
+- **Detail ab form se bhi bhar jata hai** — Add New Sale form mein naya **Detail** box (route / PNR / note, e.g. `KHI-DXB EK601`). Purani sale ka detail badalne ke liye row ke `⋯` → **📝 Detail** (khali chhodein to purana rahega, mitane ke liye `-`).
+
 ## Sales register — Google Sheets jaisa grid (v2.58)
 - **Sales tab** ka list ab **spreadsheet jaisa** hai: row numbers (#), column headers, poori grid lines, aur har sale ek chhoti single-line row mein — lambi cards khatam, is liye neeche scroll kam karna parta hai.
 - **Header row aur Date column frozen** hain — 600 sales hon to bhi naam/tareekh samne rehte hain, sirf andar ka hissa scroll hota hai.
