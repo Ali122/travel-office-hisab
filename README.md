@@ -1,5 +1,9 @@
 # Travel Office Hisab — AB Travels
 
+## Drawer polish (v2.65)
+- Drawer khulte hi active tab beech mein aa jata hai — lekin **MENU heading aur ✕ (close) button ab sticky** hain, is liye neeche wale tab (Settings, Monthly Accounts) par bhi band karne ka button hamesha nazar aata hai.
+- Quick bar ke active tab ka gold accent bar thora neeche shift kiya taake bar ke top border par crop na ho.
+
 ## App ka naya link + origin fix (v2.64)
 - **GitHub account ka naam badal gaya hai**, is liye app ka purana link `ali122.github.io/travel-office-hisab/` ab **404** deta hai. Naya live link: **https://abtravels.github.io/travel-office-hisab/** — bookmarks/home-screen icon dobara banayein.
 - **Notification relay** (`pricebot-worker.js` ka `/notify`) sirf `ali122.github.io` origin qabool karta tha — naye host se aane wali Telegram notifications 403 ho rahi thin. Ab **dono hosts** (`ali122` aur `abtravels`) allowed hain, aur Telegram ke "📱 Open app" button ka URL naya hai.
@@ -322,7 +326,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.64** (v2.64 new GitHub Pages link `abtravels.github.io` + relay origin allowlist for both hosts; v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.65** (v2.65 sticky drawer header + quick-bar accent tweak; v2.64 new GitHub Pages link `abtravels.github.io` + relay origin allowlist for both hosts; v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.
