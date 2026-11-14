@@ -1,5 +1,16 @@
 # Travel Office Hisab — AB Travels
 
+## Notification fixes: ab fail hone par sabab nazar aata hai (v2.68)
+- **File add karne par notification na aane ki wajah chhupi hui thi** — app relay ki ghalti chup chaap nigal leti thi (`catch → false`). Ab:
+  - fail hone par neeche **toast** aata hai: `⚠ Telegram notification nahi gayi — <sabab>` (maslan `origin`, `no_chats`, `relay 500`).
+  - **Settings → 🤖 Team notifications** mein aakhri koshish ka nateeja tareekh ke saath likha hota hai (✓ gayi / ✗ nahi gayi + sabab).
+  - Test button bhi ab asal sabab dikhata hai.
+- **Purani/galat Chat IDs** ke sabab notification band na hon: agar Worker `no_chats` kahe to app **khud team list** (bot ke allowed chats) par dobara bhej deti hai.
+- **Network / Worker 5xx** par ek dafa khud retry (Cloudflare → Telegram kabhi 15–40s leta hai).
+- **Paste ki hui file** (clipboard se PDF/image) ab bhi team ko notify karti hai — pehle yeh jaan bujh kar "silent" thi. Sirf note ke dabbe ke andar Ctrl+V karne par notification nahi jati.
+- Upload ke baad agar notifications Settings se **off** hain to message mein saaf likha aata hai.
+- ⚠ Ek dafa check kar lein: **Settings → Team notifications** mein "Send notifications for new tickets and files" tick hona chahiye.
+
 ## Sales register: mouse wheel ab page bhi scroll karta hai (v2.66)
 - **Masla:** register par mouse rakh kar wheel ghumane se sirf andar ki list scroll hoti thi aur page upar/neeche nahi hota tha — register se mouse hatana parta tha. Wajah: `.sheet-scroll` par `overscroll-behavior:contain` tha, jo list ke aakhir par bhi scroll ko page tak nahi jane deta.
 - **Fix:** ab chaining normal hai (`overscroll-behavior:auto`) — list khatam hone par page khud aage scroll ho jata hai.

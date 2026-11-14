@@ -441,7 +441,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.67</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.68</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -507,7 +507,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.67";
+var APP_VER = "2.68";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
@@ -6456,7 +6456,7 @@ function viewSettings(){
         +   '<button class="btn small btn-del" id="tgRemove" style="flex:1; margin-top:0;">🚫 Remove</button>'
         + '</div>'
         + '<label style="display:flex; gap:8px; align-items:center; margin-top:10px;"><input type="checkbox" id="setTgOn" style="width:auto"'+(st.tgNotifyOn!==false?' checked':'')+'> Send notifications for new tickets and files</label>'
-        + '<div class="hint" id="tgStatus" style="margin-top:8px; font-weight:600;"></div>'
+        + '<div class="hint" id="tgStatus" style="margin-top:8px; font-weight:600;">'+tgLastHTML()+'</div>'
         + '<div class="hint">Token, chat IDs aur relay URL private GitHub data ke saath sync hote hain — har device par dobara add nahi karna padega. Sirf trusted devices/repo access walon ko dikh sakte hain.</div>'
         + '</div>';
 
@@ -6925,27 +6925,94 @@ function tgRelayUrl(){
   if(!/^https?:\/\//i.test(s)) s = "https://" + s;
   return s;
 }
+/* ---------- notification result tracker ----------
+   Pehle relay ki ghalti chup chaap nigal li jati thi (silent catch), is liye
+   "notification nahi aayi" ka koi sabab samne nahi aata tha. Ab aakhri
+   nateeja Settings → Telegram mein dikhta hai aur fail hone par toast aata hai. */
+var _tgToastAt = 0;
+function tgLastHTML(){
+  var st = (S && S.settings) || {};
+  var at = Number(st.tgLastAt) || 0;
+  if(!at) return "";
+  var when = new Date(at).toLocaleString();
+  var line = st.tgLastOk
+    ? '<span style="color:var(--green);">✓ Aakhri notification chali gayi</span>'
+    : '<span style="color:var(--red);">✗ Aakhri notification nahi gayi — ' + esc(st.tgLastMsg || "relay error") + '</span>';
+  return line + ' <span style="color:var(--muted); font-weight:400;">(' + esc(when) + ')</span>';
+}
+function tgMark(ok, msg){
+  try{
+    if(!S.settings) S.settings = {};
+    S.settings.tgLastOk = !!ok;
+    S.settings.tgLastMsg = String(msg || "").slice(0, 160);
+    S.settings.tgLastAt = Date.now();
+  }catch(e){}
+  var box = document.getElementById("tgStatus");
+  if(box) box.innerHTML = tgLastHTML();
+  if(!ok && Date.now() - _tgToastAt > 8000){
+    _tgToastAt = Date.now();
+    try{ appToast("⚠ Telegram notification nahi gayi — " + (msg || "relay error"), true); }catch(e){}
+  }
+}
+function tgRelayWhy(r, txt){
+  var j = null;
+  try{ j = JSON.parse(txt); }catch(e){}
+  if(j && j.ok === true) return "";             // worker ne bhej di
+  if(j && j.error){
+    if(typeof j.error === "string") return j.error;
+    return String(j.error.message || j.error.code || "relay error");
+  }
+  return "relay " + ((r && r.status) || 0);
+}
+function tgPostOnce(body){
+  return fetch(tgRelayUrl() + "/notify", {
+    method: "POST",
+    signal: AbortSignal.timeout(70000),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  }).then(function(r){
+    return r.text().then(function(txt){
+      var why = tgRelayWhy(r, txt);
+      if(why) throw new Error(why);
+      return true;
+    });
+  });
+}
+function tgPost(body, attempt){
+  return tgPostOnce(body).catch(function(e){
+    var msg = String((e && e.message) || e);
+    // network / timeout / worker ki 5xx — ek dafa dobara (Cloudflare→Telegram kabhi slow hota he)
+    if(attempt < 1 && /abort|timeout|fetch|network|failed to fetch|\b5\d\d\b/i.test(msg)){
+      return new Promise(function(res){
+        setTimeout(function(){ res(tgPost(body, attempt + 1)); }, 1200);
+      });
+    }
+    throw e;
+  });
+}
 function tgSend(title, message, opts){
   opts = opts || {};
   if(!opts.force && !tgNotifyOn()) return Promise.resolve(false);
   var chats = tgChatIds();
   var text = String(message || "");
-  // 1) Worker relay — Cloudflare se Telegram jata he, is liye ISP block (api.telegram.org)
-  //    hone par bhi notification pohanchti he. v2.42+ relay origin check karta he;
-  //    bot token ki zaroorat nahi.
-  var relay = fetch(tgRelayUrl() + "/notify", {
-    method: "POST",
-    signal: AbortSignal.timeout(70000),
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title: String(title || ""), text: text, chats: chats })
-  }).then(function(r){
-    if(!r.ok) throw new Error("relay " + r.status);
-    return r.json();
-  }).then(function(j){
-    if(!j || j.ok !== true) throw new Error("relay");
-    return true;
-  });
-  return relay.catch(function(){ return false; });
+  var ttl = String(title || "AB Travels");
+  // Worker relay — Cloudflare se Telegram jata he, is liye ISP block (api.telegram.org)
+  // hone par bhi notification pohanchti he. Relay origin check karta he; bot token ki
+  // zaroorat nahi. Agar chat IDs purani/galat hon to team list par fallback hota he.
+  return tgPost({ title: ttl, text: text, chats: chats }, 0)
+    .catch(function(e){
+      var msg = String((e && e.message) || e);
+      if(chats.length && /no_chats|chat|origin/i.test(msg)){
+        return tgPost({ title: ttl, text: text, chats: [] }, 1);
+      }
+      throw e;
+    })
+    .then(function(){ tgMark(true, ""); return true; })
+    .catch(function(e){
+      var msg = String((e && e.message) || e);
+      tgMark(false, msg);
+      return false;
+    });
 }
 /* ---------- filename se client / PNR guess ---------- */
 function fileGuess(name){
@@ -7057,7 +7124,8 @@ function fileUploadAll(){
               .filter(Boolean).join(" · "), { priority:"high", tags:"inbox_tray" });
         }catch(e){}
       }
-      fileSetFlash("✓ " + (arr.length - failed) + " file(s) uploaded" + (failed ? (" — " + failed + " failed" + (lastErr ? " (" + lastErr + ")" : "")) : "") + ". Baqi devices par sync hoti hai.");
+      fileSetFlash("✓ " + (arr.length - failed) + " file(s) uploaded" + (failed ? (" — " + failed + " failed" + (lastErr ? " (" + lastErr + ")" : "")) : "") + ". Baqi devices par sync hoti hai."
+        + (tgNotifyOn() ? "" : " ⚠ Telegram notifications off hain — Settings → Telegram se on karein."));
       render();
       return;
     }
@@ -7164,7 +7232,7 @@ function viewFiles(){
         + '<button class="btn" id="pasteClip">📋 Paste from clipboard</button>'
         + '</div>'
         + '<div class="hint" id="pasteStatus" style="margin-top:8px; font-weight:600;"></div>'
-        + '<div class="hint">Clipboard se PDF/image paste karein to file upload hogi — notification ke baghair. Text/URL paste karein to form khud bhar jayega. Bara document ho to Google Drive link paste karein (GitHub storage bachta hai).</div>'
+        + '<div class="hint">Clipboard se PDF/image paste karein to file upload hogi aur team ko Telegram par notification bhi jayegi. (Note ke dabbe ke andar paste karne par notification nahi jati.) Text/URL paste karein to form khud bhar jayega. Bara document ho to Google Drive link paste karein (GitHub storage bachta hai).</div>'
         + '</div>';
   html += '<div class="card"><h2>All ticket files (' + files.length + ')</h2>';
   if(files.length){
@@ -7179,7 +7247,7 @@ function viewFiles(){
   html += '</div>';
   return html;
 }
-/* ---------- paste link / note / document (silent: no notification) ---------- */
+/* ---------- paste link / note / document ---------- */
 function filePasteStatus(msg, bad){
   var s = document.getElementById("pasteStatus");
   if(s){ s.textContent = msg || ""; s.style.color = bad ? "var(--red)" : "var(--green)"; }
@@ -7231,7 +7299,7 @@ function filePasteKindChanged(){
   if(lw) lw.style.display = kind === "link" ? "" : "none";
   if(tw) tw.style.display = kind === "note" ? "" : "none";
 }
-function fileSilentUpload(file){
+function fileSilentUpload(file, quiet){
   if(!file) return Promise.resolve();
   if(!githubSyncConfigured()){
     filePasteStatus("GitHub sync off hai — Settings → GitHub Sync mein token save karein.", true);
@@ -7241,12 +7309,18 @@ function fileSilentUpload(file){
     client: ((document.getElementById("pasteClient") || {}).value || "").trim(),
     pnr: ((document.getElementById("pastePnr") || {}).value || "").trim(),
     note: "Pasted document",
-    silent: true
+    silent: !!quiet
   };
   filePasteStatus("Uploading " + file.name + " (" + fileSizeTxt(file.size) + ")…");
   return fileUploadOne(file, meta).then(function(){
     saveNow(function(){});
-    fileSetFlash("✓ Pasted document uploaded — no notification sent.");
+    fileSetFlash("✓ Pasted document uploaded" + (quiet ? " — notification nahi bheji." : " — team ko Telegram par bata diya."));
+    if(!quiet){
+      try{
+        tgSend("New ticket file (pasted)", [meta.client, meta.pnr ? ("PNR " + meta.pnr) : "", file.name]
+          .filter(Boolean).join(" · "), { priority:"high", tags:"inbox_tray" });
+      }catch(e){}
+    }
     render();
   }).catch(function(e){
     filePasteStatus("Upload failed — " + ((e && e.message) || e), true);
@@ -7542,7 +7616,7 @@ function bindFilesTab(app){
       for(var i = 0; i < items.length; i++){
         if(items[i].kind === "file"){
           var file = items[i].getAsFile();
-          if(file){ e.preventDefault(); fileSilentUpload(file); return; }
+          if(file){ e.preventDefault(); fileSilentUpload(file, true); return; }
         }
       }
     });
@@ -8806,7 +8880,7 @@ function bind(){
     tgStatus("Test message bhej rahe hain…");
     tgSend("AB Travels test", "Notifications Telegram par connected. New tickets, files aur invoices yahan aayenge.", { force:true }).then(function(ok){
       tgStatus(ok ? "✓ Test bhej diya (" + tgRelayUrl() + " ke through) — apne Telegram par check karein (1-2 second)."
-                  : "✗ Test nahi gaya. Relay URL check karein (default: ab-travels-ignav.umair5075.workers.dev) — ya Chat IDs/token dobara check karein.", !ok);
+                  : "✗ Test nahi gaya — " + ((S.settings && S.settings.tgLastMsg) || "relay error") + ". Relay URL / Chat IDs check karein.", !ok);
     });
   };
   if(tgTokenInput) tgTokenInput.onchange = function(){
