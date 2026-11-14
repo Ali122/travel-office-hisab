@@ -1,6 +1,6 @@
 # Travel Office Hisab — AB Travels
 
-## Modern look (v2.69)
+## Modern look (v2.69 / v2.70)
 - **Cards:** kone 14px → **16px**, padding 16px, aur layered shadow (oper halki line + neeche narm gehri parchhai). Mouse wale device par card par hover karne se shadow thora ubharta hai.
 - **Buttons:** kone 12px, primary/green par halki rangeeli parchhai (glow), dabane par halka "press" effect.
 - **Fields:** kone 12px; focus par purana sakht outline hataya — ab **narm ring** (border + 3px halka halo) aata hai, dark aur OLED mein bhi.
@@ -11,6 +11,7 @@
 - **Chhote touches:** "👁 Show totals" chip ab solid pill (dashed nahi), success banner par hari left accent line, toast rounded + blur, row action sheet ke oper wale kone rounded.
 - Sirf **shakl** badli hai — koi button, tab, form ya hisaab ka kaam nahi badla. `prefers-reduced-motion` walon ke liye animation band.
 - Poori tarah **CSS-only** change — Worker redeploy ki zaroorat nahi.
+- **v2.70 fix:** card ki nayi padding un cards par bhi lag rahi thi jinki apni padding thi — Sales register ka toolbar card ke andar ghus gaya tha (square corners + adhoori line). Ab `sheet-bar` / `sheet-card` / ayat card ki padding waisi hi hai. Drawer ka scrollbar bhi patla aur drawer ke rang mein kar diya (dark/OLED mein patli lakeer jaisi dikh raha tha).
 
 ## Notification fixes: ab fail hone par sabab nazar aata hai (v2.68)
 - **File add karne par notification na aane ki wajah chhupi hui thi** — app relay ki ghalti chup chaap nigal leti thi (`catch → false`). Ab:
