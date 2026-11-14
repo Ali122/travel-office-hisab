@@ -1,5 +1,10 @@
 # Travel Office Hisab — AB Travels
 
+## Phone quick bar: Expense button (v2.71)
+- Neeche ki quick bar (sirf phones/tablets) ab: **Sales · Invoice · Files · Expense · Pending · ☰ Menu** — Expense Pending se pehle, ek tap door.
+- 400px se chhoti screens par icon/label thora chhota kar diya, taake 6 buttons mein kuch kata na jaye.
+- Naya tab nahi bana — wahi purana **Expenses** screen khulta hai (`data-tab="exp"`), is liye form, hisaab aur sync par koi asar nahi.
+
 ## Modern look (v2.69 / v2.70)
 - **Cards:** kone 14px → **16px**, padding 16px, aur layered shadow (oper halki line + neeche narm gehri parchhai). Mouse wale device par card par hover karne se shadow thora ubharta hai.
 - **Buttons:** kone 12px, primary/green par halki rangeeli parchhai (glow), dabane par halka "press" effect.
