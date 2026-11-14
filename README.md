@@ -1,5 +1,17 @@
 # Travel Office Hisab — AB Travels
 
+## Modern look (v2.69)
+- **Cards:** kone 14px → **16px**, padding 16px, aur layered shadow (oper halki line + neeche narm gehri parchhai). Mouse wale device par card par hover karne se shadow thora ubharta hai.
+- **Buttons:** kone 12px, primary/green par halki rangeeli parchhai (glow), dabane par halka "press" effect.
+- **Fields:** kone 12px; focus par purana sakht outline hataya — ab **narm ring** (border + 3px halka halo) aata hai, dark aur OLED mein bhi.
+- **Stat tiles (Summary/Monthly):** label 11px bold, number 21px tabular figures ke sath — figures ab line par line seedhe rehte hain.
+- **Bottom quick bar:** ab **frosted glass** (translucent + blur) — peeche ka content halka dikhta hai, iOS jaisa look. OLED mein pure black frosted.
+- **Sidebar:** halka vertical gradient aur active item par gold-tinted gradient (pehle flat grey tha).
+- **Scrollbars:** patli, rounded, theme ke rang mein (pehle default moti grey).
+- **Chhote touches:** "👁 Show totals" chip ab solid pill (dashed nahi), success banner par hari left accent line, toast rounded + blur, row action sheet ke oper wale kone rounded.
+- Sirf **shakl** badli hai — koi button, tab, form ya hisaab ka kaam nahi badla. `prefers-reduced-motion` walon ke liye animation band.
+- Poori tarah **CSS-only** change — Worker redeploy ki zaroorat nahi.
+
 ## Notification fixes: ab fail hone par sabab nazar aata hai (v2.68)
 - **File add karne par notification na aane ki wajah chhupi hui thi** — app relay ki ghalti chup chaap nigal leti thi (`catch → false`). Ab:
   - fail hone par neeche **toast** aata hai: `⚠ Telegram notification nahi gayi — <sabab>` (maslan `origin`, `no_chats`, `relay 500`).
@@ -342,7 +354,7 @@ Current version: **2.31** (Email share opens Gmail compose with recipient prompt
 - Default waisa hi hai, is liye purane users ka behaviour nahi badla.
 
 ## Version
-Current version: **2.67** (v2.67 PC par mouse wheel register ke upar ho to bhi PAGE scroll hota hai; v2.66 sales register wheel/scroll fix; v2.65 sticky drawer header + quick-bar accent tweak; v2.64 new GitHub Pages link `abtravels.github.io` + relay origin allowlist for both hosts; v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
+Current version: **2.69** (v2.69 modern look: narm kone, layered card shadows, ring-focus fields, frosted bottom bar, patli scrollbars; v2.68 notification failures visible + retry; v2.67 PC par mouse wheel register ke upar ho to bhi PAGE scroll hota hai; v2.66 sales register wheel/scroll fix; v2.65 sticky drawer header + quick-bar accent tweak; v2.64 new GitHub Pages link `abtravels.github.io` + relay origin allowlist for both hosts; v2.63 phone UI: bottom quick bar, chhota header, settings search, invoice section headings, labelled sale form, scroll fixes; v2.62 sales register full laptop width; v2.53 reminder times now shown as 12-hour am/pm; v2.52 Telegram reminders in the price bot; v2.50 Sale "Number of persons" field; v2.49 passenger ID alignment; v2.48 added-by names removed from Telegram notifications; v2.47 multi-city proxy + offline release checks; v2.46 route and current price on the first line of price alerts; v2.45 children/infants in Price Lookup; v2.44 WATCH_INDEX_DO Durable Object setup card + `wrangler.pricebot.toml`; v2.42–v2.43 SQLite Durable Object watch index, relay authentication, optional relay token; v2.41 stopped the every-minute KV.list; v2.40 sync of Telegram token/chat IDs/relay/Ignav proxy/OCR key; GitHub PAT and Ignav API key stay device-local).
 
 ## Price bot: KV list limit fix (v2.41)
 - Cloudflare KV free plan mein **1,000 list requests/day** hoti hain. Bot ka cron har minute `KV.list` chalata tha (1,440/day), is liye ~15 ghante mein 90% usage email aa jati thi.

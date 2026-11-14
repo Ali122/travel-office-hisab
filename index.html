@@ -421,6 +421,87 @@
     header h1{font-size:14.5px;}
     .hints-btn{padding:5px 8px;}
   }
+
+  /* ================= MODERN POLISH (v2.69) ================= */
+  /* Narm kone, layered shadows, ring-focus fields, frosted bottom bar.
+     Sirf shakl badli hai — koi layout ya kaam nahi badla. */
+  :root{
+    --radius:16px;
+    --radius-sm:12px;
+    --ring:rgba(37,99,235,.16);
+    --card-shadow:0 1px 2px rgba(16,24,40,.05), 0 10px 24px -16px rgba(16,24,40,.38);
+    --card-shadow-hover:0 2px 4px rgba(16,24,40,.06), 0 18px 34px -18px rgba(16,24,40,.5);
+  }
+  body.dark, body.oled{
+    --ring:rgba(96,165,250,.20);
+    --card-shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 28px -18px rgba(0,0,0,.95);
+    --card-shadow-hover:0 1px 2px rgba(0,0,0,.5), 0 18px 36px -18px rgba(0,0,0,1);
+  }
+  body{-webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+
+  /* Cards */
+  .card{border-radius:var(--radius); padding:16px; box-shadow:var(--card-shadow); transition:box-shadow .18s ease, border-color .18s ease;}
+  @media (hover:hover){ .card:hover{box-shadow:var(--card-shadow-hover);} }
+  body.dark .card{box-shadow:var(--card-shadow);}
+  body.oled .card{box-shadow:none;}
+  .card h2{font-size:16.5px; font-weight:800; letter-spacing:-.012em; margin:0 0 12px;}
+  .card-head h2{font-size:16.5px; letter-spacing:-.012em;}
+
+  /* Buttons */
+  .btn{border-radius:var(--radius-sm);}
+  .btn.small{border-radius:10px;}
+  .btn.primary{box-shadow:0 1px 2px rgba(37,99,235,.3), 0 8px 18px -10px rgba(37,99,235,.65);}
+  .btn.green{box-shadow:0 1px 2px rgba(5,150,105,.28), 0 8px 18px -10px rgba(5,150,105,.6);}
+  .btn:active{transform:translateY(1px) scale(.995);}
+  body.dark .btn.primary, body.oled .btn.primary{box-shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 22px -12px rgba(99,102,241,.8);}
+  body.dark .btn.green, body.oled .btn.green{box-shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 22px -12px rgba(16,185,129,.7);}
+  body.oled .btn.primary, body.oled .btn.green{box-shadow:none;}
+
+  /* Fields — focus par outline ki jagah narm ring */
+  input,select,textarea{border-radius:var(--radius-sm);}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--blue); box-shadow:0 0 0 3px var(--ring);}
+  body.dark input:focus, body.dark select:focus, body.dark textarea:focus,
+  body.oled input:focus, body.oled select:focus, body.oled textarea:focus{outline:none; border-color:#4b7bd4; box-shadow:0 0 0 3px var(--ring);}
+
+  /* Stat tiles */
+  .stat{border-radius:14px; padding:13px 14px; border-color:var(--line-soft);}
+  .stat .t{font-size:11px; font-weight:800; letter-spacing:.02em;}
+  .stat .v{font-size:21px; font-weight:800; letter-spacing:-.02em; margin-top:4px; font-variant-numeric:tabular-nums;}
+
+  /* Chips, banners, hints */
+  .pill{font-weight:800; letter-spacing:.01em;}
+  .sum-btn{border-style:solid; background:var(--card); border-radius:999px; box-shadow:0 1px 2px rgba(16,24,40,.05); color:var(--muted);}
+  .sum-btn:hover{color:var(--ink); border-color:#94a3b8;}
+  body.dark .sum-btn{background:var(--card);}
+  .hint{line-height:1.55;}
+  .ok-msg{border-radius:12px; border-left:3px solid var(--green);}
+  .empty{font-size:13.5px; line-height:1.6;}
+  .app-toast{border-radius:14px; background:rgba(15,23,42,.94); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
+  .row-sheet-actions{border-radius:18px 18px 0 0;}
+
+  /* Sidebar + header */
+  nav#tabs{background:linear-gradient(180deg,#0f172a 0%,#0c1424 100%); scrollbar-color:#1e293b transparent;}
+  nav#tabs button{border-radius:11px;}
+  nav#tabs button.active{background:linear-gradient(90deg,rgba(217,119,6,.18),rgba(30,41,59,.92) 55%); box-shadow:inset 3px 0 0 var(--gold);}
+  header .brand img{box-shadow:0 0 0 3px rgba(251,191,36,.10);}
+
+  /* Patli modern scrollbars */
+  *{scrollbar-width:thin; scrollbar-color:var(--line) transparent;}
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:999px; border:2px solid transparent; background-clip:content-box;}
+  ::-webkit-scrollbar-thumb:hover{background:#94a3b8; border:2px solid transparent; background-clip:content-box;}
+
+  /* Bottom bar — frosted glass */
+  @media (max-width:860px){
+    #bottomNav{background:rgba(15,23,42,.9); -webkit-backdrop-filter:blur(16px) saturate(160%); backdrop-filter:blur(16px) saturate(160%); border-top-color:rgba(148,163,184,.14);}
+    body.oled #bottomNav{background:rgba(0,0,0,.88);}
+    #bottomNav button.active{background:rgba(148,163,184,.16);}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -441,7 +522,7 @@
   <div class="brand">
     <img src="logo.png" alt="AB Travels" decoding="async" onerror="this.style.display='none'">
     <div style="min-width:0;">
-      <h1>AB Travels <span class="ver" id="verBadge">v2.68</span></h1>
+      <h1>AB Travels <span class="ver" id="verBadge">v2.69</span></h1>
       <div class="tag">Ahmed Brothers Hajj &amp; Umra Services (Pvt) Ltd</div>
     </div>
   </div>
@@ -507,7 +588,7 @@
 <script>
 /* ================= DATA ================= */
 var KEY = "travelOfficeHisab";
-var APP_VER = "2.68";
+var APP_VER = "2.69";
 var MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 /* Cloudflare Worker — Ignav flight prices proxy (free plan, no credit card) */
 var IGNAV_WORKER_CODE = "// AB Travels - Ignav flight prices proxy (Cloudflare Worker)\n// Ignav API key SERVER par rehti hai - app/browser mein kabhi nahi aati.\n//\n// SETUP (ek dafa, ~5 min, free):\n// 1) ignav.com/signup -> free account -> dashboard se API key\n// 2) cloudflare.com -> free account -> Workers & Pages -> Create Worker -> yeh code paste -> Deploy\n// 3) Worker -> Settings -> Variables and Secrets -> secret add karein:\n//      IGNAV_API_KEY = (aap ki Ignav key)\n// 4) Worker URL (https://xxx.workers.dev) app -> Settings -> Flight prices -> paste -> Save & test\n\nexport default {\n  async fetch(request, env) {\n    const cors = {\n      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',\n      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',\n      'Access-Control-Allow-Headers': 'Content-Type',\n      'Access-Control-Max-Age': '86400'\n    };\n    const url = new URL(request.url);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });\n    if (!env.IGNAV_API_KEY) {\n      return new Response(JSON.stringify({ error: { code: 'no_key', message: 'IGNAV_API_KEY secret is not set in the Worker.' } }), { status: 500, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    const base = 'https://ignav.com/api';\n    let target = '';\n    let init = { method: 'GET', headers: { 'X-Api-Key': env.IGNAV_API_KEY } };\n    if (url.pathname === '/health') {\n      target = base + '/health';\n    } else if (url.pathname === '/fares') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/one-way';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/search') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/search';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/round-trip') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/round-trip';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else if (url.pathname === '/booking-links') {\n      if (request.method !== 'POST') return new Response(JSON.stringify({ error: { message: 'POST only' } }), { status: 405, headers: cors });\n      const body = await request.text();\n      target = base + '/fares/booking-links';\n      init = { method: 'POST', headers: { 'X-Api-Key': env.IGNAV_API_KEY, 'Content-Type': 'application/json' }, body };\n    } else {\n      return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n    try {\n      const r = await fetch(target, init);\n      const text = await r.text();\n      return new Response(text, { status: r.status, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    } catch (e) {\n      return new Response(JSON.stringify({ error: { message: String((e && e.message) || e) } }), { status: 502, headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });\n    }\n  }\n};\n";
