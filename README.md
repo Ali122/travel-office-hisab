@@ -1,5 +1,9 @@
 # Travel Office Hisab — AB Travels
 
+## Default tab: hamesha Sales (v2.72)
+- **Har dafa app khulne par Sales tab** khulta hai. Pehle pichhla khula tab yaad rehta tha — kisi ne Expense/Settings par chhor diya ho to dobara wahi khulta tha.
+- Tab badalna andar waisa hi hai; sirf nayi opening par shuruaat **Sales** se hoti hai (mobile quick bar ka highlight bhi Sales par aata hai).
+
 ## Phone quick bar: Expense button (v2.71)
 - Neeche ki quick bar (sirf phones/tablets) ab: **Sales · Invoice · Files · Expense · Pending · ☰ Menu** — Expense Pending se pehle, ek tap door.
 - 400px se chhoti screens par icon/label thora chhota kar diya, taake 6 buttons mein kuch kata na jaye.
